@@ -110,73 +110,6 @@
     .sb-val{color:var(--text);font-family:var(--mono);}
     .sb-label{font-size:10px;}
 
-  /* ── TOOLTIPS ── */
-  .tip{position:relative;cursor:help;}
-  .tip::after{
-    content:attr(data-tip);
-    position:absolute;
-    bottom:calc(100% + 8px);
-    left:50%;
-    transform:translateX(-50%);
-    background:#0a0d14;
-    color:#f0f0f0;
-    border:1px solid #252d3d;
-    border-radius:8px;
-    padding:8px 12px;
-    font-size:11px;
-    font-family:'Inter',system-ui,sans-serif;
-    line-height:1.5;
-    width:220px;
-    text-align:center;
-    white-space:normal;
-    pointer-events:none;
-    opacity:0;
-    transition:opacity .15s;
-    z-index:9999;
-    box-shadow:0 4px 20px rgba(0,0,0,.5);
-  }
-  .tip:hover::after{opacity:1;}
-  .tip-right::after{left:auto;right:0;transform:none;}
-  .tip-left::after{left:0;transform:none;}
-
-  /* ── HAMBURGER (hidden on desktop) ── */
-  .hamburger { display: none; }
-
-  /* ── MOBILE RESPONSIVE ── */
-  @media (max-width: 768px) {
-    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
-    .sidebar.open { transform: translateX(0); }
-    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
-    .sidebar-overlay.show { display:block; }
-    .main { margin-left: 0 !important; }
-    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
-    .topbar-left p { display: none; }
-    .topbar-left h1 { font-size: 13px; }
-    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
-    .balance-display .sats { font-size:13px; }
-    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
-    .content { padding: 16px; }
-    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
-    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
-    .miners-grid { grid-template-columns: 1fr !important; }
-    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
-    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
-    .time-filters { flex-wrap:wrap; }
-    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
-    .statusbar .sb-item:last-child { margin-left:0 !important; }
-    .login-wrap { padding:16px; }
-    .login-card { padding:20px; }
-    .tip::after { display: none !important; }
-    .stat-value { font-size:15px !important; }
-    .sc-value { font-size:18px !important; }
-    .balance-grid { grid-template-columns: 1fr !important; }
-    .connect-form { flex-direction:column !important; }
-  }
-  @media (max-width: 480px) {
-    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
-  }
-
-
   /* ── DONATE MODAL ── */
   .donate-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;}
   .donate-modal-overlay.show{display:flex;}
@@ -199,7 +132,7 @@
 <aside class="sidebar">
   <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
   <nav class="nav">
-    <div class="nav-section">Node</div>
+        <div class="nav-section">Node</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
@@ -210,7 +143,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
     <div class="nav-section">System</div>
-    <div class="nav-item active"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
     <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
@@ -219,7 +152,6 @@
     <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
     <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
     <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
-    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
   </div>
 </aside>
 <div class="main">
@@ -379,7 +311,7 @@
         <div class="panel-header"><h3>&#9889; Fleet Efficiency</h3></div>
         <table class="eff-table">
           <thead>
-            <tr><th>Miner</th><th>TH/s</th><th>Watts</th><th><span class="tip tip-right" data-tip="Joules per Terahash — energy efficiency rating. Lower = more efficient mining">J/TH</span></th><th><span class="tip tip-right" data-tip="Efficiency rating: Excellent &lt;20 J/TH, Good 20-35 J/TH, Poor &gt;35 J/TH">Rating</span></th></tr>
+            <tr><th>Miner</th><th>TH/s</th><th>Watts</th><th>J/TH</th><th>Rating</th></tr>
           </thead>
           <tbody>
             <tr>
@@ -446,22 +378,6 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('peer-count').textContent=d.node.num_peers+' peers';
 }).catch(()=>{});
 
-function checkSession(){
-  const s=localStorage.getItem('lcc_session');
-  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
-  try{
-    const {expires}=JSON.parse(s);
-    if(Date.now()>expires){
-      localStorage.removeItem('lcc_session');
-      window.location.href='https://lcc.satslist.shop/static/login.html';
-    }
-  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
-}
-checkSession();
-setInterval(checkSession, 5*60*1000);
-
-function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
-
   function openDonateModal(){document.getElementById('donate-modal').classList.add('show');}
   function closeDonateModal(){document.getElementById('donate-modal').classList.remove('show');}
   function copyDonateAddress(){
@@ -475,33 +391,19 @@ function logout(){localStorage.removeItem('lcc_session');window.location.href='h
 
   function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
 updateTime();setInterval(updateTime,1000);
-
-  // ── Mobile sidebar toggle ──
-  function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('show');
-  }
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add overlay div if not present
-    if (!document.querySelector('.sidebar-overlay')) {
-      const overlay = document.createElement('div');
-      overlay.className = 'sidebar-overlay';
-      overlay.onclick = toggleSidebar;
-      document.body.appendChild(overlay);
-    }
-    // Close sidebar when nav item clicked on mobile
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', function() {
-        if(window.innerWidth <= 768) {
-          document.querySelector('.sidebar').classList.remove('open');
-          document.querySelector('.sidebar-overlay').classList.remove('show');
-        }
-      });
-    });
-  });
 </script>
-<div class="donate-modal-overlay" id="donate-modal" onclick="if(event.target===this)closeDonateModal()"><div class="donate-modal"><button class="donate-modal-x" onclick="closeDonateModal()">&#10005;</button><h3>&#9889; Support LCC</h3><p>Scan with any Lightning wallet to donate</p><div class="donate-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" /></div><div class="donate-address">zap@satslist.shop</div><button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button><button class="donate-close" onclick="closeDonateModal()">Close</button></div></div>
+<div class="donate-modal-overlay" id="donate-modal" onclick="if(event.target===this)closeDonateModal()">
+  <div class="donate-modal">
+    <button class="donate-modal-x" onclick="closeDonateModal()">&#10005;</button>
+    <h3>&#9889; Support LCC</h3>
+    <p>Scan with any Lightning wallet to donate</p>
+    <div class="donate-qr">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" />
+    </div>
+    <div class="donate-address">zap@satslist.shop</div>
+    <button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button>
+    <button class="donate-close" onclick="closeDonateModal()">Close</button>
+  </div>
+</div>
 </body>
 </html>

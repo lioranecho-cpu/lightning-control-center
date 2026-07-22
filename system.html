@@ -142,7 +142,7 @@
 <aside class="sidebar">
   <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
   <nav class="nav">
-    <div class="nav-section">Node</div>
+        <div class="nav-section">Node</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
@@ -154,7 +154,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
-    <div class="nav-item active"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
     <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
   </nav>
@@ -385,6 +385,18 @@ function logout(){localStorage.removeItem('lcc_session');window.location.href='h
   function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
 updateTime();setInterval(updateTime,1000);
 </script>
-<div class="donate-modal-overlay" id="donate-modal" onclick="if(event.target===this)closeDonateModal()"><div class="donate-modal"><button class="donate-modal-x" onclick="closeDonateModal()">&#10005;</button><h3>&#9889; Support LCC</h3><p>Scan with any Lightning wallet to donate</p><div class="donate-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" /></div><div class="donate-address">zap@satslist.shop</div><button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button><button class="donate-close" onclick="closeDonateModal()">Close</button></div></div>
+<div class="donate-modal-overlay" id="donate-modal" onclick="if(event.target===this)closeDonateModal()">
+  <div class="donate-modal">
+    <button class="donate-modal-x" onclick="closeDonateModal()">&#10005;</button>
+    <h3>&#9889; Support LCC</h3>
+    <p>Scan with any Lightning wallet to donate</p>
+    <div class="donate-qr">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" />
+    </div>
+    <div class="donate-address">zap@satslist.shop</div>
+    <button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button>
+    <button class="donate-close" onclick="closeDonateModal()">Close</button>
+  </div>
+</div>
 </body>
 </html>
