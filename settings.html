@@ -274,19 +274,19 @@
             <div class="info-item">
               <span class="info-label">Pubkey</span>
               <span class="info-val" style="font-size:10px;">03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1', this)">&#128203;</button>
+                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1', this)">📋</button>
               </span>
             </div>
             <div class="info-item">
               <span class="info-label">Clearnet</span>
               <span class="info-val">74.45.164.28:9735
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@74.45.164.28:9735', this)">&#128203;</button>
+                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@74.45.164.28:9735', this)">📋</button>
               </span>
             </div>
             <div class="info-item">
               <span class="info-label">Tor</span>
               <span class="info-val" style="font-size:10px;">cp6dqly3w3qpkb4y747v47acljwgffxl5uyoala36ipdjvdzhiyisiyd.onion:9735
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@cp6dqly3w3qpkb4y747v47acljwgffxl5uyoala36ipdjvdzhiyisiyd.onion:9735', this)">&#128203;</button>
+                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@cp6dqly3w3qpkb4y747v47acljwgffxl5uyoala36ipdjvdzhiyisiyd.onion:9735', this)">📋</button>
               </span>
             </div>
             <div class="info-item">
@@ -443,7 +443,7 @@ function copyText(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = '&#10003;';
     btn.style.color = 'var(--green)';
-    setTimeout(() => { btn.textContent = '&#128203;'; btn.style.color = ''; }, 1500);
+    setTimeout(() => { btn.textContent = '📋'; btn.style.color = ''; }, 1500);
   });
 }
 
@@ -494,9 +494,9 @@ function logout(){localStorage.removeItem('lcc_session');window.location.href='h
   function copyDonateAddress(){
     navigator.clipboard.writeText('zap@satslist.shop').then(()=>{
       const btn=document.querySelector('.donate-copy-btn');
-      btn.textContent='\u2713 Copied!';
+      btn.textContent='✅ Copied!';
       btn.style.background='#22c55e';
-      setTimeout(()=>{btn.textContent='\ud83d\udccb Copy Lightning Address';btn.style.background='';},2000);
+      setTimeout(()=>{btn.textContent='📋 Copy Lightning Address';btn.style.background='';},2000);
     });
   }
 
@@ -512,7 +512,7 @@ updateTime();setInterval(updateTime,1000);
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" />
     </div>
     <div class="donate-address">zap@satslist.shop</div>
-    <button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button>
+    <button class="donate-copy-btn" onclick="copyDonateAddress()">📋 Copy Lightning Address</button>
     <button class="donate-close" onclick="closeDonateModal()">Close</button>
   </div>
 </div>

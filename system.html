@@ -376,9 +376,9 @@ function logout(){localStorage.removeItem('lcc_session');window.location.href='h
   function copyDonateAddress(){
     navigator.clipboard.writeText('zap@satslist.shop').then(()=>{
       const btn=document.querySelector('.donate-copy-btn');
-      btn.textContent='\u2713 Copied!';
+      btn.textContent='✅ Copied!';
       btn.style.background='#22c55e';
-      setTimeout(()=>{btn.textContent='\ud83d\udccb Copy Lightning Address';btn.style.background='';},2000);
+      setTimeout(()=>{btn.textContent='📋 Copy Lightning Address';btn.style.background='';},2000);
     });
   }
 
@@ -394,7 +394,7 @@ updateTime();setInterval(updateTime,1000);
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=184x184&data=lightning%3Azap%40satslist.shop&bgcolor=ffffff&color=000000&margin=0" alt="Lightning QR" />
     </div>
     <div class="donate-address">zap@satslist.shop</div>
-    <button class="donate-copy-btn" onclick="copyDonateAddress()">Copy Lightning Address</button>
+    <button class="donate-copy-btn" onclick="copyDonateAddress()">📋 Copy Lightning Address</button>
     <button class="donate-close" onclick="closeDonateModal()">Close</button>
   </div>
 </div>
