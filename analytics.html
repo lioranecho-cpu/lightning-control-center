@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Analytics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    /* Time filter */
+    .time-filters{display:flex;gap:4px;}
+    .tf-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .tf-btn:hover{color:var(--text);border-color:var(--orange-dim);}
+    .tf-btn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+
+    /* Summary cards */
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+    .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .summary-card.orange::before{background:var(--orange);}
+    .summary-card.green::before{background:var(--green);}
+    .summary-card.blue::before{background:var(--blue);}
+    .summary-card.purple::before{background:#8b5cf6;}
+    .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+    .sc-value{font-family:var(--mono);font-size:24px;font-weight:700;}
+    .sc-value.orange{color:var(--orange);}
+    .sc-value.green{color:var(--green);}
+    .sc-value.blue{color:var(--blue);}
+    .sc-value.purple{color:#8b5cf6;}
+    .sc-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+    .sc-trend{font-size:11px;margin-top:6px;}
+    .sc-trend.up{color:var(--green);}
+
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:24px;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .panel-meta{font-size:12px;color:var(--orange);font-family:var(--mono);}
+    .chart-container{padding:16px;height:220px;position:relative;}
+    .chart-container-tall{padding:16px;height:280px;position:relative;}
+
+    /* Bottom row */
+    .bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+
+    /* Routing pairs table */
+    .pairs-table{width:100%;border-collapse:collapse;}
+    .pairs-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;}
+    .pairs-table td{padding:11px 14px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .pairs-table tr:last-child td{border-bottom:none;}
+    .pairs-table tr:hover td{background:var(--surface2);}
+    .pair-route{font-family:var(--font);font-size:12px;color:var(--text);}
+    .pair-arrow{color:var(--orange);margin:0 4px;}
+    .fee-amount{color:var(--green);font-family:var(--mono);font-weight:600;}
+
+    /* Fee projection */
+    .projection-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:16px;}
+    .proj-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;}
+    .proj-row:last-child{border-bottom:none;}
+    .proj-label{color:var(--muted);}
+    .proj-val{font-family:var(--mono);color:var(--orange);font-weight:600;}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+    .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item active"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <h2>Analytics</h2>
+        <p>Routing income, volume trends and node performance.</p>
+      </div>
+      <div class="time-filters">
+        <button class="tf-btn active" onclick="setFilter(this,'7D')">7D</button>
+        <button class="tf-btn" onclick="setFilter(this,'30D')">30D</button>
+        <button class="tf-btn" onclick="setFilter(this,'90D')">90D</button>
+        <button class="tf-btn" onclick="setFilter(this,'ALL')">ALL</button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card orange">
+        <div class="sc-label"><span class="tip tip-right" data-tip="All routing fees earned since your node started routing payments">Total Fees Earned</span></div>
+        <div class="sc-value orange" id="total-fees">&#8212;</div>
+        <div class="sc-sub" id="total-fees-usd">&#8212;</div>
+        <div class="sc-trend up" id="fees-trend">&#8212;</div>
+      </div>
+      <div class="summary-card blue">
+        <div class="sc-label"><span class="tip tip-right" data-tip="Total value of all payments forwarded through your node">Total Volume Routed</span></div>
+        <div class="sc-value blue" id="total-volume">&#8212;</div>
+        <div class="sc-sub">sats forwarded</div>
+      </div>
+      <div class="summary-card green">
+        <div class="sc-label"><span class="tip tip-right" data-tip="Total number of individual Lightning payments forwarded">Routing Events</span></div>
+        <div class="sc-value green" id="total-events">&#8212;</div>
+        <div class="sc-sub">payments forwarded</div>
+      </div>
+      <div class="summary-card purple">
+        <div class="sc-label"><span class="tip tip-right" data-tip="Average sats earned per forwarded payment">Avg Fee Per Route</span></div>
+        <div class="sc-value purple" id="avg-fee">&#8212;</div>
+        <div class="sc-sub">sats per payment</div>
+      </div>
+    </div>
+
+    <!-- Main chart + donut -->
+    <div class="charts-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#128200; Routing Fees Over Time</h3>
+          <span class="panel-meta" id="chart-label">&#8212;</span>
+        </div>
+        <div class="chart-container-tall">
+          <canvas id="feesChart"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#128257; Fee Projections</h3>
+        </div>
+        <div class="projection-card" id="projection-card">
+          <div class="proj-row"><span class="proj-label">Today (est.)</span><span class="proj-val" id="proj-today">&#8212;</span></div>
+          <div class="proj-row"><span class="proj-label">This Week (est.)</span><span class="proj-val" id="proj-week">&#8212;</span></div>
+          <div class="proj-row"><span class="proj-label">This Month (est.)</span><span class="proj-val" id="proj-month">&#8212;</span></div>
+          <div class="proj-row"><span class="proj-label">This Year (est.)</span><span class="proj-val" id="proj-year">&#8212;</span></div>
+        </div>
+        <div style="padding:0 16px 16px;">
+          <div style="font-size:10px;color:var(--muted);line-height:1.6;">
+            &#128161; Projections based on current daily average.<br>
+            Actual earnings grow as node reputation builds.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom row -->
+    <div class="bottom-row">
+      <!-- Top routing pairs -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#127941; Top Routing Pairs</h3>
+          <span style="font-size:11px;color:var(--muted)">by fee earned</span>
+        </div>
+        <div id="pairs-content">
+          <div class="empty-state">Loading routing pairs...</div>
+        </div>
+      </div>
+
+      <!-- Volume chart -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#128257; Routed Volume</h3>
+          <span class="panel-meta" id="volume-label">&#8212;</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="volumeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+
+<script>
+const API = 'https://lcc.satslist.shop/api/dashboard';
+const ROUTING_API = 'https://lcc.satslist.shop/api/routing';
+function fmt(n){return Number(n).toLocaleString();}
+
+let feesChartInstance = null;
+let volumeChartInstance = null;
+
+fetch(API).then(r=>r.json()).then(d=>{
+  const price = d.wallet.btc_price_usd;
+  const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
+  document.getElementById('block-height').textContent = fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent = fmt(total) + ' sats';
+  document.getElementById('topbar-usd').textContent = '~$' + ((total/100000000)*price).toFixed(2);
+  document.getElementById('btc-price').textContent = '$' + price.toLocaleString();
+  document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
+  document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
+  document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+});
+
+function loadAnalytics(days) {
+  fetch(ROUTING_API).then(r=>r.json()).then(d=>{
+    const events = d.forwarding_events || [];
+    const allFees = d.daily_fees || [];
+    const allVolume = d.daily_volume || [];
+    const totalFees = d.fees_30d_sats || 0;
+    const totalVol = d.volume_30d_btc || 0;
+
+    // Summary cards
+    document.getElementById('total-fees').textContent = fmt(totalFees) + ' sats';
+    document.getElementById('total-fees-usd').textContent = 'since channels opened';
+    document.getElementById('total-volume').textContent = fmt(Math.round(totalVol * 100000000));
+    document.getElementById('total-events').textContent = events.length;
+    const avg = events.length > 0 ? Math.round(totalFees / events.length) : 0;
+    document.getElementById('avg-fee').textContent = avg + ' sats';
+    document.getElementById('fees-trend').textContent = events.length > 0 ? '&#9650; Node is routing!' : 'Waiting for first route';
+
+    // Projections
+    const daysActive = Math.max(1, allFees.filter(f=>f>0).length || 1);
+    const dailyAvg = totalFees / daysActive;
+    document.getElementById('proj-today').textContent = Math.round(dailyAvg) + ' sats';
+    document.getElementById('proj-week').textContent = fmt(Math.round(dailyAvg * 7)) + ' sats';
+    document.getElementById('proj-month').textContent = fmt(Math.round(dailyAvg * 30)) + ' sats';
+    document.getElementById('proj-year').textContent = fmt(Math.round(dailyAvg * 365)) + ' sats';
+
+    // Slice data by time filter
+    const slice = days === 'ALL' ? 30 : Math.min(days, 30);
+    const feesSlice = allFees.slice(-slice);
+    const volSlice = allVolume.slice(-slice);
+
+    const labels = Array.from({length: feesSlice.length}, (_,i) => {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - (feesSlice.length - 1 - i));
+      return (dt.getMonth()+1) + '/' + dt.getDate();
+    });
+
+    document.getElementById('chart-label').textContent = fmt(totalFees) + ' sats earned';
+    document.getElementById('volume-label').textContent = totalVol + ' BTC routed';
+
+    // Fees chart
+    if(feesChartInstance) feesChartInstance.destroy();
+    feesChartInstance = new Chart(document.getElementById('feesChart').getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: [{
+        data: feesSlice,
+        backgroundColor: feesSlice.map(v => v > 0 ? 'rgba(247,147,26,0.8)' : 'rgba(247,147,26,0.15)'),
+        borderRadius: 4,
+        borderSkipped: false
+      }]},
+      options: chartOpts('sats')
+    });
+
+    // Volume chart
+    if(volumeChartInstance) volumeChartInstance.destroy();
+    volumeChartInstance = new Chart(document.getElementById('volumeChart').getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{
+        data: volSlice,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.08)',
+        borderWidth: 2,
+        pointRadius: volSlice.map(v => v > 0 ? 4 : 0),
+        pointBackgroundColor: '#3b82f6',
+        fill: true,
+        tension: 0.4
+      }]},
+      options: chartOpts('BTC')
+    });
+
+    // Routing pairs
+    const pairMap = {};
+    events.forEach(e => {
+      const key = (e.peer_alias_in || '?') + ' → ' + (e.peer_alias_out || '?');
+      if(!pairMap[key]) pairMap[key] = {fee: 0, count: 0, vol: 0};
+      pairMap[key].fee += parseInt(e.fee || 0);
+      pairMap[key].count++;
+      pairMap[key].vol += parseInt(e.amt_out || 0);
+    });
+
+    const pairs = Object.entries(pairMap).sort((a,b) => b[1].fee - a[1].fee);
+    const pairsContent = document.getElementById('pairs-content');
+
+    if(pairs.length === 0) {
+      pairsContent.innerHTML = '<div class="empty-state">&#9203; No routing events yet.<br>Fees will appear here once payments route through your node.</div>';
+    } else {
+      let html = '<table class="pairs-table"><thead><tr><th>Route</th><th>Events</th><th>Volume</th><th>Fees</th></tr></thead><tbody>';
+      pairs.forEach(([route, data]) => {
+        const parts = route.split(' → ');
+        html += `<tr>
+          <td><span class="pair-route">${parts[0]}<span class="pair-arrow">→</span>${parts[1]}</span></td>
+          <td style="color:var(--muted);font-family:var(--mono)">${data.count}</td>
+          <td style="color:var(--muted);font-family:var(--mono)">${fmt(data.vol)} sats</td>
+          <td><span class="fee-amount">+${fmt(data.fee)} sats</span></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      pairsContent.innerHTML = html;
+    }
+  });
+}
+
+function chartOpts(unit) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: ctx => ctx.parsed.y + ' ' + unit }
+    }},
+    scales: {
+      x: { ticks: { color:'#555', font:{size:10}, maxTicksLimit:7 }, grid: { color:'rgba(255,255,255,0.04)' }},
+      y: { ticks: { color:'#555', font:{size:10} }, grid: { color:'rgba(255,255,255,0.04)' }, beginAtZero: true }
+    }
+  };
+}
+
+function setFilter(btn, range) {
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const days = range === '7D' ? 7 : range === '30D' ? 30 : range === '90D' ? 90 : 'ALL';
+  loadAnalytics(days);
+}
+
+// Initial load
+loadAnalytics(7);
+
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

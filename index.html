@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lightning Control Center</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .time-filters{display:flex;gap:4px;}
+    .tf-btn{padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .tf-btn:hover{color:var(--text);border-color:var(--orange-dim);}
+    .tf-btn.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+    .stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px;}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s;}
+    .stat-card:hover{border-color:var(--orange-dim);}
+    .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+    .stat-value{font-family:var(--mono);font-size:18px;font-weight:700;}
+    .stat-value.orange{color:var(--orange);}
+    .stat-sub{font-size:11px;color:var(--muted);}
+    .stat-sub.green{color:var(--green);}
+    .stat-icon{font-size:20px;align-self:flex-end;margin-top:-4px;}
+    .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+    .bottom-row{display:grid;grid-template-columns:1fr 380px;gap:14px;margin-bottom:20px;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .panel-meta{font-size:12px;color:var(--orange);font-family:var(--mono);}
+    .view-all{font-size:11px;color:var(--orange);cursor:pointer;}
+    .chart-container{padding:16px;height:200px;position:relative;}
+    .ch-table{width:100%;border-collapse:collapse;}
+    .ch-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;}
+    .ch-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04);font-family:var(--mono);}
+    .ch-table tr:last-child td{border-bottom:none;}
+    .ch-table tr:hover td{background:var(--surface2);}
+    .peer-name{font-family:var(--font);font-weight:500;display:flex;align-items:center;gap:8px;}
+    .peer-avatar{width:22px;height:22px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;font-weight:700;flex-shrink:0;}
+    .status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);font-family:var(--font);}
+    .status-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);}
+    .pending-badge{color:var(--orange);}
+    .pending-badge::before{background:var(--orange);}
+    .ch-total{padding:11px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+    .ch-total span:last-child{color:var(--orange);font-family:var(--mono);font-weight:700;}
+    .health-list{padding:8px 0;}
+    .health-item{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .health-item:last-child{border-bottom:none;}
+    .health-label{font-size:13px;color:var(--muted);}
+    .health-val{font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;}
+    .health-val.ok{color:var(--green);}
+    .activity-list{padding:4px 0;}
+    .activity-item{display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .activity-item:last-child{border-bottom:none;}
+    .act-icon{width:28px;height:28px;border-radius:50%;background:rgba(247,147,26,.12);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .act-body{flex:1;}
+    .act-desc{font-size:12px;}
+    .act-time{font-size:11px;color:var(--muted);margin-top:2px;}
+    .act-amount{font-family:var(--mono);font-size:12px;color:var(--orange);white-space:nowrap;}
+    .mining-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px;}
+    .miner-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+    .miner-name{font-size:12px;font-weight:600;margin-bottom:8px;}
+    .miner-stat{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
+    .miner-stat span:last-child{color:var(--orange);font-family:var(--mono);}
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:0;right:auto;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item active"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='http://localhost:8765/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='http://localhost:8765/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='http://localhost:8765/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+  <div class="content">
+    <div class="page-header">
+      <div><h2>Dashboard</h2><p>Overview of your Lightning node.</p></div>
+      <div class="time-filters">
+        <button class="tf-btn active" onclick="setFilter(this)">1D</button>
+        <button class="tf-btn" onclick="setFilter(this)">7D</button>
+        <button class="tf-btn" onclick="setFilter(this)">30D</button>
+        <button class="tf-btn" onclick="setFilter(this)">90D</button>
+        <button class="tf-btn" onclick="setFilter(this)">1Y</button>
+        <button class="tf-btn" onclick="setFilter(this)">ALL</button>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Total Capacity</div><div class="stat-value" id="total-capacity">&#8212;</div><div class="stat-sub" id="capacity-usd">&#8212;</div><div class="stat-icon">&#8383;</div></div>
+      <div class="stat-card"><div class="stat-label">Active Channels</div><div class="stat-value orange" id="active-channels">&#8212;</div><div class="stat-sub green" id="channels-sub">&#8212;</div><div class="stat-icon">&#9889;</div></div>
+      <div class="stat-card"><div class="stat-label">Routing Fees (30D)</div><div class="stat-value orange" id="routing-fees">&#8212;</div><div class="stat-sub" id="fees-usd">&#8212;</div><div class="stat-icon">&#128200;</div></div>
+      <div class="stat-card"><div class="stat-label">Routed Volume (30D)</div><div class="stat-value" id="routed-volume">&#8212;</div><div class="stat-sub" id="volume-usd">&#8212;</div><div class="stat-icon">&#8594;</div></div>
+      <div class="stat-card"><div class="stat-label">Wallet Balance</div><div class="stat-value" id="wallet-balance">&#8212;</div><div class="stat-sub" id="wallet-usd">&#8212;</div><div class="stat-icon">&#128091;</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="panel"><div class="panel-header"><h3>Routing Fees</h3><span class="panel-meta" id="fees-chart-label">&#8212;</span></div><div class="chart-container"><canvas id="feesChart"></canvas></div></div>
+      <div class="panel"><div class="panel-header"><h3>Routed Volume (BTC)</h3><span class="panel-meta" id="volume-chart-label">&#8212;</span></div><div class="chart-container"><canvas id="volumeChart"></canvas></div></div>
+    </div>
+    <div class="bottom-row">
+      <div class="panel">
+        <div class="panel-header"><h3>Active Channels</h3><a class="view-all">View All &#8594;</a></div>
+        <table class="ch-table">
+          <thead><tr><th>Peer Alias</th><th>Capacity</th><th>Local</th><th>Remote</th><th>Fee ppm</th><th>Status</th></tr></thead>
+          <tbody id="channel-tbody"></tbody>
+        </table>
+        <div class="ch-total"><span>Total Capacity</span><span id="total-cap-footer">&#8212;</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="panel">
+          <div class="panel-header"><h3>Node Health</h3></div>
+          <div class="health-list">
+            <div class="health-item"><span class="health-label"><span class="tip tip-right" data-tip="Bitcoin Core is the full node that validates blocks and transactions">Bitcoin Core</span></span><span class="health-val ok">&#10003; Synced</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip tip-right" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments">LND / litd</span></span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip tip-right" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services">Lightning Terminal</span></span><span class="health-val ok">&#10003; Connected</span></div>
+            <div class="health-item"><span class="health-label">RTL</span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label">LNbits</span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label">Mining Pool</span><span class="health-val ok">&#10003; Active</span></div>
+            <div class="health-item"><span class="health-label">Uptime</span><span class="health-val ok" id="uptime-val">&#8212;</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Recent Activity</h3><a class="view-all">View All &#8594;</a></div>
+          <div class="activity-list" id="activity-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-header"><h3>Mining Fleet</h3><span class="panel-meta" id="total-hashrate">&#8212;</span></div>
+      <div class="mining-grid" id="mining-grid"></div>
+    </div>
+  </div>
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+<script>
+const API = 'http://localhost:8765/api/dashboard';
+function fmt(n){return Number(n).toLocaleString();}
+function toUsd(sats,price){return '$'+((sats/100000000)*price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatUptime(s){const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d+'d '+h+'h '+m+'m';}
+fetch(API).then(r=>r.json()).then(d=>{
+  const price=d.wallet.btc_price_usd;
+  const bal=d.wallet.confirmed_balance+d.wallet.channel_balance;
+  document.getElementById('block-height').textContent=fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent=fmt(bal)+' sats';
+  document.getElementById('topbar-usd').textContent='approx '+toUsd(bal,price);
+  document.getElementById('total-capacity').textContent=fmt(d.channels.total_capacity)+' sats';
+  document.getElementById('capacity-usd').textContent=toUsd(d.channels.total_capacity,price);
+  document.getElementById('active-channels').textContent=d.channels.num_active;
+  document.getElementById('channels-sub').textContent=d.channels.num_active+' channel(s) active';
+  document.getElementById('routing-fees').textContent=fmt(d.routing.fees_30d_sats)+' sats';
+  document.getElementById('fees-usd').textContent=toUsd(d.routing.fees_30d_sats,price);
+  document.getElementById('routed-volume').textContent=d.routing.volume_30d_btc+' BTC';
+  document.getElementById('volume-usd').textContent=toUsd(d.routing.volume_30d_btc*100000000,price);
+  document.getElementById('wallet-balance').textContent=fmt(d.wallet.confirmed_balance)+' sats';
+  document.getElementById('wallet-usd').textContent=toUsd(d.wallet.confirmed_balance,price);
+  document.getElementById('uptime-val').textContent=formatUptime(d.node.uptime_seconds);
+  document.getElementById('btc-price').textContent='$'+d.wallet.btc_price_usd.toLocaleString();
+  document.getElementById('mempool-size').textContent=d.mempool.size_mb+' MB - '+d.mempool.congestion;
+  document.getElementById('fee-rate').textContent=d.mempool.fee_sat_vbyte+' sat/vB';
+  document.getElementById('peer-count').textContent=d.node.num_peers+' peers';
+  document.getElementById('fees-chart-label').textContent=fmt(d.routing.fees_30d_sats)+' sats (30D)';
+  document.getElementById('volume-chart-label').textContent=d.routing.volume_30d_btc+' BTC (30D)';
+  document.getElementById('total-cap-footer').textContent=fmt(d.channels.total_capacity)+' sats';
+  const labels=Array.from({length:30},(_,i)=>{const dt=new Date();dt.setDate(dt.getDate()-29+i);return(dt.getMonth()+1)+'/'+dt.getDate();});
+  new Chart(document.getElementById('feesChart').getContext('2d'),{type:'bar',data:{labels,datasets:[{data:d.routing.daily_fees,backgroundColor:'rgba(247,147,26,0.7)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:10},maxTicksLimit:6},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+  new Chart(document.getElementById('volumeChart').getContext('2d'),{type:'line',data:{labels,datasets:[{data:d.routing.daily_volume,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.08)',borderWidth:2,pointRadius:0,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:10},maxTicksLimit:6},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+  const tbody=document.getElementById('channel-tbody');
+  d.channels.list.forEach(ch=>{
+    const init=ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    tbody.innerHTML+='<tr><td><div class="peer-name"><div class="peer-avatar">'+init+'</div>'+ch.peer_alias+'</div></td><td>'+fmt(ch.capacity)+'</td><td>'+fmt(ch.local_balance)+'</td><td>'+fmt(ch.remote_balance)+'</td><td>'+ch.fee_ppm+'</td><td><span class="status-badge">'+ch.status+'</span></td></tr>';
+  });
+  const al=document.getElementById('activity-list');
+  (d.activity||[]).forEach(a=>{
+    al.innerHTML+='<div class="activity-item"><div class="act-icon">&#9889;</div><div class="act-body"><div class="act-desc">'+a.description+'</div><div class="act-time">'+a.time+'</div></div><div class="act-amount">+'+fmt(a.amount)+' sats</div></div>';
+  });
+  const mg=document.getElementById('mining-grid');
+  d.mining.miners.forEach(m=>{
+    mg.innerHTML+='<div class="miner-card"><div class="miner-name">'+m.name+'</div><div class="miner-stat"><span>Hashrate</span><span>'+m.hashrate_th+' TH/s</span></div><div class="miner-stat"><span>Power</span><span>'+m.power_w+'W</span></div><div class="miner-stat"><span>IP</span><span>'+m.ip+'</span></div><div class="miner-stat"><span>Status</span><span style="color:var(--green)">Online</span></div></div>';
+  });
+  document.getElementById('total-hashrate').textContent=d.mining.total_hashrate_th+' TH/s total';
+}).catch(e=>console.error('API error:',e));
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+function setFilter(btn){document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

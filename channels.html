@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Channels</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .15s;}
+    .btn-orange{background:var(--orange);color:#000;}
+    .btn-orange:hover{background:#e8851a;}
+
+    /* Summary cards */
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+    .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+    .sc-value{font-family:var(--mono);font-size:22px;font-weight:700;}
+    .sc-value.orange{color:var(--orange);}
+    .sc-value.green{color:var(--green);}
+    .sc-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+    /* Tabs */
+    .tabs{display:flex;gap:4px;margin-bottom:16px;}
+    .tab{padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .tab:hover{color:var(--text);}
+    .tab.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+
+    /* Channel cards */
+    .channel-list{display:flex;flex-direction:column;gap:10px;}
+    .channel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:border-color .15s;}
+    .channel-card:hover{border-color:var(--orange-dim);}
+    .channel-card.pending{border-color:rgba(247,147,26,.3);background:rgba(247,147,26,.03);}
+    .ch-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .ch-peer{display:flex;align-items:center;gap:10px;}
+    .ch-avatar{width:32px;height:32px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;flex-shrink:0;}
+    .ch-avatar.pending-av{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+    .ch-alias{font-weight:600;font-size:14px;}
+    .ch-pubkey{font-size:10px;color:var(--muted);font-family:var(--mono);}
+    .ch-right{display:flex;align-items:center;gap:10px;}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;}
+    .badge.active{background:rgba(34,197,94,.12);color:var(--green);}
+    .badge.pending{background:rgba(247,147,26,.12);color:var(--orange);}
+    .badge.inactive{background:rgba(239,68,68,.12);color:var(--red);}
+    .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* Balance bar */
+    .balance-bar-wrap{margin-bottom:10px;}
+    .balance-bar-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);}
+    .balance-bar-labels span:first-child{color:var(--orange);}
+    .balance-bar-labels span:last-child{color:var(--blue);}
+    .balance-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+    .balance-bar-fill{height:100%;background:linear-gradient(to right,var(--orange),var(--orange-dim));border-radius:3px;transition:width .3s;}
+
+    /* Channel stats row */
+    .ch-stats{display:flex;gap:24px;font-size:12px;color:var(--muted);}
+    .ch-stat span{color:var(--text);font-family:var(--mono);}
+
+    /* Actions */
+    .ch-actions{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+    .action-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .action-btn:hover{color:var(--text);border-color:var(--orange-dim);}
+    .action-btn.danger:hover{color:var(--red);border-color:var(--red);}
+
+    /* Pending info */
+    .pending-info{background:rgba(247,147,26,.06);border:1px solid rgba(247,147,26,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);margin-top:8px;}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:0;right:auto;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='index.html'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item active"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='http://localhost:8765/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <h2>Channels</h2>
+        <p>Manage your Lightning Network channels and liquidity.</p>
+      </div>
+      <button class="btn btn-orange" onclick="alert('Phase 2: Open channel via ProDesk backend')">&#43; Open Channel</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="sc-label">Total Capacity</div>
+        <div class="sc-value orange" id="total-cap">&#8212;</div>
+        <div class="sc-sub">sats across all channels</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">Active Channels</div>
+        <div class="sc-value green" id="active-count">&#8212;</div>
+        <div class="sc-sub" id="pending-sub">&#8212; pending</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">Local Balance</div>
+        <div class="sc-value" id="local-total">&#8212;</div>
+        <div class="sc-sub">sats you can send</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">Remote Balance</div>
+        <div class="sc-value" id="remote-total">&#8212;</div>
+        <div class="sc-sub">sats you can receive</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab(this,'active')">Active</button>
+      <button class="tab" onclick="showTab(this,'pending')">Pending (4)</button>
+      <button class="tab" onclick="showTab(this,'all')">All</button>
+    </div>
+
+    <!-- Active channels -->
+    <div class="channel-list" id="active-channels"></div>
+
+    <!-- Pending channels -->
+    <div class="channel-list" id="pending-channels" style="display:none;"></div>
+
+  </div>
+
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+
+<script>
+const API = 'http://localhost:8765/api/dashboard';
+function fmt(n){return Number(n).toLocaleString();}
+
+const pendingChannels = [
+  {alias:'Almach', ring:'#24355', capacity:500000, pubkey:'031ff183c34f58...bf62f'},
+  {alias:'LN+ Peer B', ring:'#24356', capacity:500000, pubkey:'Waiting for participant...'},
+  {alias:'LN+ Peer C', ring:'#24357', capacity:500000, pubkey:'Waiting for participant...'},
+  {alias:'LN+ Peer D', ring:'#24358', capacity:500000, pubkey:'Waiting for participant...'},
+];
+
+fetch(API).then(r=>r.json()).then(d=>{
+  const price = d.wallet.btc_price_usd;
+  const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
+
+  document.getElementById('block-height').textContent = fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent = fmt(total) + ' sats';
+  document.getElementById('topbar-usd').textContent = '~$' + ((total/100000000)*price).toFixed(2);
+  document.getElementById('btc-price').textContent = '$' + price.toLocaleString();
+  document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
+  document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
+  document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+
+  // Summary
+  const channels = d.channels.list;
+  const totalCap = channels.reduce((s,c)=>s+c.capacity,0);
+  const totalLocal = channels.reduce((s,c)=>s+c.local_balance,0);
+  const totalRemote = channels.reduce((s,c)=>s+c.remote_balance,0);
+
+  document.getElementById('total-cap').textContent = fmt(totalCap + 2000000);
+  document.getElementById('active-count').textContent = d.channels.num_active;
+  document.getElementById('pending-sub').textContent = d.channels.num_pending + ' pending';
+  document.getElementById('local-total').textContent = fmt(totalLocal);
+  document.getElementById('remote-total').textContent = fmt(totalRemote);
+
+  // Active channels
+  const activeEl = document.getElementById('active-channels');
+  channels.forEach(ch => {
+    const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const localPct = Math.round((ch.local_balance / ch.capacity) * 100);
+    activeEl.innerHTML += `
+      <div class="channel-card">
+        <div class="ch-top">
+          <div class="ch-peer">
+            <div class="ch-avatar">${init}</div>
+            <div>
+              <div class="ch-alias">${ch.peer_alias}</div>
+              <div class="ch-pubkey">Capacity: ${fmt(ch.capacity)} sats</div>
+            </div>
+          </div>
+          <div class="ch-right">
+            <span class="badge active">active</span>
+          </div>
+        </div>
+        <div class="balance-bar-wrap">
+          <div class="balance-bar-labels">
+            <span>Local: ${fmt(ch.local_balance)} sats (${localPct}%)</span>
+            <span>Remote: ${fmt(ch.remote_balance)} sats (${100-localPct}%)</span>
+          </div>
+          <div class="balance-bar"><div class="balance-bar-fill" style="width:${localPct}%"></div></div>
+        </div>
+        <div class="ch-stats">
+          <div class="ch-stat">Fee PPM: <span>${ch.fee_ppm}</span></div>
+          <div class="ch-stat">Base Fee: <span>${ch.base_fee} msat</span></div>
+          <div class="ch-stat">Status: <span style="color:var(--green)">${ch.status}</span></div>
+        </div>
+        <div class="ch-actions">
+          <button class="action-btn" onclick="alert('Phase 2: Update fee policy')">Update Fees</button>
+          <button class="action-btn" onclick="alert('Phase 2: Rebalance channel')">Rebalance</button>
+          <button class="action-btn danger" onclick="alert('Phase 2: Close channel via ProDesk')">Close Channel</button>
+        </div>
+      </div>`;
+  });
+
+  // Pending channels
+  const pendingEl = document.getElementById('pending-channels');
+  pendingChannels.forEach(ch => {
+    const isAlmach = ch.alias === 'Almach';
+    pendingEl.innerHTML += `
+      <div class="channel-card pending">
+        <div class="ch-top">
+          <div class="ch-peer">
+            <div class="ch-avatar pending-av">${ch.alias[0]}</div>
+            <div>
+              <div class="ch-alias">${ch.alias}</div>
+              <div class="ch-pubkey">${ch.pubkey}</div>
+            </div>
+          </div>
+          <div class="ch-right">
+            <span class="badge pending">pending</span>
+          </div>
+        </div>
+        <div class="balance-bar-wrap">
+          <div class="balance-bar-labels">
+            <span>Capacity: ${fmt(ch.capacity)} sats</span>
+            <span>LN+ ${ch.ring}</span>
+          </div>
+          <div class="balance-bar"><div class="balance-bar-fill" style="width:0%;background:var(--muted)"></div></div>
+        </div>
+        <div class="pending-info">
+          ${isAlmach
+            ? '&#9889; Almach joined — waiting for node to come online to open channel'
+            : '&#9203; Waiting for ring participants to join LN+ swap'}
+        </div>
+      </div>`;
+  });
+});
+
+function showTab(btn, tab) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const activeEl = document.getElementById('active-channels');
+  const pendingEl = document.getElementById('pending-channels');
+  if(tab === 'active'){ activeEl.style.display='flex'; pendingEl.style.display='none'; }
+  else if(tab === 'pending'){ activeEl.style.display='none'; pendingEl.style.display='flex'; }
+  else { activeEl.style.display='flex'; pendingEl.style.display='flex'; }
+}
+
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

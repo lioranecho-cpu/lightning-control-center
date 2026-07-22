@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Login</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:var(--font);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* Background grid effect */
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(247,147,26,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(247,147,26,.03) 1px, transparent 1px);
+      background-size:40px 40px;
+      pointer-events:none;
+    }
+
+    /* Glow orb */
+    body::after{
+      content:'';
+      position:fixed;
+      top:30%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      width:600px;
+      height:600px;
+      background:radial-gradient(circle, rgba(247,147,26,.06) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    .login-wrap{
+      width:100%;
+      max-width:420px;
+      padding:24px;
+      position:relative;
+      z-index:1;
+    }
+
+    /* Logo */
+    .logo{
+      text-align:center;
+      margin-bottom:40px;
+    }
+
+    .logo-icon{
+      width:64px;
+      height:64px;
+      background:rgba(247,147,26,.12);
+      border:1px solid rgba(247,147,26,.3);
+      border-radius:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:28px;
+      margin:0 auto 16px;
+    }
+
+    .logo-title{
+      font-size:22px;
+      font-weight:700;
+      color:var(--text);
+      margin-bottom:4px;
+    }
+
+    .logo-sub{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .logo-sub span{
+      color:var(--orange);
+    }
+
+    /* Card */
+    .login-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:32px;
+    }
+
+    .card-title{
+      font-size:15px;
+      font-weight:600;
+      margin-bottom:6px;
+    }
+
+    .card-sub{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:24px;
+      line-height:1.5;
+    }
+
+    /* Form */
+    .form-group{
+      margin-bottom:16px;
+    }
+
+    .form-label{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      color:var(--muted);
+      margin-bottom:6px;
+      display:block;
+    }
+
+    .form-input{
+      width:100%;
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:11px 14px;
+      color:var(--text);
+      font-family:var(--font);
+      font-size:14px;
+      outline:none;
+      transition:border-color .15s;
+    }
+
+    .form-input:focus{
+      border-color:var(--orange-dim);
+    }
+
+    .form-input::placeholder{
+      color:var(--muted);
+    }
+
+    .password-wrap{
+      position:relative;
+    }
+
+    .toggle-pw{
+      position:absolute;
+      right:12px;
+      top:50%;
+      transform:translateY(-50%);
+      background:none;
+      border:none;
+      color:var(--muted);
+      cursor:pointer;
+      font-size:14px;
+      padding:4px;
+    }
+
+    .toggle-pw:hover{color:var(--text);}
+
+    /* Login button */
+    .login-btn{
+      width:100%;
+      background:var(--orange);
+      color:#000;
+      border:none;
+      border-radius:8px;
+      padding:12px;
+      font-family:var(--font);
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      transition:background .15s;
+      margin-top:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+
+    .login-btn:hover{background:#e8851a;}
+    .login-btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+
+    /* Error */
+    .error-msg{
+      background:rgba(239,68,68,.1);
+      border:1px solid rgba(239,68,68,.3);
+      border-radius:8px;
+      padding:10px 14px;
+      font-size:12px;
+      color:var(--red);
+      margin-bottom:16px;
+      display:none;
+    }
+
+    .error-msg.show{display:block;}
+
+    /* Success */
+    .success-msg{
+      background:rgba(34,197,94,.1);
+      border:1px solid rgba(34,197,94,.3);
+      border-radius:8px;
+      padding:10px 14px;
+      font-size:12px;
+      color:var(--green);
+      margin-bottom:16px;
+      display:none;
+      text-align:center;
+    }
+
+    .success-msg.show{display:block;}
+
+    /* Divider */
+    .divider{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin:20px 0;
+      color:var(--muted);
+      font-size:11px;
+    }
+
+    .divider::before,.divider::after{
+      content:'';
+      flex:1;
+      height:1px;
+      background:var(--border);
+    }
+
+    /* Node info */
+    .node-info{
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .node-dot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 6px var(--green);
+      flex-shrink:0;
+    }
+
+    .node-alias{
+      font-family:var(--mono);
+      color:var(--orange);
+      font-weight:600;
+    }
+
+    /* Footer */
+    .login-footer{
+      text-align:center;
+      margin-top:24px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .login-footer a{
+      color:var(--orange);
+      text-decoration:none;
+    }
+
+    /* Spinner */
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .spinner{
+      width:16px;height:16px;
+      border:2px solid rgba(0,0,0,.3);
+      border-top-color:#000;
+      border-radius:50%;
+      animation:spin .6s linear infinite;
+      display:none;
+    }
+    .spinner.show{display:block;}
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon">&#9889;</div>
+    <div class="logo-title">Lightning Control Center</div>
+    <div class="logo-sub">Manage your Bitcoin &amp; <span>Lightning node</span></div>
+  </div>
+
+  <!-- Card -->
+  <div class="login-card">
+    <div class="card-title">&#128274; Secure Access</div>
+    <div class="card-sub">Enter your LCC password to access your node dashboard. This session is valid for 24 hours.</div>
+
+    <div class="error-msg" id="error-msg">&#10060; Incorrect password. Please try again.</div>
+    <div class="success-msg" id="success-msg">&#10003; Access granted — redirecting to dashboard...</div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="password-wrap">
+        <input
+          class="form-input"
+          type="password"
+          id="password"
+          placeholder="Enter your LCC password"
+          onkeydown="if(event.key==='Enter')login()"
+          autofocus
+        />
+        <button class="toggle-pw" onclick="togglePw()" id="toggle-btn">&#128065;</button>
+      </div>
+    </div>
+
+    <button class="login-btn" id="login-btn" onclick="login()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btn-text">&#9889; Access Node</span>
+    </button>
+
+    <div class="divider">node identity</div>
+
+    <div class="node-info">
+      <div class="node-dot"></div>
+      <div>
+        <span class="node-alias">prodeskltn-node</span>
+        &nbsp;&mdash;&nbsp;
+        <span>lcc.satslist.shop</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-footer">
+    LCC v0.1.0 &middot; Community Edition<br>
+    Made with &#9889; and &#8383; for the Bitcoin community<br>
+    <a href="https://satslist.shop" target="_blank">satslist.shop</a>
+  </div>
+
+</div>
+
+<script>
+  // Simple password check — Phase 2 replaces this with backend JWT auth
+  // Change this to your preferred password
+  const LCC_PASSWORD_HASH = 'Maiale6544$'; // newpasswordhere
+  const SESSION_KEY = 'lcc_session';
+  const SESSION_DURATION = 4 * 60 * 60 * 1000; // 4 hours
+
+  // Check if already logged in
+  function checkSession() {
+    const session = localStorage.getItem(SESSION_KEY);
+    if(session) {
+      try {
+        const { expires } = JSON.parse(session);
+        if(Date.now() < expires) {
+          window.location.href = 'https://lcc.satslist.shop/dashboard';
+          return true;
+        }
+      } catch(e) {}
+      localStorage.removeItem(SESSION_KEY);
+    }
+    return false;
+  }
+
+  if(!checkSession()) {
+    // Not logged in — show the form
+  }
+
+  function login() {
+    const pw = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    const errorMsg = document.getElementById('error-msg');
+    const successMsg = document.getElementById('success-msg');
+
+    if(!pw) return;
+
+    // Show loading state
+    btn.disabled = true;
+    spinner.classList.add('show');
+    btnText.textContent = 'Verifying...';
+    errorMsg.classList.remove('show');
+
+    // Simulate a small delay for UX
+    setTimeout(() => {
+      if(pw === LCC_PASSWORD_HASH) {
+        // Save session
+        localStorage.setItem(SESSION_KEY, JSON.stringify({
+          expires: Date.now() + SESSION_DURATION,
+          node: 'prodeskltn-node'
+        }));
+        spinner.classList.remove('show');
+        btnText.textContent = 'Access granted!';
+        successMsg.classList.add('show');
+        setTimeout(() => {
+          window.location.href = 'https://lcc.satslist.shop/dashboard';
+        }, 1000);
+      } else {
+        // Wrong password
+        btn.disabled = false;
+        spinner.classList.remove('show');
+        btnText.textContent = '&#9889; Access Node';
+        errorMsg.classList.add('show');
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    }, 600);
+  }
+
+  function togglePw() {
+    const input = document.getElementById('password');
+    const btn = document.getElementById('toggle-btn');
+    if(input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '&#128683;';
+    } else {
+      input.type = 'password';
+      btn.textContent = '&#128065;';
+    }
+  }
+</script>
+</body>
+</html>

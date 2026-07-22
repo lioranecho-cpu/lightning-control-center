@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Mining</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--yellow:#eab308;--purple:#8b5cf6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+    .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .summary-card.orange::before{background:var(--orange);}
+    .summary-card.green::before{background:var(--green);}
+    .summary-card.blue::before{background:var(--blue);}
+    .summary-card.yellow::before{background:var(--yellow);}
+    .summary-card.purple::before{background:var(--purple);}
+    .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+    .sc-value{font-family:var(--mono);font-size:22px;font-weight:700;}
+    .sc-value.orange{color:var(--orange);}
+    .sc-value.green{color:var(--green);}
+    .sc-value.blue{color:var(--blue);}
+    .sc-value.yellow{color:var(--yellow);}
+    .sc-value.purple{color:var(--purple);}
+    .sc-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+    .miners-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+    .miner-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s;}
+    .miner-card:hover{border-color:var(--orange-dim);}
+    .miner-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .miner-name{font-weight:700;font-size:14px;}
+    .miner-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;}
+    .miner-status.online{color:var(--green);}
+    .miner-status.online::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+    .miner-body{padding:16px;}
+    .miner-stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .miner-stat-label{font-size:12px;color:var(--muted);}
+    .miner-stat-val{font-family:var(--mono);font-size:13px;font-weight:600;}
+    .miner-stat-val.orange{color:var(--orange);}
+    .miner-stat-val.green{color:var(--green);}
+    .miner-stat-val.yellow{color:var(--yellow);}
+    .gauge-wrap{margin-bottom:10px;}
+    .gauge-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
+    .gauge-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+    .gauge-fill{height:100%;border-radius:3px;transition:width .3s;}
+    .gauge-fill.orange{background:linear-gradient(to right,var(--orange-dim),var(--orange));}
+    .gauge-fill.blue{background:linear-gradient(to right,#2563eb,var(--blue));}
+    .miner-ip{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .pool-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .pool-item:last-child{border-bottom:none;}
+    .pool-label{font-size:12px;color:var(--muted);}
+    .pool-val{font-family:var(--mono);font-size:13px;font-weight:600;}
+    .pool-val.green{color:var(--green);}
+    .pool-val.orange{color:var(--orange);}
+    .eff-table{width:100%;border-collapse:collapse;}
+    .eff-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;}
+    .eff-table td{padding:11px 14px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .eff-table tr:last-child td{border-bottom:none;}
+    .eff-table tr:hover td{background:var(--surface2);}
+    .eff-badge{display:inline-flex;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;}
+    .eff-badge.good{background:rgba(34,197,94,.12);color:var(--green);}
+    .eff-badge.ok{background:rgba(247,147,26,.12);color:var(--orange);}
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item active"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+  <div class="content">
+    <div class="page-header">
+      <h2>&#9935; Mining Fleet</h2>
+      <p>ASIC miner status, hashrate and pool connectivity.</p>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-card orange">
+        <div class="sc-label">Total Hashrate</div>
+        <div class="sc-value orange">10.4 TH/s</div>
+        <div class="sc-sub">across all miners</div>
+      </div>
+      <div class="summary-card green">
+        <div class="sc-label">Active Miners</div>
+        <div class="sc-value green">3</div>
+        <div class="sc-sub">of 3 online</div>
+      </div>
+      <div class="summary-card yellow">
+        <div class="sc-label">Total Power Draw</div>
+        <div class="sc-value yellow">226W</div>
+        <div class="sc-sub">combined consumption</div>
+      </div>
+      <div class="summary-card blue">
+        <div class="sc-label">Efficiency</div>
+        <div class="sc-value blue">21.7</div>
+        <div class="sc-sub">J/TH avg</div>
+      </div>
+      <div class="summary-card purple">
+        <div class="sc-label">Alt Pool</div>
+        <div class="sc-value purple" style="font-size:16px;">Parasite</div>
+        <div class="sc-sub" style="color:var(--green)">&#9679; Connected</div>
+      </div>
+    </div>
+    <div class="miners-grid">
+      <!-- NerdQAxe++ -->
+      <div class="miner-card">
+        <div class="miner-header">
+          <div>
+            <div class="miner-name">NerdQAxe++</div>
+            <div style="font-size:11px;color:var(--muted)">Rev 6.1</div>
+          </div>
+          <span class="miner-status online">Online</span>
+        </div>
+        <div class="miner-body">
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Hashrate</span><span style="color:var(--orange);font-family:var(--mono)">6.1 TH/s</span></div>
+            <div class="gauge-bar"><div class="gauge-fill orange" style="width:59%"></div></div>
+          </div>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Power</span><span style="color:var(--yellow);font-family:var(--mono)">115W</span></div>
+            <div class="gauge-bar"><div class="gauge-fill blue" style="width:51%"></div></div>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Efficiency</span>
+            <span class="miner-stat-val orange">18.9 J/TH</span>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Alt Pool</span>
+            <span class="miner-stat-val orange">Parasite</span>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">LN Payout</span>
+            <span class="miner-stat-val green">WoS &#9889;</span>
+          </div>
+          <div class="miner-ip">&#127760; 192.168.4.20 &nbsp;|&nbsp; <a href="http://192.168.4.20" target="_blank" style="color:var(--orange);text-decoration:none;">Open UI &#8599;</a></div>
+        </div>
+      </div>
+      <!-- BitAxe Gamma -->
+      <div class="miner-card">
+        <div class="miner-header">
+          <div>
+            <div class="miner-name">BitAxe Gamma</div>
+            <div style="font-size:11px;color:var(--muted)">BM1370</div>
+          </div>
+          <span class="miner-status online">Online</span>
+        </div>
+        <div class="miner-body">
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Hashrate</span><span style="color:var(--orange);font-family:var(--mono)">1.4 TH/s</span></div>
+            <div class="gauge-bar"><div class="gauge-fill orange" style="width:13%"></div></div>
+          </div>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Power</span><span style="color:var(--yellow);font-family:var(--mono)">22W</span></div>
+            <div class="gauge-bar"><div class="gauge-fill blue" style="width:10%"></div></div>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Efficiency</span>
+            <span class="miner-stat-val orange">15.7 J/TH</span>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Pool</span>
+            <span class="miner-stat-val green">public-pool</span>
+          </div>
+          <div class="miner-ip">&#127760; 192.168.4.21 &nbsp;|&nbsp; <a href="http://192.168.4.21" target="_blank" style="color:var(--orange);text-decoration:none;">Open UI &#8599;</a></div>
+        </div>
+      </div>
+      <!-- Avalon Nano3 -->
+      <div class="miner-card">
+        <div class="miner-header">
+          <div>
+            <div class="miner-name">Avalon Nano3</div>
+            <div style="font-size:11px;color:var(--muted)">Mid-mode + cooling mods</div>
+          </div>
+          <span class="miner-status online">Online</span>
+        </div>
+        <div class="miner-body">
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Hashrate</span><span style="color:var(--orange);font-family:var(--mono)">2.9 TH/s</span></div>
+            <div class="gauge-bar"><div class="gauge-fill orange" style="width:28%"></div></div>
+          </div>
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>Power</span><span style="color:var(--yellow);font-family:var(--mono)">89W</span></div>
+            <div class="gauge-bar"><div class="gauge-fill blue" style="width:39%"></div></div>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Efficiency</span>
+            <span class="miner-stat-val yellow">30.7 J/TH</span>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">Alt Pool</span>
+            <span class="miner-stat-val orange">Parasite</span>
+          </div>
+          <div class="miner-stat-row">
+            <span class="miner-stat-label">LN Payout</span>
+            <span class="miner-stat-val green">WoS &#9889;</span>
+          </div>
+          <div class="miner-ip">&#127760; 192.168.4.23 &nbsp;|&nbsp; <a href="http://192.168.4.23" target="_blank" style="color:var(--orange);text-decoration:none;">Open UI &#8599;</a></div>
+        </div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#127754; Pool Status</h3>
+          <span style="font-size:12px;color:var(--green)">&#9679; Connected</span>
+        </div>
+        <div class="pool-item"><span class="pool-label">Primary Pool</span><span class="pool-val green">public-pool (local)</span></div>
+        <div class="pool-item"><span class="pool-label">Pool URL</span><span class="pool-val" style="font-family:var(--mono);font-size:11px;">192.168.4.76:3333</span></div>
+        <div class="pool-item"><span class="pool-label">Alt Pool (NerdQAxe++ &amp; Nano3)</span><span class="pool-val orange">Parasite Pool</span></div>
+        <div class="pool-item"><span class="pool-label">Parasite URL</span><span class="pool-val" style="font-family:var(--mono);font-size:11px;">parasite.wtf:42069</span></div>
+        <div class="pool-item"><span class="pool-label">Parasite Payout</span><span class="pool-val green">Lightning (WoS)</span></div>
+        <div class="pool-item"><span class="pool-label">Pool Fee</span><span class="pool-val green">0% both pools</span></div>
+        <div class="pool-item"><span class="pool-label">Block Reward</span><span class="pool-val orange">3.125 BTC</span></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>&#9889; Fleet Efficiency</h3></div>
+        <table class="eff-table">
+          <thead>
+            <tr><th>Miner</th><th>TH/s</th><th>Watts</th><th><span class="tip tip-right" data-tip="Joules per Terahash — energy efficiency rating. Lower = more efficient mining">J/TH</span></th><th><span class="tip tip-right" data-tip="Efficiency rating: Excellent &lt;20 J/TH, Good 20-35 J/TH, Poor &gt;35 J/TH">Rating</span></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">BitAxe Gamma</td>
+              <td style="font-family:var(--mono)">1.4</td>
+              <td style="font-family:var(--mono)">22</td>
+              <td style="font-family:var(--mono)">15.7</td>
+              <td><span class="eff-badge good">Excellent</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">NerdQAxe++</td>
+              <td style="font-family:var(--mono)">6.1</td>
+              <td style="font-family:var(--mono)">115</td>
+              <td style="font-family:var(--mono)">18.9</td>
+              <td><span class="eff-badge good">Excellent</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Avalon Nano3</td>
+              <td style="font-family:var(--mono)">2.9</td>
+              <td style="font-family:var(--mono)">89</td>
+              <td style="font-family:var(--mono)">30.7</td>
+              <td><span class="eff-badge ok">Good</span></td>
+            </tr>
+            <tr style="background:var(--surface2)">
+              <td style="font-weight:700;color:var(--orange)">Total / Avg</td>
+              <td style="font-family:var(--mono);font-weight:700;color:var(--orange)">10.4</td>
+              <td style="font-family:var(--mono);font-weight:700;color:var(--yellow)">226</td>
+              <td style="font-family:var(--mono);font-weight:700">21.7</td>
+              <td><span class="eff-badge good">Fleet OK</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--radius);padding:16px;margin-bottom:24px;">
+      <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:8px;">&#128161; Phase 2 — Live Miner Data</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+        Current data is static. Phase 2 will poll each miner's HTTP API for live hashrate, temperature, fan speed and accepted shares.<br>
+        <b style="color:var(--text)">BitAxe/NerdQAxe:</b> <span style="font-family:var(--mono);color:var(--orange);font-size:11px;">GET http://192.168.4.2x/api/system/info</span><br>
+        <b style="color:var(--text)">Avalon Nano3:</b> CGminer API over TCP port 4028
+      </div>
+    </div>
+  </div>
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+<script>
+const API='https://lcc.satslist.shop/api/dashboard';
+function fmt(n){return Number(n).toLocaleString();}
+fetch(API).then(r=>r.json()).then(d=>{
+  const price=d.wallet.btc_price_usd;
+  const total=d.wallet.confirmed_balance+d.wallet.channel_balance;
+  document.getElementById('block-height').textContent=fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent=fmt(total)+' sats';
+  document.getElementById('topbar-usd').textContent='~$'+((total/100000000)*price).toFixed(2);
+  document.getElementById('btc-price').textContent='$'+price.toLocaleString();
+  document.getElementById('mempool-size').textContent=d.mempool.size_mb+' MB';
+  document.getElementById('fee-rate').textContent=d.mempool.fee_sat_vbyte+' sat/vB';
+  document.getElementById('peer-count').textContent=d.node.num_peers+' peers';
+}).catch(()=>{});
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Node Journal</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    /* Layout */
+    .journal-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;}
+
+    /* Entry form */
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .form-body{padding:16px;}
+    .form-group{margin-bottom:14px;}
+    .form-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;display:block;}
+    .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;}
+    .form-input:focus{border-color:var(--orange-dim);}
+    .form-input::placeholder{color:var(--muted);}
+    textarea.form-input{resize:vertical;min-height:100px;line-height:1.6;}
+
+    /* Tags */
+    .tag-row{display:flex;gap:8px;flex-wrap:wrap;}
+    .tag-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .tag-btn:hover{border-color:var(--orange-dim);color:var(--text);}
+    .tag-btn.selected{color:#000;font-weight:600;}
+    .tag-btn[data-tag="maintenance"].selected{background:#3b82f6;border-color:#3b82f6;}
+    .tag-btn[data-tag="channel"].selected{background:var(--orange);border-color:var(--orange);}
+    .tag-btn[data-tag="routing"].selected{background:var(--green);border-color:var(--green);}
+    .tag-btn[data-tag="incident"].selected{background:var(--red);border-color:var(--red);}
+    .tag-btn[data-tag="milestone"].selected{background:#8b5cf6;border-color:#8b5cf6;}
+    .tag-btn[data-tag="note"].selected{background:var(--muted);border-color:var(--muted);}
+
+    /* Buttons */
+    .btn-row{display:flex;gap:8px;justify-content:flex-end;}
+    .btn{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .15s;}
+    .btn-orange{background:var(--orange);color:#000;}
+    .btn-orange:hover{background:#e8851a;}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);}
+    .btn-outline:hover{border-color:var(--orange-dim);color:var(--text);}
+    .save-feedback{font-size:11px;color:var(--green);text-align:right;height:16px;margin-top:6px;}
+
+    /* Entries list */
+    .entries-list{display:flex;flex-direction:column;gap:12px;}
+    .entry-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:border-color .15s;position:relative;}
+    .entry-card:hover{border-color:var(--orange-dim);}
+    .entry-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+    .entry-title{font-weight:600;font-size:14px;color:var(--text);}
+    .entry-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+    .entry-body{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:10px;}
+    .entry-footer{display:flex;align-items:center;justify-content:space-between;}
+    .entry-tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:600;}
+    .entry-tag.maintenance{background:rgba(59,130,246,.15);color:#3b82f6;}
+    .entry-tag.channel{background:rgba(247,147,26,.15);color:var(--orange);}
+    .entry-tag.routing{background:rgba(34,197,94,.15);color:var(--green);}
+    .entry-tag.incident{background:rgba(239,68,68,.15);color:var(--red);}
+    .entry-tag.milestone{background:rgba(139,92,246,.15);color:#8b5cf6;}
+    .entry-tag.note{background:rgba(136,136,136,.15);color:var(--muted);}
+    .entry-block{font-family:var(--mono);font-size:10px;color:var(--muted);}
+    .delete-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;transition:color .15s;}
+    .delete-btn:hover{color:var(--red);}
+
+    /* Sidebar stats */
+    .stat-item{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+    .stat-item:last-child{border-bottom:none;}
+    .stat-label{font-size:12px;color:var(--muted);}
+    .stat-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--orange);}
+
+    /* Search */
+    .search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;margin-bottom:16px;}
+    .search-input:focus{border-color:var(--orange-dim);}
+
+    .empty-journal{padding:40px;text-align:center;color:var(--muted);font-size:13px;line-height:1.8;}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item active"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <h2>Node Journal</h2>
+        <p>Your personal log for node events, decisions and milestones.</p>
+      </div>
+    </div>
+
+    <div class="journal-layout">
+
+      <!-- Left: form + entries -->
+      <div>
+        <!-- New entry form -->
+        <div class="panel">
+          <div class="panel-header"><h3>&#43; New Entry</h3></div>
+          <div class="form-body">
+            <div class="form-group">
+              <label class="form-label">Title</label>
+              <input class="form-input" id="entry-title" placeholder="e.g. Opened channel to ghostpdh" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <textarea class="form-input" id="entry-body" placeholder="What happened? What did you learn? Any decisions made..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tag</label>
+              <div class="tag-row">
+                <button class="tag-btn selected" data-tag="note" onclick="selectTag(this)">&#128221; Note</button>
+                <button class="tag-btn" data-tag="channel" onclick="selectTag(this)">&#9889; Channel</button>
+                <button class="tag-btn" data-tag="routing" onclick="selectTag(this)">&#128200; Routing</button>
+                <button class="tag-btn" data-tag="maintenance" onclick="selectTag(this)">&#128295; Maintenance</button>
+                <button class="tag-btn" data-tag="milestone" onclick="selectTag(this)">&#127941; Milestone</button>
+                <button class="tag-btn" data-tag="incident" onclick="selectTag(this)">&#9888; Incident</button>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-outline" onclick="clearForm()">Clear</button>
+              <button class="btn btn-orange" onclick="saveEntry()">Save Entry</button>
+            </div>
+            <div class="save-feedback" id="save-feedback"></div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <input class="search-input" id="search-input" placeholder="&#128269; Search journal..." oninput="filterEntries()" />
+
+        <!-- Entries -->
+        <div class="entries-list" id="entries-list">
+          <div class="empty-journal">&#128221; No journal entries yet.<br>Start logging your node journey above!</div>
+        </div>
+      </div>
+
+      <!-- Right: stats + tips -->
+      <div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header"><h3>&#128202; Journal Stats</h3></div>
+          <div class="stat-item"><span class="stat-label">Total Entries</span><span class="stat-val" id="stat-total">0</span></div>
+          <div class="stat-item"><span class="stat-label">Channel Events</span><span class="stat-val" id="stat-channel">0</span></div>
+          <div class="stat-item"><span class="stat-label">Routing Notes</span><span class="stat-val" id="stat-routing">0</span></div>
+          <div class="stat-item"><span class="stat-label">Milestones</span><span class="stat-val" id="stat-milestone">0</span></div>
+          <div class="stat-item"><span class="stat-label">Incidents</span><span class="stat-val" id="stat-incident">0</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>&#128161; Journal Tips</h3></div>
+          <div style="padding:14px;font-size:12px;color:var(--muted);line-height:1.8;">
+            <p style="margin-bottom:8px;">&#9889; Log every channel open/close with the peer name and reason.</p>
+            <p style="margin-bottom:8px;">&#128200; Note when routing fees spike — what changed?</p>
+            <p style="margin-bottom:8px;">&#128295; Record maintenance: updates, restarts, config changes.</p>
+            <p style="margin-bottom:8px;">&#127941; Celebrate milestones: first route, first 100 sats, first block!</p>
+            <p>&#9888; Document incidents so you can prevent them next time.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+
+<script>
+const API = 'https://lcc.satslist.shop/api/dashboard';
+const STORAGE_KEY = 'lcc_journal_entries';
+
+// Load node data
+fetch(API).then(r=>r.json()).then(d=>{
+  const price = d.wallet.btc_price_usd;
+  const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
+  document.getElementById('block-height').textContent = Number(d.node.block_height).toLocaleString();
+  document.getElementById('topbar-sats').textContent = Number(total).toLocaleString() + ' sats';
+  document.getElementById('topbar-usd').textContent = '~$' + ((total/100000000)*price).toFixed(2);
+  document.getElementById('btc-price').textContent = '$' + price.toLocaleString();
+  document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
+  document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
+  document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+}).catch(()=>{});
+
+// Journal storage (localStorage)
+function getEntries() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveEntries(entries) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+let selectedTag = 'note';
+
+function selectTag(btn) {
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedTag = btn.dataset.tag;
+}
+
+function saveEntry() {
+  const title = document.getElementById('entry-title').value.trim();
+  const body = document.getElementById('entry-body').value.trim();
+  if(!title) { showFeedback('Please enter a title', 'var(--red)'); return; }
+
+  const entry = {
+    id: Date.now(),
+    title,
+    body,
+    tag: selectedTag,
+    date: new Date().toISOString(),
+    block: document.getElementById('block-height').textContent || '—'
+  };
+
+  const entries = getEntries();
+  entries.unshift(entry);
+  saveEntries(entries);
+  clearForm();
+  renderEntries();
+  showFeedback('Entry saved!', 'var(--green)');
+}
+
+function clearForm() {
+  document.getElementById('entry-title').value = '';
+  document.getElementById('entry-body').value = '';
+  selectedTag = 'note';
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector('[data-tag="note"]').classList.add('selected');
+}
+
+function deleteEntry(id) {
+  const entries = getEntries().filter(e => e.id !== id);
+  saveEntries(entries);
+  renderEntries();
+}
+
+function showFeedback(msg, color) {
+  const el = document.getElementById('save-feedback');
+  el.textContent = msg;
+  el.style.color = color;
+  setTimeout(() => el.textContent = '', 2000);
+}
+
+function filterEntries() {
+  renderEntries(document.getElementById('search-input').value.toLowerCase());
+}
+
+function renderEntries(search = '') {
+  const entries = getEntries();
+  const filtered = search
+    ? entries.filter(e => e.title.toLowerCase().includes(search) || e.body.toLowerCase().includes(search) || e.tag.includes(search))
+    : entries;
+
+  const list = document.getElementById('entries-list');
+
+  // Update stats
+  document.getElementById('stat-total').textContent = entries.length;
+  document.getElementById('stat-channel').textContent = entries.filter(e=>e.tag==='channel').length;
+  document.getElementById('stat-routing').textContent = entries.filter(e=>e.tag==='routing').length;
+  document.getElementById('stat-milestone').textContent = entries.filter(e=>e.tag==='milestone').length;
+  document.getElementById('stat-incident').textContent = entries.filter(e=>e.tag==='incident').length;
+
+  if(filtered.length === 0) {
+    list.innerHTML = '<div class="empty-journal">' + (search ? '&#128269; No entries match your search.' : '&#128221; No journal entries yet.<br>Start logging your node journey above!') + '</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => {
+    const date = new Date(e.date).toLocaleString();
+    const bodyPreview = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
+    return `<div class="entry-card">
+      <div class="entry-header">
+        <div>
+          <div class="entry-title">${e.title}</div>
+          <div class="entry-meta">${date}</div>
+        </div>
+        <button class="delete-btn" onclick="deleteEntry(${e.id})" title="Delete entry">&#128465;</button>
+      </div>
+      ${bodyPreview ? `<div class="entry-body">${bodyPreview}</div>` : ''}
+      <div class="entry-footer">
+        <span class="entry-tag ${e.tag}">${e.tag}</span>
+        <span class="entry-block">Block ${e.block}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Initial render
+renderEntries();
+
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

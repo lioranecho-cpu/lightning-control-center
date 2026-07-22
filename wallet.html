@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Wallet</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    /* Balance cards */
+    .balance-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+    .balance-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+    .balance-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .balance-card.onchain::before{background:var(--orange);}
+    .balance-card.channel::before{background:var(--blue);}
+    .balance-card.total::before{background:var(--green);}
+    .bc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;}
+    .bc-value{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--text);margin-bottom:4px;}
+    .bc-usd{font-size:12px;color:var(--muted);}
+    .bc-sub{font-size:11px;color:var(--muted);margin-top:8px;}
+    .bc-icon{position:absolute;top:16px;right:16px;font-size:24px;opacity:0.3;}
+
+    /* Two column layout */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+
+    /* Panel */
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .panel-body{padding:16px;}
+
+    /* Receive section */
+    .addr-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-all;margin-bottom:12px;line-height:1.6;}
+    .addr-placeholder{color:var(--muted);font-style:italic;}
+    .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .15s;}
+    .btn-orange{background:var(--orange);color:#000;}
+    .btn-orange:hover{background:#e8851a;}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);}
+    .btn-outline:hover{border-color:var(--orange-dim);color:var(--text);}
+    .btn-row{display:flex;gap:8px;}
+    .copy-feedback{font-size:11px;color:var(--green);margin-top:8px;height:16px;}
+
+    /* QR placeholder */
+    .qr-box{width:120px;height:120px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;margin:0 auto 12px;}
+
+    /* Send section */
+    .form-group{margin-bottom:14px;}
+    .form-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;display:block;}
+    .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .15s;}
+    .form-input:focus{border-color:var(--orange-dim);}
+    .form-input::placeholder{color:var(--muted);}
+
+    /* Transaction table */
+    .tx-table{width:100%;border-collapse:collapse;}
+    .tx-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;}
+    .tx-table td{padding:12px 14px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04);font-family:var(--mono);}
+    .tx-table tr:last-child td{border-bottom:none;}
+    .tx-table tr:hover td{background:var(--surface2);}
+    .tx-type{font-family:var(--font);display:flex;align-items:center;gap:8px;}
+    .tx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .tx-dot.received{background:var(--green);}
+    .tx-dot.sent{background:var(--red);}
+    .tx-dot.forwarded{background:var(--blue);}
+    .tx-amount.pos{color:var(--green);}
+    .tx-amount.neg{color:var(--red);}
+    .tx-hash{color:var(--muted);font-size:11px;}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+    .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--font);}
+    .tag.confirmed{background:rgba(34,197,94,.12);color:var(--green);}
+    .tag.pending{background:rgba(247,147,26,.12);color:var(--orange);}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='index.html'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='http://localhost:8765/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item active"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <h2>Wallet</h2>
+      <p>On-chain and Lightning balances for prodeskltn-node.</p>
+    </div>
+
+    <!-- Balance cards -->
+    <div class="balance-grid">
+      <div class="balance-card total">
+        <div class="bc-icon">&#8383;</div>
+        <div class="bc-label">Total Balance</div>
+        <div class="bc-value" id="total-bal">&#8212;</div>
+        <div class="bc-usd" id="total-usd">&#8776; $&#8212;</div>
+        <div class="bc-sub">On-chain + Channel</div>
+      </div>
+      <div class="balance-card onchain">
+        <div class="bc-icon">&#128279;</div>
+        <div class="bc-label">On-Chain Balance</div>
+        <div class="bc-value" id="onchain-bal">&#8212;</div>
+        <div class="bc-usd" id="onchain-usd">&#8776; $&#8212;</div>
+        <div class="bc-sub" id="unconfirmed-sub">Confirmed</div>
+      </div>
+      <div class="balance-card channel">
+        <div class="bc-icon">&#9889;</div>
+        <div class="bc-label">Channel Balance</div>
+        <div class="bc-value" id="channel-bal">&#8212;</div>
+        <div class="bc-usd" id="channel-usd">&#8776; $&#8212;</div>
+        <div class="bc-sub">Local spendable</div>
+      </div>
+    </div>
+
+    <!-- Receive + Send -->
+    <div class="two-col">
+
+      <!-- Receive -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#11015;&#65039; Receive On-Chain</h3>
+        </div>
+        <div class="panel-body">
+          <div class="qr-box" id="qr-box">&#128247;<br>Generate<br>address</div>
+          <div class="addr-box" id="addr-box"><span class="addr-placeholder">Click "New Address" to generate a deposit address</span></div>
+          <div class="copy-feedback" id="copy-feedback"></div>
+          <div class="btn-row">
+            <button class="btn btn-orange" onclick="generateAddress()">New Address</button>
+            <button class="btn btn-outline" onclick="copyAddress()">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Send -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>&#11014;&#65039; Send Payment</h3>
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <label class="form-label">Lightning Invoice or On-Chain Address</label>
+            <textarea class="form-input" id="payment-dest" rows="3" placeholder="lnbc... or bc1q..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (sats) — leave blank for invoice amount</label>
+            <input class="form-input" id="payment-amt" type="number" placeholder="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fee Limit (sats)</label>
+            <input class="form-input" id="fee-limit" type="number" placeholder="100" value="100" />
+          </div>
+          <button class="btn btn-orange" style="width:100%" onclick="sendPayment()">Send &#9889;</button>
+          <div class="copy-feedback" id="send-feedback"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Transaction history -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Recent Transactions</h3>
+        <span style="font-size:11px;color:var(--muted)">Last 10</span>
+      </div>
+      <table class="tx-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="tx-tbody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+
+<script>
+const API = 'http://localhost:8765/api/dashboard';
+const ADDR_API = 'http://localhost:8765/api/newaddress';
+
+function fmt(n){return Number(n).toLocaleString();}
+function toUsd(sats,price){return '&#8776; $'+((sats/100000000)*price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+// Real transactions
+fetch('http://localhost:8765/api/transactions').then(r=>r.json()).then(t=>{
+  const tbody = document.getElementById('tx-tbody');
+  tbody.innerHTML = '';
+  t.transactions.forEach(tx=>{
+    const isPos = tx.type === 'received';
+    const isNeg = tx.type === 'sent';
+    const dotClass = tx.type === 'received' ? 'received' : tx.type === 'sent' ? 'sent' : 'forwarded';
+    const amtClass = isPos ? 'pos' : isNeg ? 'neg' : '';
+    const amtPrefix = isPos ? '+' : isNeg ? '-' : '';
+    const feeStr = tx.fee > 0 ? ` (fee: ${tx.fee} sats)` : '';
+    const timeStr = new Date(tx.time * 1000).toLocaleString();
+    tbody.innerHTML += `<tr>
+      <td><div class="tx-type"><div class="tx-dot ${dotClass}"></div>${tx.type}</div></td>
+      <td class="tx-amount ${amtClass}">${amtPrefix}${fmt(tx.amount)} sats${feeStr}</td>
+      <td style="color:var(--muted);font-family:var(--font)">${tx.desc}</td>
+      <td><span class="tag confirmed">${tx.status}</span></td>
+      <td style="color:var(--muted)">${timeStr}</td>
+    </tr>`;
+  });
+});
+
+fetch(API).then(r=>r.json()).then(d=>{
+  const price = d.wallet.btc_price_usd;
+  const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
+
+  document.getElementById('block-height').textContent = fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent = fmt(total) + ' sats';
+  document.getElementById('topbar-usd').innerHTML = toUsd(total, price);
+
+  document.getElementById('total-bal').textContent = fmt(total) + ' sats';
+  document.getElementById('total-usd').innerHTML = toUsd(total, price);
+  document.getElementById('onchain-bal').textContent = fmt(d.wallet.confirmed_balance) + ' sats';
+  document.getElementById('onchain-usd').innerHTML = toUsd(d.wallet.confirmed_balance, price);
+  document.getElementById('channel-bal').textContent = fmt(d.wallet.channel_balance) + ' sats';
+  document.getElementById('channel-usd').innerHTML = toUsd(d.wallet.channel_balance, price);
+
+  if(d.wallet.unconfirmed_balance > 0){
+    document.getElementById('unconfirmed-sub').textContent = fmt(d.wallet.unconfirmed_balance) + ' sats unconfirmed';
+    document.getElementById('unconfirmed-sub').style.color = 'var(--orange)';
+  }
+
+  document.getElementById('btc-price').textContent = '$' + price.toLocaleString();
+  document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
+  document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
+  document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+});
+
+ let currentAddress = '';
+
+function generateAddress() {
+  fetch(ADDR_API).then(r=>r.json()).then(d=>{
+    currentAddress = d.address;
+    document.getElementById('addr-box').textContent = d.address;
+    document.getElementById('qr-box').innerHTML = '&#128247;<br><span style="font-size:9px">QR in Phase 2</span>';
+  });
+}
+
+function copyAddress() {
+  if(!currentAddress){ document.getElementById('copy-feedback').textContent = 'Generate an address first'; return; }
+  navigator.clipboard.writeText(currentAddress).then(()=>{
+    document.getElementById('copy-feedback').textContent = '&#10003; Address copied!';
+    setTimeout(()=>document.getElementById('copy-feedback').textContent='', 2000);
+  });
+}
+
+function sendPayment() {
+  const dest = document.getElementById('payment-dest').value.trim();
+  if(!dest){ document.getElementById('send-feedback').textContent = 'Enter a payment destination'; return; }
+  document.getElementById('send-feedback').textContent = 'Phase 2: real payments via ProDesk backend';
+  document.getElementById('send-feedback').style.color = 'var(--orange)';
+}
+
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>

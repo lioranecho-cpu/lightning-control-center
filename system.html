@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — System</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--yellow:#eab308;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .refresh-btn{font-size:12px;color:var(--orange);cursor:pointer;background:none;border:1px solid var(--orange-dim);border-radius:6px;padding:6px 12px;font-family:var(--font);}
+    .refresh-btn:hover{background:rgba(247,147,26,.1);}
+
+    /* Summary cards */
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+    .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .summary-card.orange::before{background:var(--orange);}
+    .summary-card.green::before{background:var(--green);}
+    .summary-card.blue::before{background:var(--blue);}
+    .summary-card.yellow::before{background:var(--yellow);}
+    .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+    .sc-value{font-family:var(--mono);font-size:22px;font-weight:700;}
+    .sc-value.orange{color:var(--orange);}
+    .sc-value.green{color:var(--green);}
+    .sc-value.blue{color:var(--blue);}
+    .sc-value.yellow{color:var(--yellow);}
+    .sc-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+    /* Gauge */
+    .gauge-wrap{margin-bottom:6px;}
+    .gauge-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
+    .gauge-bar{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+    .gauge-fill{height:100%;border-radius:4px;transition:width .5s;}
+    .gauge-fill.green{background:linear-gradient(to right,#16a34a,var(--green));}
+    .gauge-fill.yellow{background:linear-gradient(to right,#ca8a04,var(--yellow));}
+    .gauge-fill.red{background:linear-gradient(to right,#b91c1c,var(--red));}
+    .gauge-fill.blue{background:linear-gradient(to right,#2563eb,var(--blue));}
+
+    /* Layout */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .panel-meta{font-size:12px;color:var(--orange);font-family:var(--mono);}
+
+    /* Service list */
+    .service-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .service-item:last-child{border-bottom:none;}
+    .service-name{font-size:13px;font-weight:500;}
+    .service-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+    .service-status{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap;}
+    .service-status.running{color:var(--green);}
+    .service-status.running::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+    .service-status.stopped{color:var(--red);}
+    .service-status.stopped::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;}
+    .service-status.unknown{color:var(--muted);}
+    .service-status.unknown::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;}
+
+    /* Disk usage */
+    .disk-item{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .disk-item:last-child{border-bottom:none;}
+    .disk-header{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;}
+    .disk-path{color:var(--text);font-family:var(--mono);}
+    .disk-usage{color:var(--muted);}
+
+    /* Info table */
+    .info-item{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+    .info-item:last-child{border-bottom:none;}
+    .info-label{color:var(--muted);}
+    .info-val{font-family:var(--mono);color:var(--text);}
+
+    .loading{padding:30px;text-align:center;color:var(--muted);}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item active"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <h2>&#128421; System</h2>
+        <p>ProDesk hardware health and service status.</p>
+      </div>
+      <button class="refresh-btn" onclick="loadSystem()">&#8635; Refresh</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card orange">
+        <div class="sc-label">CPU Usage</div>
+        <div class="sc-value orange" id="cpu-val">&#8212;</div>
+        <div class="sc-sub" id="cpu-sub">&#8212;</div>
+      </div>
+      <div class="summary-card blue">
+        <div class="sc-label">RAM Usage</div>
+        <div class="sc-value blue" id="ram-val">&#8212;</div>
+        <div class="sc-sub" id="ram-sub">&#8212;</div>
+      </div>
+      <div class="summary-card green">
+        <div class="sc-label">System Uptime</div>
+        <div class="sc-value green" id="uptime-val">&#8212;</div>
+        <div class="sc-sub">since last boot</div>
+      </div>
+      <div class="summary-card yellow">
+        <div class="sc-label">Disk (Bitcoin)</div>
+        <div class="sc-value yellow" id="disk-val">&#8212;</div>
+        <div class="sc-sub" id="disk-sub">&#8212;</div>
+      </div>
+    </div>
+
+    <!-- Resource gauges + Services -->
+    <div class="two-col">
+
+      <!-- Resource gauges -->
+      <div class="panel">
+        <div class="panel-header"><h3>&#128200; Resource Usage</h3><span class="panel-meta" id="last-updated">&#8212;</span></div>
+        <div style="padding:16px;">
+          <div class="gauge-wrap">
+            <div class="gauge-label"><span>CPU</span><span id="cpu-gauge-label">&#8212;</span></div>
+            <div class="gauge-bar"><div class="gauge-fill green" id="cpu-gauge" style="width:0%"></div></div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="gauge-wrap">
+              <div class="gauge-label"><span>RAM</span><span id="ram-gauge-label">&#8212;</span></div>
+              <div class="gauge-bar"><div class="gauge-fill blue" id="ram-gauge" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="gauge-wrap">
+              <div class="gauge-label"><span>Disk (Bitcoin Data)</span><span id="disk-gauge-label">&#8212;</span></div>
+              <div class="gauge-bar"><div class="gauge-fill yellow" id="disk-gauge" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="gauge-wrap">
+              <div class="gauge-label"><span>Disk (System /)</span><span id="root-gauge-label">&#8212;</span></div>
+              <div class="gauge-bar"><div class="gauge-fill orange" id="root-gauge" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- System info -->
+        <div style="border-top:1px solid var(--border);">
+          <div class="info-item"><span class="info-label">Hostname</span><span class="info-val" id="hostname">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">OS</span><span class="info-val" id="os-info">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">Kernel</span><span class="info-val" id="kernel">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">Architecture</span><span class="info-val" id="arch">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">CPU Cores</span><span class="info-val" id="cpu-cores">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">Total RAM</span><span class="info-val" id="total-ram">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">Local IP</span><span class="info-val" id="local-ip">192.168.4.76</span></div>
+          <div class="info-item"><span class="info-label">External IP</span><span class="info-val" id="external-ip">74.45.164.28</span></div>
+        </div>
+      </div>
+
+      <!-- Services -->
+      <div class="panel">
+        <div class="panel-header"><h3>&#9881; Services</h3></div>
+        <div id="services-list"><div class="loading">Loading services...</div></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+
+<script>
+const API = 'https://lcc.satslist.shop/api/dashboard';
+const SYS_API = 'https://lcc.satslist.shop/api/system';
+
+function fmt(n){return Number(n).toLocaleString();}
+
+function gaugeColor(pct) {
+  if(pct < 60) return 'green';
+  if(pct < 85) return 'yellow';
+  return 'red';
+}
+
+fetch(API).then(r=>r.json()).then(d=>{
+  const price = d.wallet.btc_price_usd;
+  const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
+  document.getElementById('block-height').textContent = fmt(d.node.block_height);
+  document.getElementById('topbar-sats').textContent = fmt(total) + ' sats';
+  document.getElementById('topbar-usd').textContent = '~$' + ((total/100000000)*price).toFixed(2);
+  document.getElementById('btc-price').textContent = '$' + price.toLocaleString();
+  document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
+  document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
+  document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+}).catch(()=>{});
+
+function loadSystem() {
+  fetch(SYS_API).then(r=>r.json()).then(d=>{
+
+    // Summary cards
+    document.getElementById('cpu-val').textContent = d.cpu_percent + '%';
+    document.getElementById('cpu-sub').textContent = d.cpu_cores + ' cores';
+    document.getElementById('ram-val').textContent = d.ram_percent + '%';
+    document.getElementById('ram-sub').textContent = d.ram_used_gb + ' / ' + d.ram_total_gb + ' GB';
+    document.getElementById('uptime-val').textContent = d.uptime;
+    document.getElementById('disk-val').textContent = d.bitcoin_disk_percent + '%';
+    document.getElementById('disk-sub').textContent = d.bitcoin_disk_used + ' / ' + d.bitcoin_disk_total;
+
+    // Gauges
+    const cpuPct = d.cpu_percent;
+    const ramPct = d.ram_percent;
+    const diskPct = d.bitcoin_disk_percent;
+    const rootPct = d.root_disk_percent;
+
+    const cpuG = document.getElementById('cpu-gauge');
+    cpuG.style.width = cpuPct + '%';
+    cpuG.className = 'gauge-fill ' + gaugeColor(cpuPct);
+    document.getElementById('cpu-gauge-label').textContent = cpuPct + '%';
+
+    const ramG = document.getElementById('ram-gauge');
+    ramG.style.width = ramPct + '%';
+    ramG.className = 'gauge-fill ' + gaugeColor(ramPct);
+    document.getElementById('ram-gauge-label').textContent = ramPct + '% (' + d.ram_used_gb + ' GB)';
+
+    const diskG = document.getElementById('disk-gauge');
+    diskG.style.width = diskPct + '%';
+    diskG.className = 'gauge-fill ' + gaugeColor(diskPct);
+    document.getElementById('disk-gauge-label').textContent = diskPct + '% (' + d.bitcoin_disk_used + ')';
+
+    const rootG = document.getElementById('root-gauge');
+    rootG.style.width = rootPct + '%';
+    rootG.className = 'gauge-fill ' + gaugeColor(rootPct);
+    document.getElementById('root-gauge-label').textContent = rootPct + '%';
+
+    // System info
+    document.getElementById('hostname').textContent = d.hostname;
+    document.getElementById('os-info').textContent = d.os;
+    document.getElementById('kernel').textContent = d.kernel;
+    document.getElementById('arch').textContent = d.arch;
+    document.getElementById('cpu-cores').textContent = d.cpu_cores;
+    document.getElementById('total-ram').textContent = d.ram_total_gb + ' GB';
+
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Services
+    const servicesList = document.getElementById('services-list');
+    servicesList.innerHTML = d.services.map(s => `
+      <div class="service-item">
+        <div>
+          <div class="service-name">${s.name}</div>
+          <div class="service-desc">${s.desc}</div>
+        </div>
+        <span class="service-status ${s.active ? 'running' : 'stopped'}">${s.active ? 'Running' : 'Stopped'}</span>
+      </div>
+    `).join('');
+
+  }).catch(err => {
+    document.getElementById('services-list').innerHTML = '<div class="loading" style="color:var(--red)">Failed to load system data.<br>Check backend is running.</div>';
+  });
+}
+
+loadSystem();
+setInterval(loadSystem, 30000); // Refresh every 30 seconds
+
+function checkSession(){const s=localStorage.getItem('lcc_session');if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}try{const{expires}=JSON.parse(s);if(Date.now()>expires){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}}catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}}
+checkSession();
+setInterval(checkSession,5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+</script>
+</body>
+</html>

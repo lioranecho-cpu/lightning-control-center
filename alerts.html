@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCC — Alerts</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--yellow:#eab308;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .alert-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
+    .sc-count{font-family:var(--mono);font-size:32px;font-weight:700;margin-bottom:4px;}
+    .sc-count.red{color:var(--red);}
+    .sc-count.yellow{color:var(--yellow);}
+    .sc-count.green{color:var(--green);}
+    .sc-count.muted{color:var(--muted);}
+    .sc-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+    .alerts-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .refresh-btn{font-size:11px;color:var(--orange);cursor:pointer;background:none;border:none;font-family:var(--font);}
+    .alert-item{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
+    .alert-item:last-child{border-bottom:none;}
+    .alert-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+    .alert-icon.critical{background:rgba(239,68,68,.15);}
+    .alert-icon.warning{background:rgba(234,179,8,.15);}
+    .alert-icon.info{background:rgba(59,130,246,.15);}
+    .alert-icon.ok{background:rgba(34,197,94,.15);}
+    .alert-body{flex:1;}
+    .alert-title{font-size:13px;font-weight:600;margin-bottom:3px;}
+    .alert-title.critical{color:var(--red);}
+    .alert-title.warning{color:var(--yellow);}
+    .alert-title.info{color:var(--blue);}
+    .alert-title.ok{color:var(--green);}
+    .alert-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+    .alert-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;}
+    .alert-badge.critical{background:rgba(239,68,68,.15);color:var(--red);}
+    .alert-badge.warning{background:rgba(234,179,8,.15);color:var(--yellow);}
+    .alert-badge.info{background:rgba(59,130,246,.15);color:var(--blue);}
+    .alert-badge.ok{background:rgba(34,197,94,.15);color:var(--green);}
+    .threshold-item{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .threshold-item:last-child{border-bottom:none;}
+    .threshold-label{font-size:12px;color:var(--muted);flex:1;}
+    .threshold-input{width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:var(--mono);font-size:12px;text-align:right;outline:none;}
+    .threshold-input:focus{border-color:var(--orange-dim);}
+    .threshold-unit{font-size:11px;color:var(--muted);width:40px;}
+    .save-thresh-btn{width:100%;margin:12px 0 0;padding:8px;background:var(--orange);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;}
+    .last-check{font-size:11px;color:var(--muted);padding:10px 16px;text-align:right;}
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-down::after{bottom:auto;top:calc(100% + 8px);}
+  .tip-right::after{left:0;transform:none;}
+  .tip-down.tip-right::after{left:0;transform:none;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+
+  /* ── HAMBURGER (hidden on desktop) ── */
+  .hamburger { display: none; }
+
+  /* ── MOBILE RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-220px); transition: transform .25s ease; z-index:200; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+    .sidebar-overlay.show { display:block; }
+    .main { margin-left: 0 !important; }
+    .topbar { padding: 10px 16px; height:auto; min-height:54px; flex-wrap:wrap; gap:8px; }
+    .topbar-left p { display: none; }
+    .topbar-left h1 { font-size: 13px; }
+    .topbar-right { gap:10px; flex-wrap:wrap; font-size:11px; }
+    .balance-display .sats { font-size:13px; }
+    .hamburger { display:flex !important; align-items:center; justify-content:center; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); font-size:18px; flex-shrink:0; margin-right:8px; }
+    .content { padding: 16px; }
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: repeat(2,1fr) !important; gap:10px !important; }
+    .charts-row, .two-col, .bottom-row, .charts-grid, .alerts-layout, .journal-layout { grid-template-columns: 1fr !important; gap:12px !important; }
+    .miners-grid { grid-template-columns: 1fr !important; }
+    .ch-table, .peers-table, .eff-table, .fwd-table, .pairs-table, .tx-table { display:block; overflow-x:auto; white-space:nowrap; }
+    .page-header { flex-direction:column; gap:12px; align-items:flex-start !important; }
+    .time-filters { flex-wrap:wrap; }
+    .statusbar { flex-wrap:wrap; gap:12px; padding:10px 16px; }
+    .statusbar .sb-item:last-child { margin-left:0 !important; }
+    .login-wrap { padding:16px; }
+    .login-card { padding:20px; }
+    .tip::after { display: none !important; }
+    .stat-value { font-size:15px !important; }
+    .sc-value { font-size:18px !important; }
+    .balance-grid { grid-template-columns: 1fr !important; }
+    .connect-form { flex-direction:column !important; }
+  }
+  @media (max-width: 480px) {
+    .stat-grid, .summary-grid, .alert-summary { grid-template-columns: 1fr !important; }
+  }
+
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
+    <div class="nav-item active"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <button class="donate-btn">&#9889; Donate 5,000 sats</button>
+    <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);transition:all .15s;" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
+  </div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
+    <div class="topbar-right">
+      <div class="status-pill ok"><div class="dot"></div> Node Online</div>
+      <div class="status-pill ok"><div class="dot"></div> Synced</div>
+      <div class="block-height">Block <span id="block-height">&#8212;</span></div>
+      <div class="balance-display"><div class="sats" id="topbar-sats">&#8212; sats</div><div class="usd" id="topbar-usd">&#8776; $&#8212;</div></div>
+    </div>
+  </header>
+  <div class="content">
+    <div class="page-header"><h2>Alerts</h2><p>Automated monitoring of your node health and channel status.</p></div>
+    <div class="alert-summary">
+      <div class="summary-card"><div class="sc-count red" id="count-critical">-</div><div class="sc-label">Critical</div></div>
+      <div class="summary-card"><div class="sc-count yellow" id="count-warning">-</div><div class="sc-label">Warnings</div></div>
+      <div class="summary-card"><div class="sc-count green" id="count-ok">-</div><div class="sc-label">Healthy</div></div>
+      <div class="summary-card"><div class="sc-count muted" id="count-info">-</div><div class="sc-label">Info</div></div>
+    </div>
+    <div class="alerts-layout">
+      <div>
+        <div class="panel">
+          <div class="panel-header"><h3>&#128276; Active Alerts</h3><button class="refresh-btn" onclick="runChecks()">&#8635; Refresh</button></div>
+          <div id="alerts-list"><div style="padding:30px;text-align:center;color:var(--muted)">Loading checks...</div></div>
+          <div class="last-check" id="last-check">Last checked: never</div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-header"><h3>&#9881; Alert Thresholds</h3></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip tip-down tip-right" data-tip="Alert when on-chain balance drops below this amount. You need on-chain sats to open new channels">Min on-chain balance</span></span><input class="threshold-input" id="thresh-onchain" type="number" value="100000" /><span class="threshold-unit">sats</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip tip-down tip-right" data-tip="Alert when one side of a channel exceeds this % of total capacity. Skewed channels can't route in both directions">Channel skew limit</span></span><input class="threshold-input" id="thresh-skew" type="number" value="90" /><span class="threshold-unit">%</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip tip-down tip-right" data-tip="Alert when on-chain fees exceed this sat/vB. High fees make channel opens expensive">High mempool fee</span></span><input class="threshold-input" id="thresh-fee" type="number" value="50" /><span class="threshold-unit">sat/vB</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip tip-down tip-right" data-tip="Alert if active channel count drops below this number. Zero channels means no routing income">Min active channels</span></span><input class="threshold-input" id="thresh-channels" type="number" value="1" /><span class="threshold-unit">ch</span></div>
+          <div style="padding:0 16px 16px;"><button class="save-thresh-btn" onclick="saveThresholds()">Save &amp; Re-check</button></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>&#128161; What We Monitor</h3></div>
+          <div style="padding:14px;font-size:12px;color:var(--muted);line-height:1.9;">
+            <div>&#9889; Channel balance skew</div>
+            <div>&#128291; On-chain wallet balance</div>
+            <div>&#128257; Node sync status</div>
+            <div>&#127760; Connected peer count</div>
+            <div>&#128184; Mempool fee rate</div>
+            <div>&#9935; Mining pool status</div>
+            <div>&#128200; Routing activity</div>
+            <div>&#128274; Active channel count</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="statusbar">
+    <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
+    <div class="sb-item"><span class="sb-icon">&#127760;</span><div><div class="sb-label">Peers</div><div class="sb-val" id="peer-count">&#8212;</div></div></div>
+    <div class="sb-item" style="margin-left:auto;"><span class="sb-icon">&#128336;</span><div><div class="sb-label">Time (UTC)</div><div class="sb-val" id="utc-time">&#8212;</div></div></div>
+  </footer>
+</div>
+<script>
+const API='https://lcc.satslist.shop/api/dashboard';
+const THRESH_KEY='lcc_alert_thresholds';
+function getThresholds(){try{return JSON.parse(localStorage.getItem(THRESH_KEY)||'{}')}catch{return{}}}
+function saveThresholds(){const t={onchain:parseInt(document.getElementById('thresh-onchain').value)||100000,skew:parseInt(document.getElementById('thresh-skew').value)||90,fee:parseInt(document.getElementById('thresh-fee').value)||50,channels:parseInt(document.getElementById('thresh-channels').value)||1};localStorage.setItem(THRESH_KEY,JSON.stringify(t));runChecks();}
+function loadThresholds(){const t=getThresholds();if(t.onchain)document.getElementById('thresh-onchain').value=t.onchain;if(t.skew)document.getElementById('thresh-skew').value=t.skew;if(t.fee)document.getElementById('thresh-fee').value=t.fee;if(t.channels)document.getElementById('thresh-channels').value=t.channels;}
+function runChecks(){
+  fetch(API).then(r=>r.json()).then(d=>{
+    const price=d.wallet.btc_price_usd;
+    const total=d.wallet.confirmed_balance+d.wallet.channel_balance;
+    document.getElementById('block-height').textContent=Number(d.node.block_height).toLocaleString();
+    document.getElementById('topbar-sats').textContent=Number(total).toLocaleString()+' sats';
+    document.getElementById('topbar-usd').textContent='~$'+((total/100000000)*price).toFixed(2);
+    document.getElementById('btc-price').textContent='$'+price.toLocaleString();
+    document.getElementById('mempool-size').textContent=d.mempool.size_mb+' MB';
+    document.getElementById('fee-rate').textContent=d.mempool.fee_sat_vbyte+' sat/vB';
+    document.getElementById('peer-count').textContent=d.node.num_peers+' peers';
+    const t=getThresholds();
+    const minOnchain=t.onchain||100000,maxSkew=t.skew||90,maxFee=t.fee||50,minCh=t.channels||1;
+    const alerts=[];
+    if(!d.node.synced_to_chain){alerts.push({level:'critical',icon:'&#128257;',title:'Node NOT synced to chain',desc:'Bitcoin Core is not fully synced. Payments may fail.'});}
+    else{alerts.push({level:'ok',icon:'&#128257;',title:'Node synced to chain',desc:'Bitcoin Core fully synced at block '+Number(d.node.block_height).toLocaleString()});}
+    if(!d.node.synced_to_graph){alerts.push({level:'warning',icon:'&#127760;',title:'Lightning graph not fully synced',desc:'Route finding may be degraded.'});}
+    else{alerts.push({level:'ok',icon:'&#127760;',title:'Lightning graph synced',desc:'Full network graph available.'});}
+    const onchain=d.wallet.confirmed_balance;
+    if(onchain<minOnchain){alerts.push({level:'warning',icon:'&#128291;',title:'Low on-chain balance',desc:Number(onchain).toLocaleString()+' sats — below threshold of '+Number(minOnchain).toLocaleString()+' sats.'});}
+    else{alerts.push({level:'ok',icon:'&#128291;',title:'On-chain balance healthy',desc:Number(onchain).toLocaleString()+' sats available.'});}
+    const activeCh=d.channels.num_active;
+    if(activeCh<minCh){alerts.push({level:'critical',icon:'&#9889;',title:'No active channels',desc:'Routing is not possible without active channels.'});}
+    else{alerts.push({level:'ok',icon:'&#9889;',title:activeCh+' active channel'+(activeCh>1?'s':''),desc:'Channels open and ready for routing.'});}
+    (d.channels.list||[]).forEach(ch=>{
+      if(ch.capacity>0){
+        const pct=Math.round((ch.local_balance/ch.capacity)*100);
+        if(pct>=maxSkew){alerts.push({level:'warning',icon:'&#9889;',title:'Channel skewed: '+ch.peer_alias,desc:'Local balance is '+pct+'% — consider rebalancing.'});}
+        else if(pct<=(100-maxSkew)){alerts.push({level:'warning',icon:'&#9889;',title:'Channel depleted: '+ch.peer_alias,desc:'Local balance only '+pct+'% — limited outbound capacity.'});}
+      }
+    });
+    const fee=d.mempool.fee_sat_vbyte;
+    if(fee>=maxFee){alerts.push({level:'warning',icon:'&#128184;',title:'High mempool fees: '+fee+' sat/vB',desc:'Consider waiting before opening channels on-chain.'});}
+    else{alerts.push({level:'info',icon:'&#128184;',title:'Mempool fees: '+fee+' sat/vB',desc:d.mempool.congestion+' congestion'+(fee<=5?' — great time to open channels!':'.')});}
+    if(d.node.num_peers<5){alerts.push({level:'warning',icon:'&#128101;',title:'Low peer count: '+d.node.num_peers,desc:'More peers improve routing graph visibility.'});}
+    else{alerts.push({level:'ok',icon:'&#128101;',title:d.node.num_peers+' peers connected',desc:'Good connectivity.'});}
+    if(d.mining.pool_connected){alerts.push({level:'ok',icon:'&#9935;',title:'Mining fleet active',desc:'Running at '+d.mining.total_hashrate_th+' TH/s.'});}
+    else{alerts.push({level:'warning',icon:'&#9935;',title:'Mining pool offline',desc:'No pool connection detected.'});}
+    const crit=alerts.filter(a=>a.level==='critical').length;
+    const warn=alerts.filter(a=>a.level==='warning').length;
+    const ok=alerts.filter(a=>a.level==='ok').length;
+    const info=alerts.filter(a=>a.level==='info').length;
+    document.getElementById('count-critical').textContent=crit;
+    document.getElementById('count-warning').textContent=warn;
+    document.getElementById('count-ok').textContent=ok;
+    document.getElementById('count-info').textContent=info;
+    const iconMap={critical:'&#128308;',warning:'&#128993;',ok:'&#128994;',info:'&#128309;'};
+    const order={critical:0,warning:1,info:2,ok:3};
+    alerts.sort((a,b)=>order[a.level]-order[b.level]);
+    document.getElementById('alerts-list').innerHTML=alerts.map(a=>`<div class="alert-item"><div class="alert-icon ${a.level}">${iconMap[a.level]}</div><div class="alert-body"><div class="alert-title ${a.level}">${a.title}</div><div class="alert-desc">${a.desc}</div></div><span class="alert-badge ${a.level}">${a.level}</span></div>`).join('');
+    document.getElementById('last-check').textContent='Last checked: '+new Date().toLocaleTimeString();
+  }).catch(()=>{document.getElementById('alerts-list').innerHTML='<div style="padding:20px;color:var(--red);text-align:center">Failed to fetch node data.</div>';});
+}
+loadThresholds();
+runChecks();
+setInterval(runChecks,60000);
+
+function checkSession(){
+  const s=localStorage.getItem('lcc_session');
+  if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}
+  try{
+    const {expires}=JSON.parse(s);
+    if(Date.now()>expires){
+      localStorage.removeItem('lcc_session');
+      window.location.href='https://lcc.satslist.shop/static/login.html';
+    }
+  }catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}
+}
+checkSession();
+setInterval(checkSession, 5*60*1000);
+
+function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
+updateTime();setInterval(updateTime,1000);
+
+  // ── Mobile sidebar toggle ──
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add overlay div if not present
+    if (!document.querySelector('.sidebar-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      overlay.onclick = toggleSidebar;
+      document.body.appendChild(overlay);
+    }
+    // Close sidebar when nav item clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', function() {
+        if(window.innerWidth <= 768) {
+          document.querySelector('.sidebar').classList.remove('open');
+          document.querySelector('.sidebar-overlay').classList.remove('show');
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>
