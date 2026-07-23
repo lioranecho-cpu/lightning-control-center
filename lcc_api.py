@@ -358,3 +358,22 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 @app.get("/dashboard")
 def dashboard():
     return FileResponse("index.html")
+
+@app.get("/api/tier")
+def get_tier():
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    return {"tier": data.get("tier", "community")}
+
+@app.post("/api/tier/{key}")
+def set_tier(key: str):
+    KEYS = {
+        "LCC-PERSONAL-2025": "personal",
+        "LCC-PRO-2025": "pro"
+    }
+    if key not in KEYS:
+        raise HTTPException(status_code=403, detail="Invalid license key")
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data["tier"] = KEYS[key]
+    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+        json.dump(data, f, indent=2)
+    return {"tier": data["tier"], "status": "activated"}

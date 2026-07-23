@@ -20,7 +20,7 @@
     .logo-text{display:flex;flex-direction:column;line-height:1.2;}
     .logo-text span:first-child{font-weight:700;font-size:15px;}
     .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
-    .nav{flex:1;padding:12px 0;}
+    .nav{flex:1;padding:12px 0;overflow-y:auto;min-height:0;}
     .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
     .nav-item:hover{color:var(--text);background:var(--surface2);}
     .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
@@ -111,6 +111,20 @@
     .sb-label{font-size:10px;}
 
   /* ── DONATE MODAL ── */
+  .cmd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;align-items:flex-start;justify-content:center;padding-top:120px;}
+  .cmd-overlay.show{display:flex;}
+  .cmd-box{background:#161b27;border:1px solid #f7931a44;border-radius:12px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 24px 64px #000a;}
+  .cmd-input-wrap{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #252d3d;}
+  .cmd-input-wrap span{font-size:16px;}
+  .cmd-input{flex:1;background:transparent;border:none;outline:none;color:#f0f0f0;font-size:15px;font-family:var(--font);}
+  .cmd-input::placeholder{color:#555;}
+  .cmd-results{max-height:320px;overflow-y:auto;}
+  .cmd-item{display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;font-size:13px;color:#ccc;transition:background .1s;}
+  .cmd-item:hover,.cmd-item.active{background:rgba(247,147,26,.08);color:#f7931a;}
+  .cmd-item .cmd-icon{font-size:15px;width:20px;text-align:center;}
+  .cmd-item .cmd-label{flex:1;}
+  .cmd-item .cmd-hint{font-size:11px;color:#555;}
+  .cmd-empty{padding:20px;text-align:center;color:#555;font-size:13px;}
   .donate-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;}
   .donate-modal-overlay.show{display:flex;}
   .donate-modal{background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:320px;width:90%;text-align:center;position:relative;}
@@ -126,32 +140,56 @@
   .donate-modal-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;line-height:1;}
   .donate-modal-x:hover{color:#f0f0f0;}
 
-  </style>
+  
+  .sidebar{transition:width .2s ease;}
+  .sidebar.collapsed{width:60px;}
+  .sidebar.collapsed .logo-text,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .community-badge,
+  .sidebar.collapsed .version-badge,
+  .sidebar.collapsed .donate-btn,
+  .sidebar.collapsed #tier-badge,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .cmd-hint{display:none;}
+  .sidebar.collapsed [style*="margin-left:auto"]{display:none;}
+  .sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;}
+  .sidebar.collapsed .sidebar-logo{justify-content:center;padding:20px 0;}
+  .sidebar.collapsed .sidebar-footer{padding:8px 0;text-align:center;}
+  .sidebar-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;transition:color .15s;}
+  .sidebar-toggle:hover{color:var(--orange);}
+  .main-content{transition:margin-left .2s ease;}
+  .main-content.expanded{margin-left:60px;}
+  .sidebar.collapsed ~ .main-content{margin-left:60px;}
+
+</style>
 </head>
 <body>
 <aside class="sidebar">
   <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#9776;</button></div>
   <nav class="nav">
         <div class="nav-section">Node</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span> Dashboard</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span> Channels</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span> Peers</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span> Routing</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span> Wallet</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span><span class="nav-label"> Dashboard</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span><span class="nav-label"> Channels</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span><span class="nav-label"> Peers</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span><span class="nav-label"> Routing</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span><span class="nav-label"> Wallet</span></div>
     <div class="nav-section">Tools</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span> Analytics</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span> Node Journal</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span> Alerts</div>
+    <div class="nav-item" onclick="openCmd()"><span class="icon">&#9211;</span><span class="nav-label"> Palette </span><span style="font-size:10px;color:#555;margin-left:auto;">Ctrl+Space</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span><span class="nav-label"> Analytics</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
     <div class="nav-section">System</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span> Mining</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span> System</div>
-    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span> SatsList</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span> Settings</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span><span class="nav-label"> SatsList</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
   </nav>
   <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.0 &middot; Community Edition</div>
+    <div class="version-badge">LCC v0.1.0</div>
     <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
-    <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
+    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
+<button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
   </div>
 </aside>
 <div class="main">
@@ -392,6 +430,16 @@ fetch(API).then(r=>r.json()).then(d=>{
   function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
 updateTime();setInterval(updateTime,1000);
 </script>
+<div class="cmd-overlay" id="cmd-palette" onclick="if(event.target===this)closeCmd()">
+  <div class="cmd-box">
+    <div class="cmd-input-wrap">
+      <span>⚡</span>
+      <input class="cmd-input" id="cmd-input" placeholder="Type a command or page name..." autocomplete="off" />
+      <span style="font-size:11px;color:#444;">ESC to close</span>
+    </div>
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
+</div>
 <div class="donate-modal-overlay" id="donate-modal" onclick="if(event.target===this)closeDonateModal()">
   <div class="donate-modal">
     <button class="donate-modal-x" onclick="closeDonateModal()">&#10005;</button>
@@ -405,5 +453,117 @@ updateTime();setInterval(updateTime,1000);
     <button class="donate-close" onclick="closeDonateModal()">Close</button>
   </div>
 </div>
+<script>
+const TIER_LABELS = {
+  community: '🟠 Community',
+  personal: '⚡ Personal',
+  pro: '🏢 Pro'
+};
+fetch('/api/tier').then(r=>r.json()).then(d=>{
+  window.LCC_TIER = d.tier;
+  const badge = document.getElementById('tier-badge');
+  if(badge) badge.textContent = TIER_LABELS[d.tier] || '🟠 Community';
+});
+</script>
+<script>
+const CMD_COMMANDS = [
+  {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='https://lcc.satslist.shop/'},
+  {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='https://lcc.satslist.shop/static/wallet.html'},
+  {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='https://lcc.satslist.shop/static/channels.html'},
+  {icon:'🔀', label:'Routing', hint:'Go to Routing', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
+  {icon:'👥', label:'Peers', hint:'Go to Peers', action:()=>location.href='https://lcc.satslist.shop/static/peers.html'},
+  {icon:'📊', label:'Analytics', hint:'Go to Analytics', action:()=>location.href='https://lcc.satslist.shop/static/analytics.html'},
+  {icon:'🔔', label:'Alerts', hint:'Go to Alerts', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
+  {icon:'⛏️', label:'Mining', hint:'Go to Mining', action:()=>location.href='https://lcc.satslist.shop/static/mining.html'},
+  {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='https://lcc.satslist.shop/static/system.html'},
+  {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='https://lcc.satslist.shop/static/settings.html'},
+  {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='https://lcc.satslist.shop/static/journal.html'},
+  {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning', action:()=>openDonateModal()},
+  {icon:'🚪', label:'Logout', hint:'Log out of LCC', action:()=>logout()},
+];
+let cmdActive = -1;
+function openCmd(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Command Palette is a Personal feature. Upgrade at satslist.shop');
+    return;
+  }
+  document.getElementById('cmd-palette').classList.add('show');
+  document.getElementById('cmd-input').value = '';
+  cmdActive = -1;
+  renderCmd('');
+  setTimeout(()=>document.getElementById('cmd-input').focus(), 50);
+}
+function closeCmd(){
+  document.getElementById('cmd-palette').classList.remove('show');
+  cmdActive = -1;
+}
+function renderCmd(query){
+  const results = document.getElementById('cmd-results');
+  const q = query.toLowerCase().trim();
+  const filtered = q ? CMD_COMMANDS.filter(c=>c.label.toLowerCase().includes(q)||c.hint.toLowerCase().includes(q)) : CMD_COMMANDS;
+  if(!filtered.length){
+    results.innerHTML = '<div class="cmd-empty">No results for "' + query + '"</div>';
+    return;
+  }
+  results.innerHTML = filtered.map((c,i)=>
+    '<div class="cmd-item' + (i===cmdActive?' active':'') + '" onclick="runCmd(' + CMD_COMMANDS.indexOf(c) + ')">' +
+    '<span class="cmd-icon">' + c.icon + '</span>' +
+    '<span class="cmd-label">' + c.label + '</span>' +
+    '<span class="cmd-hint">' + c.hint + '</span></div>'
+  ).join('');
+}
+function runCmd(idx){
+  CMD_COMMANDS[idx].action();
+  closeCmd();
+}
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey && e.key===' '){
+    e.preventDefault();
+    const pal = document.getElementById('cmd-palette');
+    if(pal.classList.contains('show')) closeCmd();
+    else openCmd();
+    return;
+  }
+  if(!document.getElementById('cmd-palette').classList.contains('show')) return;
+  const items = document.getElementById('cmd-results').querySelectorAll('.cmd-item');
+  if(e.key==='Escape') closeCmd();
+  if(e.key==='ArrowDown'){ e.preventDefault(); cmdActive=Math.min(cmdActive+1,items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===cmdActive)); }
+  if(e.key==='ArrowUp'){ e.preventDefault(); cmdActive=Math.max(cmdActive-1,0); items.forEach((el,i)=>el.classList.toggle('active',i===cmdActive)); }
+  if(e.key==='Enter' && cmdActive>=0) items[cmdActive].click();
+});
+document.addEventListener('DOMContentLoaded',()=>{
+  const input = document.getElementById('cmd-input');
+  if(input) input.addEventListener('input', e=>{ cmdActive=-1; renderCmd(e.target.value); });
+});
+</script>
+
+<script>
+function toggleSidebar(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Collapsing sidebar is a Personal feature. Upgrade at satslist.shop');
+    return;
+  }
+  const sidebar = document.querySelector('.sidebar');
+  const main = document.querySelector('.main-content') || document.querySelector('main') || document.querySelector('.content');
+  sidebar.classList.toggle('collapsed');
+  if(main) main.classList.toggle('expanded');
+  localStorage.setItem('lcc_sidebar', sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const saved = localStorage.getItem('lcc_sidebar');
+  if(saved === 'collapsed'){
+    const tier = window.LCC_TIER || 'community';
+    if(tier !== 'community'){
+      const sidebar = document.querySelector('.sidebar');
+      const main = document.querySelector('.main-content') || document.querySelector('main') || document.querySelector('.content');
+      sidebar.classList.add('collapsed');
+      if(main) main.classList.add('expanded');
+    }
+  }
+});
+</script>
+
 </body>
 </html>
