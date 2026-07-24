@@ -322,7 +322,12 @@
       <div class="panel-header">
         <h3>Recent Transactions</h3>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:11px;color:var(--muted)">Last 10</span>
+          <select id="tx-limit" onchange="loadTransactions()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+            <option value="10">Last 10</option>
+            <option value="25">Last 25</option>
+            <option value="50">Last 50</option>
+            <option value="0">All</option>
+          </select>
           <button onclick="exportWalletCSV()" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);">&#8595; Export CSV</button>
         </div>
       </div>
@@ -358,15 +363,34 @@ const ADDR_API = 'https://lcc.satslist.shop/api/newaddress';
 function fmt(n){return Number(n).toLocaleString();}
 function toUsd(sats,price){return '&#8776; $'+((sats/100000000)*price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-// Mock transactions
-const mockTx = [
-  {type:'received', amount:500000, desc:'LN+ Ring #24355 channel open', status:'confirmed', time:'2 hours ago'},
-  {type:'received', amount:24, desc:'Routing fee earned', status:'confirmed', time:'3 hours ago'},
-  {type:'forwarded', amount:50000, desc:'Lightning payment forwarded', status:'confirmed', time:'7 hours ago'},
-  {type:'received', amount:18, desc:'Routing fee earned', status:'confirmed', time:'11 hours ago'},
-  {type:'sent', amount:5000, desc:'Donate — Club Orange', status:'confirmed', time:'1 day ago'},
-  {type:'received', amount:2185526, desc:'Wallet deposit', status:'confirmed', time:'2 days ago'},
-];
+function loadTransactions(){
+  const limit = document.getElementById('tx-limit') ? document.getElementById('tx-limit').value : 10;
+  fetch('https://lcc.satslist.shop/api/transactions?limit=' + limit)
+    .then(r=>r.json()).then(data=>{
+      const tbody = document.getElementById('tx-tbody');
+      tbody.innerHTML = '';
+      const txs = data.transactions || [];
+      if(!txs.length){
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No transactions found</td></tr>';
+        return;
+      }
+      txs.forEach(tx=>{
+        const isPos = tx.type === 'received';
+        const isNeg = tx.type === 'sent';
+        const dotClass = tx.type === 'received' ? 'received' : tx.type === 'sent' ? 'sent' : 'forwarded';
+        const amtClass = isPos ? 'pos' : isNeg ? 'neg' : '';
+        const amtPrefix = isPos ? '+' : isNeg ? '-' : '';
+        tbody.innerHTML += '<tr>' +
+          '<td><div class="tx-type"><div class="tx-dot ' + dotClass + '"></div>' + tx.type + '</div></td>' +
+          '<td class="tx-amount ' + amtClass + '">' + amtPrefix + fmt(Math.abs(tx.amount)) + ' sats</td>' +
+          '<td style="color:var(--muted);font-family:var(--font)">' + (tx.desc||'') + '</td>' +
+          '<td><span class="tag confirmed">' + (tx.status||'confirmed') + '</span></td>' +
+          '<td style="color:var(--muted)">' + (tx.time||'') + '</td></tr>';
+      });
+    }).catch(()=>{
+      document.getElementById('tx-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Could not load transactions</td></tr>';
+    });
+}
 
 fetch(API).then(r=>r.json()).then(d=>{
   const price = d.wallet.btc_price_usd;
@@ -393,22 +417,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
   document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
 
-  // Render transactions
-  const tbody = document.getElementById('tx-tbody');
-  mockTx.forEach(tx => {
-    const isPos = tx.type === 'received';
-    const isNeg = tx.type === 'sent';
-    const dotClass = tx.type === 'received' ? 'received' : tx.type === 'sent' ? 'sent' : 'forwarded';
-    const amtClass = isPos ? 'pos' : isNeg ? 'neg' : '';
-    const amtPrefix = isPos ? '+' : isNeg ? '-' : '';
-    tbody.innerHTML += `<tr>
-      <td><div class="tx-type"><div class="tx-dot ${dotClass}"></div>${tx.type}</div></td>
-      <td class="tx-amount ${amtClass}">${amtPrefix}${fmt(tx.amount)} sats</td>
-      <td style="color:var(--muted);font-family:var(--font)">${tx.desc}</td>
-      <td><span class="tag confirmed">${tx.status}</span></td>
-      <td style="color:var(--muted)">${tx.time}</td>
-    </tr>`;
-  });
+  loadTransactions();
 });
 
 let currentAddress = '';

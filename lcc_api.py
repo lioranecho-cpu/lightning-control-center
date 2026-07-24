@@ -4,6 +4,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+import time as time_module
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -201,7 +202,7 @@ def get_new_address(request: Request):
     result = run_lncli("newaddress", "p2wkh")
     return {"address": result.get("address")}
 @app.get("/api/transactions")
-def get_transactions():
+def get_transactions(limit: int = 10):
     if MOCK:
         return {"transactions": []}
     
@@ -209,7 +210,7 @@ def get_transactions():
     
     # Get sent payments
     try:
-        payments = run_lncli("listpayments", "--max_payments=20")
+        payments = run_lncli("listpayments", f"--max_payments={limit if limit > 0 else 1000}")
         for p in payments.get("payments", []):
             if p.get("status") == "SUCCEEDED":
                 transactions.append({
@@ -225,7 +226,7 @@ def get_transactions():
 
     # Get received invoices
     try:
-        invoices = run_lncli("listinvoices", "--num_max_invoices=20")
+        invoices = run_lncli("listinvoices", f"--num_max_invoices={limit if limit > 0 else 1000}")
         for inv in invoices.get("invoices", []):
             if inv.get("state") == "SETTLED":
                 transactions.append({
@@ -256,6 +257,15 @@ def get_transactions():
 
     # Sort by time descending
     transactions.sort(key=lambda x: x["time"], reverse=True)
+    # Convert unix timestamps to human readable
+    now = time_module.time()
+    for tx in transactions:
+        t = tx["time"]
+        diff = now - t
+        if diff < 3600: tx["time"] = f"{int(diff/60)} min ago"
+        elif diff < 86400: tx["time"] = f"{int(diff/3600)} hours ago"
+        elif diff < 604800: tx["time"] = f"{int(diff/86400)} days ago"
+        else: tx["time"] = datetime.fromtimestamp(t).strftime("%b %d %Y")
     
     return {"transactions": transactions[:20]}
 
