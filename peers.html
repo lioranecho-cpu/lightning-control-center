@@ -335,7 +335,7 @@ fetch(PEERS_API).then(r=>r.json()).then(data=>{
     const connClass = isTor ? 'conn-tor' : 'conn-clearnet';
     const connLabel = isTor ? 'Tor' : 'Clearnet';
     const pubShort = p.pub_key ? p.pub_key.slice(0,12) + '...' + p.pub_key.slice(-8) : '&#8212;';
-const channelBadge = p.has_channel ? '<span style="background:rgba(247,147,26,.15);color:var(--orange);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;margin-left:6px;">&#9889; Channel</span>' : '';c
+const channelBadge = p.has_channel ? '<span style="background:rgba(247,147,26,.15);color:var(--orange);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;margin-left:6px;">&#9889; Channel</span>' : '';
     tbody.innerHTML += `<tr>
       <td>
         <div class="peer-alias">${p.alias || 'Unknown'}${channelBadge}</div>
