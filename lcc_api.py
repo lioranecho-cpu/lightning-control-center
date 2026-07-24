@@ -119,10 +119,15 @@ def get_channels():
 def get_routing():
     if MOCK:
         return MOCK_DATA["routing"]
-    start = int(time.time()) - (30 * 86400)
-    history = run_lncli("fwdinghistory", f"--start_time={start}", "--max_events=1000")
-    events = history.get("forwarding_events", [])
+    # Fetch all time history
+    history_all = run_lncli("fwdinghistory", "--max_events=10000")
+    events_all = history_all.get("forwarding_events", [])
+    now_ts = int(time.time())
+    events = [e for e in events_all if int(e.get("timestamp",0)) >= now_ts - (30*86400)]
+    events_60 = [e for e in events_all if int(e.get("timestamp",0)) >= now_ts - (60*86400)]
     total_fees = sum(int(e.get("fee", 0)) for e in events)
+    total_fees_60 = sum(int(e.get("fee", 0)) for e in events_60)
+    total_fees_all = sum(int(e.get("fee", 0)) for e in events_all)
     total_vol = sum(int(e.get("amt_out", 0)) for e in events)
     daily_fees = [0] * 30
     daily_volume = [0] * 30
@@ -136,6 +141,8 @@ def get_routing():
             daily_volume[idx] += int(e.get("amt_out", 0))
     return {
         "fees_30d_sats": total_fees,
+        "fees_60d_sats": total_fees_60,
+        "fees_alltime_sats": total_fees_all,
         "volume_30d_btc": round(total_vol / 100_000_000, 8),
         "forwarding_events": events[-10:],
         "daily_fees": daily_fees,

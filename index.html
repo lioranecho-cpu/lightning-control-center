@@ -250,7 +250,7 @@
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-label">Total Capacity</div><div class="stat-value" id="total-capacity">&#8212;</div><div class="stat-sub" id="capacity-usd">&#8212;</div><div class="stat-icon">&#8383;</div></div>
       <div class="stat-card"><div class="stat-label">Active Channels</div><div class="stat-value orange" id="active-channels">&#8212;</div><div class="stat-sub green" id="channels-sub">&#8212;</div><div class="stat-icon">&#9889;</div></div>
-      <div class="stat-card"><div class="stat-label">Routing Fees (30D)</div><div class="stat-value orange" id="routing-fees">&#8212;</div><div class="stat-sub" id="fees-usd">&#8212;</div><div class="stat-icon">&#128200;</div></div>
+      <div class="stat-card"><div class="stat-label">Routing Fees</div><div class="stat-value orange" id="routing-fees">&#8212;</div><div class="stat-sub" id="fees-usd">&#8212;</div><div class="stat-sub" id="fees-60d" style="font-size:10px;color:var(--muted);margin-top:2px;">&#8212;</div><div class="stat-sub" id="fees-alltime" style="font-size:10px;color:var(--muted);">&#8212;</div><div class="stat-icon">&#128200;</div></div>
       <div class="stat-card"><div class="stat-label">Routed Volume (30D)</div><div class="stat-value" id="routed-volume">&#8212;</div><div class="stat-sub" id="volume-usd">&#8212;</div><div class="stat-icon">&#8594;</div></div>
       <div class="stat-card"><div class="stat-label">Wallet Balance</div><div class="stat-value" id="wallet-balance">&#8212;</div><div class="stat-sub" id="wallet-usd">&#8212;</div><div class="stat-icon">&#128091;</div></div>
     </div>
@@ -320,7 +320,9 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('active-channels').textContent=d.channels.num_active;
   document.getElementById('channels-sub').textContent=d.channels.num_active+' channel(s) active';
   document.getElementById('routing-fees').textContent=fmt(d.routing.fees_30d_sats)+' sats';
-  document.getElementById('fees-usd').textContent=toUsd(d.routing.fees_30d_sats,price);
+  document.getElementById('fees-usd').textContent='30d: '+toUsd(d.routing.fees_30d_sats,price);
+  document.getElementById('fees-60d').textContent='60d: '+fmt(d.routing.fees_60d_sats)+' sats';
+  document.getElementById('fees-alltime').textContent='All: '+fmt(d.routing.fees_alltime_sats)+' sats';
   document.getElementById('routed-volume').textContent=d.routing.volume_30d_btc+' BTC';
   document.getElementById('volume-usd').textContent=toUsd(d.routing.volume_30d_btc*100000000,price);
   document.getElementById('wallet-balance').textContent=fmt(d.wallet.confirmed_balance)+' sats';
