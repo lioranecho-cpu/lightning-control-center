@@ -244,7 +244,7 @@
     <!-- Tabs -->
     <div class="tabs">
       <button class="tab active" onclick="showTab(this,'active')">Active</button>
-      <button class="tab" onclick="showTab(this,'pending')">Pending (4)</button>
+      <button class="tab" onclick="showTab(this,'pending')">Pending (<span id="pending-count">0</span>)</button>
       <button class="tab" onclick="showTab(this,'all')">All</button>
     </div>
 
@@ -269,12 +269,7 @@
 const API = 'https://lcc.satslist.shop/api/dashboard';
 function fmt(n){return Number(n).toLocaleString();}
 
-const pendingChannels = [
-  {alias:'Almach', ring:'#24355', capacity:500000, pubkey:'031ff183c34f58...bf62f'},
-  {alias:'LN+ Peer B', ring:'#24356', capacity:500000, pubkey:'Waiting for participant...'},
-  {alias:'LN+ Peer C', ring:'#24357', capacity:500000, pubkey:'Waiting for participant...'},
-  {alias:'LN+ Peer D', ring:'#24358', capacity:500000, pubkey:'Waiting for participant...'},
-];
+const pendingChannels = [];
 
 fetch(API).then(r=>r.json()).then(d=>{
   const price = d.wallet.btc_price_usd;
@@ -297,6 +292,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('total-cap').textContent = fmt(totalCap + 2000000);
   document.getElementById('active-count').textContent = d.channels.num_active;
   document.getElementById('pending-sub').textContent = d.channels.num_pending + ' pending';
+  document.getElementById('pending-count').textContent = d.channels.num_pending;
   document.getElementById('local-total').textContent = fmt(totalLocal);
   document.getElementById('remote-total').textContent = fmt(totalRemote);
 
