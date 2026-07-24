@@ -145,6 +145,35 @@
   .main-content.expanded{margin-left:60px;}
   .sidebar.collapsed ~ .main-content{margin-left:60px;}
 
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    transform:none;
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
 </style>
 </head>
 <body>
@@ -170,7 +199,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
   </nav>
   <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.0</div>
+    <div class="version-badge">LCC v0.1.1</div>
     <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
 <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
@@ -205,10 +234,10 @@
       <div>
         <div class="panel">
           <div class="panel-header"><h3>&#9881; Alert Thresholds</h3></div>
-          <div class="threshold-item"><span class="threshold-label">Min on-chain balance</span><input class="threshold-input" id="thresh-onchain" type="number" value="100000" /><span class="threshold-unit">sats</span></div>
-          <div class="threshold-item"><span class="threshold-label">Channel skew limit</span><input class="threshold-input" id="thresh-skew" type="number" value="90" /><span class="threshold-unit">%</span></div>
-          <div class="threshold-item"><span class="threshold-label">High mempool fee</span><input class="threshold-input" id="thresh-fee" type="number" value="50" /><span class="threshold-unit">sat/vB</span></div>
-          <div class="threshold-item"><span class="threshold-label">Min active channels</span><input class="threshold-input" id="thresh-channels" type="number" value="1" /><span class="threshold-unit">ch</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip" data-tip="Alert when on-chain balance drops below this amount. You need on-chain sats to open new channels"><span class="tip" data-tip="Alert when on-chain balance drops below this amount. You need on-chain sats to open new channels"><span class="tip" data-tip="Alert when on-chain balance drops below this amount. You need on-chain sats to open new channels">Min on-chain balance</span></span></span></span><input class="threshold-input" id="thresh-onchain" type="number" value="100000" /><span class="threshold-unit">sats</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip" data-tip="Alert when one side of a channel exceeds this % of total capacity. Skewed channels can't route in both directions"><span class="tip" data-tip="Alert when one side of a channel exceeds this % of total capacity. Skewed channels can't route in both directions"><span class="tip" data-tip="Alert when one side of a channel exceeds this % of total capacity. Skewed channels can't route in both directions">Channel skew limit</span></span></span></span><input class="threshold-input" id="thresh-skew" type="number" value="90" /><span class="threshold-unit">%</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip" data-tip="Alert when on-chain fees exceed this sat/vB. High fees make channel opens expensive"><span class="tip" data-tip="Alert when on-chain fees exceed this sat/vB. High fees make channel opens expensive"><span class="tip" data-tip="Alert when on-chain fees exceed this sat/vB. High fees make channel opens expensive">High mempool fee</span></span></span></span><input class="threshold-input" id="thresh-fee" type="number" value="50" /><span class="threshold-unit">sat/vB</span></div>
+          <div class="threshold-item"><span class="threshold-label"><span class="tip" data-tip="Alert if active channel count drops below this number. Zero channels means no routing income"><span class="tip" data-tip="Alert if active channel count drops below this number. Zero channels means no routing income"><span class="tip" data-tip="Alert if active channel count drops below this number. Zero channels means no routing income">Min active channels</span></span></span></span><input class="threshold-input" id="thresh-channels" type="number" value="1" /><span class="threshold-unit">ch</span></div>
           <div style="padding:0 16px 16px;"><button class="save-thresh-btn" onclick="saveThresholds()">Save &amp; Re-check</button></div>
         </div>
         <div class="panel">

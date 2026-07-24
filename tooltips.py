@@ -120,7 +120,7 @@ for filepath in files:
     
     # Inject tooltip CSS before </style>
     if '.tip{position:relative' not in content:
-        content = content.replace('  </style>', TOOLTIP_CSS + '  </style>', 1)
+        content = content.replace('</style>', TOOLTIP_CSS + '</style>', 1)
     
     # Apply page-specific replacements
     if fname in REPLACEMENTS:

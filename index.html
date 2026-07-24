@@ -165,6 +165,35 @@
   .main-content.expanded{margin-left:60px;}
   .sidebar.collapsed ~ .main-content{margin-left:60px;}
 
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    transform:none;
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
 </style>
 </head>
 <body>
@@ -190,7 +219,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
   </nav>
   <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.0</div>
+    <div class="version-badge">LCC v0.1.1</div>
     <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
 <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
@@ -247,11 +276,11 @@
             <div class="health-score-label" id="health-score-label">Calculating...</div>
           </div>
           <div class="health-list">
-            <div class="health-item"><span class="health-label">Bitcoin Core</span><span class="health-val ok">&#10003; Synced</span></div>
-            <div class="health-item"><span class="health-label">LND / litd</span><span class="health-val ok">&#10003; Running</span></div>
-            <div class="health-item"><span class="health-label">Lightning Terminal</span><span class="health-val ok">&#10003; Connected</span></div>
-            <div class="health-item"><span class="health-label">RTL</span><span class="health-val ok">&#10003; Running</span></div>
-            <div class="health-item"><span class="health-label">LNbits</span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions">Bitcoin Core</span></span></span></span><span class="health-val ok">&#10003; Synced</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments">LND / litd</span></span></span></span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services">Lightning Terminal</span></span></span></span><span class="health-val ok">&#10003; Connected</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Ride The Lightning — web interface for managing your LND node">RTL</span></span><span class="health-val ok">&#10003; Running</span></div>
+            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Open source Lightning wallet platform running on your node at lnbits.satslist.shop">LNbits</span></span><span class="health-val ok">&#10003; Running</span></div>
             <div class="health-item"><span class="health-label">Mining Pool</span><span class="health-val ok">&#10003; Active</span></div>
             <div class="health-item"><span class="health-label">Uptime</span><span class="health-val ok" id="uptime-val">&#8212;</span></div>
           </div>
