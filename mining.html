@@ -517,7 +517,7 @@ const CMD_COMMANDS = [
   {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
   {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
-  {icon:'🎮', label:'Satoshi Game', hint:'Type "satoshi" anywhere to launch Space Invaders', action:()=>launchGame()},
+
   // Shortcuts reference
   {icon:'⌨️', label:'Shortcut: Command Palette', hint:'Ctrl+Space — open/close this palette', action:()=>{}},
   {icon:'⌨️', label:'Shortcut: Collapse Sidebar', hint:'Click ☰ in sidebar header to toggle', action:()=>{}},
@@ -609,5 +609,13 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
+
+<script>
+function launchGame(){
+  const overlay = document.getElementById('satoshi-game');
+  if(overlay) { overlay.style.display='flex'; }
+  else { location.href='https://lcc.satslist.shop/dashboard'; }
+}
+</script>
 </body>
 </html>
