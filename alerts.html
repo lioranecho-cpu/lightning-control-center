@@ -378,6 +378,7 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 </script>
 <script>
 const CMD_COMMANDS = [
+  // Navigation
   {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='https://lcc.satslist.shop/'},
   {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='https://lcc.satslist.shop/static/wallet.html'},
   {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='https://lcc.satslist.shop/static/channels.html'},
@@ -389,7 +390,21 @@ const CMD_COMMANDS = [
   {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='https://lcc.satslist.shop/static/system.html'},
   {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='https://lcc.satslist.shop/static/settings.html'},
   {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='https://lcc.satslist.shop/static/journal.html'},
-  {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning', action:()=>openDonateModal()},
+  // Quick Actions
+  {icon:'📋', label:'Copy Pubkey', hint:'Copy your node pubkey to clipboard', action:()=>{
+    fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>navigator.clipboard.writeText(d.pubkey).then(()=>alert('Pubkey copied!')));
+  }},
+  {icon:'🔀', label:'Rebalance Channels', hint:'Go to Alerts page to rebalance', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
+  {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
+  {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
+  {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
+  {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
+  {icon:'🎮', label:'Satoshi Game', hint:'Type "satoshi" anywhere to launch Space Invaders', action:()=>launchGame()},
+  // Shortcuts reference
+  {icon:'⌨️', label:'Shortcut: Command Palette', hint:'Ctrl+Space — open/close this palette', action:()=>{}},
+  {icon:'⌨️', label:'Shortcut: Collapse Sidebar', hint:'Click ☰ in sidebar header to toggle', action:()=>{}},
+  {icon:'⌨️', label:'Shortcut: Close Modal', hint:'ESC — close any modal or overlay', action:()=>{}},
+  // Logout
   {icon:'🚪', label:'Logout', hint:'Log out of LCC', action:()=>logout()},
 ];
 let cmdActive = -1;
