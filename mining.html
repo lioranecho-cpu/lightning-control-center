@@ -519,9 +519,6 @@ const CMD_COMMANDS = [
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
 
   // Shortcuts reference
-  {icon:'⌨️', label:'Shortcut: Command Palette', hint:'Ctrl+Space — open/close this palette', action:()=>{}},
-  {icon:'⌨️', label:'Shortcut: Collapse Sidebar', hint:'Click ☰ in sidebar header to toggle', action:()=>{}},
-  {icon:'⌨️', label:'Shortcut: Close Modal', hint:'ESC — close any modal or overlay', action:()=>{}},
   // Logout
   {icon:'🚪', label:'Logout', hint:'Log out of LCC', action:()=>logout()},
 ];
@@ -616,6 +613,10 @@ function launchGame(){
   if(overlay) { overlay.style.display='flex'; }
   else { location.href='https://lcc.satslist.shop/dashboard'; }
 }
+</script>
+
+<script>
+if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
 </script>
 </body>
 </html>
