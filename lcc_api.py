@@ -4,7 +4,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -193,7 +193,9 @@ def get_peers():
 
 
 @app.get("/api/newaddress")
-def get_new_address():
+def get_new_address(request: Request):
+    if not MOCK and request.headers.get("x-api-key") != "lcc-local-only":
+        raise HTTPException(status_code=403, detail="Not authorized")
     if MOCK:
         return {"address": "bc1qmockaddress000000000000000000000000000"}
     result = run_lncli("newaddress", "p2wkh")

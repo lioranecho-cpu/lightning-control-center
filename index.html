@@ -528,5 +528,162 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 </script>
 
+
+<div id="satoshi-game" style="display:none;position:fixed;inset:0;background:#000;z-index:99999;flex-direction:column;align-items:center;justify-content:center;">
+  <canvas id="game-canvas" width="480" height="520" style="border:1px solid #f7931a;"></canvas>
+  <div style="color:#f7931a;font-size:11px;margin-top:8px;font-family:monospace;">ESC to exit • ARROWS to move • SPACE to shoot</div>
+</div>
+
+<script>
+// Easter egg trigger — type "satoshi"
+(function(){
+  let buf = '';
+  document.addEventListener('keydown', function(e){
+    if(document.getElementById('satoshi-game').style.display === 'flex') return;
+    buf += e.key.toLowerCase();
+    if(buf.length > 7) buf = buf.slice(-7);
+    if(buf === 'satoshi') launchGame();
+  });
+})();
+
+function launchGame(){
+  const overlay = document.getElementById('satoshi-game');
+  overlay.style.display = 'flex';
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const W = canvas.width, H = canvas.height;
+  const FIATS = ['$','€','£','¥','₹'];
+  let player, bullets, enemies, score, lives, gameOver, animId, keys;
+
+  function init(){
+    player = {x: W/2-20, y: H-60, w: 40, h: 20, speed: 5};
+    bullets = [];
+    enemies = [];
+    score = 0;
+    lives = 3;
+    gameOver = false;
+    keys = {};
+
+    // Create enemy grid
+    for(let r=0; r<3; r++){
+      for(let c=0; c<8; c++){
+        enemies.push({
+          x: 40 + c*52,
+          y: 60 + r*45,
+          w: 36,
+          h: 28,
+          alive: true,
+          symbol: FIATS[(r+c)%FIATS.length],
+          dx: 1.2
+        });
+      }
+    }
+    if(animId) cancelAnimationFrame(animId);
+    loop();
+  }
+
+  document.addEventListener('keydown', function(e){
+    keys[e.key] = true;
+    if(e.key === 'Escape'){
+      cancelAnimationFrame(animId);
+      document.getElementById('satoshi-game').style.display = 'none';
+    }
+    if(e.key === ' ' && !gameOver){
+      e.preventDefault();
+      bullets.push({x: player.x + player.w/2 - 2, y: player.y, w:4, h:12, dy:-9});
+    }
+    if(e.key === 'Enter' && gameOver) init();
+  });
+  document.addEventListener('keyup', function(e){ keys[e.key] = false; });
+
+  function loop(){
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+
+    if(gameOver){
+      ctx.fillStyle = '#f7931a';
+      ctx.font = 'bold 28px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('GAME OVER', W/2, H/2-20);
+      ctx.font = '16px monospace';
+      ctx.fillText('Score: ' + score + ' sats', W/2, H/2+10);
+      ctx.fillStyle = '#888';
+      ctx.font = '13px monospace';
+      ctx.fillText('ENTER to play again', W/2, H/2+40);
+      return;
+    }
+
+    // Move player
+    if(keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+    if(keys['ArrowRight'] && player.x + player.w < W) player.x += player.speed;
+
+    // Draw player (lightning bolt shape)
+    ctx.fillStyle = '#f7931a';
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡', player.x + player.w/2, player.y + player.h);
+
+    // Move & draw bullets
+    bullets = bullets.filter(b => b.y > 0);
+    bullets.forEach(b=>{
+      b.y += b.dy;
+      ctx.fillStyle = '#f7931a';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+    });
+
+    // Move & draw enemies
+    let hitWall = false;
+    enemies.filter(e=>e.alive).forEach(e=>{
+      e.x += e.dx;
+      if(e.x + e.w >= W || e.x <= 0) hitWall = true;
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 22px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.symbol, e.x + e.w/2, e.y + e.h);
+
+      // Enemy reaches bottom
+      if(e.y + e.h >= player.y){ gameOver = true; }
+    });
+
+    if(hitWall){
+      enemies.filter(e=>e.alive).forEach(e=>{
+        e.dx *= -1;
+        e.y += 18;
+      });
+    }
+
+    // Collision detection
+    bullets.forEach(b=>{
+      enemies.filter(e=>e.alive).forEach(e=>{
+        if(b.x < e.x+e.w && b.x+b.w > e.x && b.y < e.y+e.h && b.y+b.h > e.y){
+          e.alive = false;
+          b.y = -100;
+          score += 21;
+        }
+      });
+    });
+
+    // Score & lives
+    ctx.fillStyle = '#f7931a';
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('⚡ ' + score + ' sats', 10, 20);
+    ctx.textAlign = 'right';
+    ctx.fillText('lives: ' + '♥'.repeat(lives), W-10, 20);
+
+    // Win condition
+    if(enemies.every(e=>!e.alive)){
+      score += 210;
+      init();
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  init();
+}
+</script>
+
 </body>
 </html>

@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  lcc:
+    build: .
+    container_name: lightning-control-center
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ~/.lnd:/root/.lnd:ro
+      - ./data.json:/app/data.json
+    environment:
+      - LCC_MOCK=false
+    network_mode: host

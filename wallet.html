@@ -385,7 +385,7 @@ fetch(API).then(r=>r.json()).then(d=>{
 let currentAddress = '';
 
 function generateAddress() {
-  fetch(ADDR_API).then(r=>r.json()).then(d=>{
+  fetch(ADDR_API, {headers:{'x-api-key':'lcc-local-only'}}).then(r=>r.json()).then(d=>{
     currentAddress = d.address;
     document.getElementById('addr-box').textContent = d.address;
     document.getElementById('qr-box').innerHTML = '&#128247;<br><span style="font-size:9px">QR in Phase 2</span>';
