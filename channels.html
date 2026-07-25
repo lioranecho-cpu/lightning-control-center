@@ -366,35 +366,23 @@ fetch(API).then(r=>r.json()).then(d=>{
 
   // Pending channels
   const pendingEl = document.getElementById('pending-channels');
-  pendingChannels.forEach(ch => {
-    const isAlmach = ch.alias === 'Almach';
-    pendingEl.innerHTML += `
-      <div class="channel-card pending">
-        <div class="ch-top">
-          <div class="ch-peer">
-            <div class="ch-avatar pending-av">${ch.alias[0]}</div>
-            <div>
-              <div class="ch-alias">${ch.alias}</div>
-              <div class="ch-pubkey">${ch.pubkey}</div>
-            </div>
-          </div>
-          <div class="ch-right">
-            <span class="badge pending">pending</span>
-          </div>
-        </div>
-        <div class="balance-bar-wrap">
-          <div class="balance-bar-labels">
-            <span>Capacity: ${fmt(ch.capacity)} sats</span>
-            <span>LN+ ${ch.ring}</span>
-          </div>
-          <div class="balance-bar"><div class="balance-bar-fill" style="width:0%;background:var(--muted)"></div></div>
-        </div>
-        <div class="pending-info">
-          ${isAlmach
-            ? '&#9889; Almach joined — waiting for node to come online to open channel'
-            : '&#9203; Waiting for ring participants to join LN+ swap'}
-        </div>
-      </div>`;
+  const pendingList = d.channels.pending || [];
+  if(pendingList.length === 0){
+    pendingEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">No pending channels</div>';
+  }
+  pendingList.forEach(ch => {
+    const alias = ch.peer_alias || ch.peer_alias || 'Unknown';
+    pendingEl.innerHTML += '<div class="channel-card pending">' +
+      '<div class="ch-top"><div class="ch-peer">' +
+      '<div class="ch-avatar pending-av">' + alias[0].toUpperCase() + '</div>' +
+      '<div><div class="ch-alias">' + alias + '</div>' +
+      '<div class="ch-pubkey">Capacity: ' + fmt(ch.capacity) + ' sats</div></div></div>' +
+      '<div class="ch-right"><span class="badge pending">pending</span></div></div>' +
+      '<div class="balance-bar-wrap"><div class="balance-bar-labels">' +
+      '<span>Local: ' + fmt(ch.local_balance) + ' sats</span>' +
+      '<span>Waiting for confirmation</span></div>' +
+      '<div class="balance-bar"><div class="balance-bar-fill" style="width:50%;background:var(--orange-dim)"></div></div></div>' +
+      '<div class="pending-info">&#9203; Pending on-chain confirmation</div></div>';
   });
 });
 

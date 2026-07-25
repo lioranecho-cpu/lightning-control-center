@@ -111,6 +111,15 @@ def get_channels():
         "num_active": len([c for c in channel_list if c["status"] == "active"]),
         "num_inactive": len([c for c in channel_list if c["status"] == "inactive"]),
         "num_pending": len(pending.get("pending_open_channels", [])),
+        "pending": [
+            {
+                "peer_alias": p.get("channel", {}).get("remote_node_pub", "Unknown")[:16] + "...",
+                "capacity": int(p.get("channel", {}).get("capacity", 0)),
+                "local_balance": int(p.get("channel", {}).get("local_balance", 0)),
+                "status": "pending_open"
+            }
+            for p in pending.get("pending_open_channels", [])
+        ],
         "total_capacity": sum(c["capacity"] for c in channel_list),
         "list": channel_list,
     }
