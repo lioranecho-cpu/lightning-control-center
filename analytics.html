@@ -376,7 +376,7 @@ function loadAnalytics(days) {
     document.getElementById('total-events').textContent = events.length;
     const avg = events.length > 0 ? Math.round(totalFees / events.length) : 0;
     document.getElementById('avg-fee').textContent = avg + ' sats';
-    document.getElementById('fees-trend').textContent = events.length > 0 ? '&#9650; Node is routing!' : 'Waiting for first route';
+    document.getElementById('fees-trend').innerHTML = events.length > 0 ? '&#9650; Node is routing!' : 'Waiting for first route';
 
     // Projections
     const daysActive = Math.max(1, allFees.filter(f=>f>0).length || 1);
@@ -663,5 +663,27 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
 
 
 
+
+<script>
+// Highlight active nav item based on current URL
+(function(){
+  const path = window.location.pathname + window.location.href;
+  const items = document.querySelectorAll('.nav-item');
+  items.forEach(item => {
+    const onclick = item.getAttribute('onclick') || '';
+    if(onclick.includes('dashboard') && (path.includes('dashboard') || path.endsWith('/'))) item.classList.add('active');
+    else if(onclick.includes('channels') && path.includes('channels')) item.classList.add('active');
+    else if(onclick.includes('peers') && path.includes('peers')) item.classList.add('active');
+    else if(onclick.includes('routing') && path.includes('routing')) item.classList.add('active');
+    else if(onclick.includes('wallet') && path.includes('wallet')) item.classList.add('active');
+    else if(onclick.includes('analytics') && path.includes('analytics')) item.classList.add('active');
+    else if(onclick.includes('alerts') && path.includes('alerts')) item.classList.add('active');
+    else if(onclick.includes('mining') && path.includes('mining')) item.classList.add('active');
+    else if(onclick.includes('system') && path.includes('system')) item.classList.add('active');
+    else if(onclick.includes('settings') && path.includes('settings')) item.classList.add('active');
+    else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
+  });
+})();
+</script>
 </body>
 </html>
