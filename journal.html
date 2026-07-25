@@ -634,5 +634,10 @@ function launchGame(){
 <script>
 if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
 </script>
+
+<script>
+// Auto-refresh every 60 seconds
+setTimeout(function(){ location.reload(); }, 60000);
+</script>
 </body>
 </html>
