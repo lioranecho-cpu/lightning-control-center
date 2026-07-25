@@ -635,9 +635,24 @@ function launchGame(){
 if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
 </script>
 
+
+
 <script>
-// Auto-refresh every 60 seconds
-setTimeout(function(){ location.reload(); }, 60000);
+// Countdown timer with tab memory
+var lccCountdown = 60;
+var lccTimer = document.createElement('div');
+lccTimer.id = 'lcc-refresh-timer';
+lccTimer.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:#444;font-family:monospace;z-index:8888;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:4px;';
+lccTimer.textContent = 'Refreshing in 60s';
+document.addEventListener('DOMContentLoaded', function(){
+  document.body.appendChild(lccTimer);
+});
+var lccInterval = setInterval(function(){
+  lccCountdown--;
+  lccTimer.textContent = 'Refreshing in ' + lccCountdown + 's';
+  if(lccCountdown <= 10) lccTimer.style.color = '#f7931a';
+  if(lccCountdown <= 0){ clearInterval(lccInterval); location.reload(); }
+}, 1000);
 </script>
 </body>
 </html>
