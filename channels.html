@@ -388,6 +388,8 @@ fetch(API).then(r=>r.json()).then(d=>{
 
 function showTab(btn, tab) {
   localStorage.setItem('lcc_channels_tab', tab);
+  const timer = document.getElementById('lcc-refresh-timer');
+  if(timer) timer.style.display = (tab === 'pending') ? 'block' : 'none';
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   const activeEl = document.getElementById('active-channels');
@@ -589,6 +591,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   document.body.appendChild(lccTimer);
 });
+var lccTimerVisible = false;
 var lccInterval = setInterval(function(){
   lccCountdown--;
   lccTimer.textContent = 'Refreshing in ' + lccCountdown + 's';
