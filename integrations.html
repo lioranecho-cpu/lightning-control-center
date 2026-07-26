@@ -4,202 +4,240 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>LCC — Integrations</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#0a0d14;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;--text:#e8eaf0;--muted:#6b7280;--orange:#f7931a;--orange-dim:#f7931a44;--green:#22c55e;--blue:#3b82f6;--radius:10px;--font:'Inter',system-ui,sans-serif;}
     body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;}
-    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:width .2s ease;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
     .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
-    .sidebar-logo .bolt{font-size:22px;}
+    .bolt{font-size:22px;}
     .logo-text span{display:block;line-height:1.2;}
     .logo-text span:first-child{font-size:13px;font-weight:700;}
     .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
-    .nav{flex:1;padding:12px 0;overflow-y:auto;min-height:0;}
+    .nav{flex:1;padding:12px 0;overflow-y:auto;}
     .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
     .nav-item:hover{color:var(--text);background:var(--surface2);}
     .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
-    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
     .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
     .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
-    .version-badge{font-size:11px;color:var(--muted);margin-bottom:4px;}
-    .community-badge{font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4;}
-    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
-    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);}
     .main-content{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
     .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
-    .topbar-left h1{font-size:15px;font-weight:700;}
-    .topbar-left p{font-size:11px;color:var(--muted);}
-    .content{padding:24px;flex:1;}
-    .integrations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:24px;}
-    .int-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:16px;transition:border-color .15s;}
-    .int-card:hover{border-color:var(--orange-dim);}
-    .int-icon{font-size:28px;width:44px;text-align:center;flex-shrink:0;}
-    .int-info{flex:1;}
-    .int-name{font-size:14px;font-weight:600;margin-bottom:4px;}
-    .int-desc{font-size:11px;color:var(--muted);line-height:1.4;}
-    .int-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
-    .badge-connected{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
-    .badge-soon{background:rgba(247,147,26,.12);color:var(--orange);border:1px solid var(--orange-dim);}
-    .badge-planned{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid var(--border);}
-    .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;margin-top:24px;}
+    .topbar h1{font-size:15px;font-weight:700;}
+    .topbar p{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;display:flex;justify-content:center;}
+    svg text{font-family:'Inter',system-ui,sans-serif;}
   </style>
 </head>
 <body>
 <aside class="sidebar">
-  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
-  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button onclick="toggleSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;">&#9776;</button></div>
+  <div class="sidebar-logo"><span class="bolt">⚡</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button onclick="toggleSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">☰</button></div>
   <nav class="nav">
     <div class="nav-section">Node</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span><span class="nav-label"> Dashboard</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span><span class="nav-label"> Channels</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span><span class="nav-label"> Peers</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span><span class="nav-label"> Routing</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span><span class="nav-label"> Wallet</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span>🏠</span> Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span>⚡</span> Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span>👥</span> Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span>🔀</span> Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span>👛</span> Wallet</div>
     <div class="nav-section">Tools</div>
-    <div class="nav-item" onclick="openCmd()"><span class="icon">&#9211;</span><span class="nav-label"> Palette </span><span style="font-size:10px;color:#555;margin-left:auto;">Ctrl+Space</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span><span class="nav-label"> Analytics</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span>📊</span> Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span>📓</span> Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span>🔔</span> Alerts</div>
     <div class="nav-section">System</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
-    <div class="nav-item active" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'"><span class="icon">&#128279;</span><span class="nav-label"> Integrations</span></div>
-    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span><span class="nav-label"> SatsList</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span>⛏️</span> Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span>💻</span> System</div>
+    <div class="nav-item active"><span>🔗</span> Integrations</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span>🛒</span> SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span>⚙️</span> Settings</div>
   </nav>
   <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.1</div>
-    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.1</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">Made with ⚡ and ₿<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-    <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
+    <button class="donate-btn">⚡ Donate via Lightning</button>
   </div>
 </aside>
 
 <div class="main-content">
   <div class="topbar">
-    <div class="topbar-left">
-      <h1>&#128279; Integrations</h1>
-      <p>Connect LCC with your Bitcoin and Lightning ecosystem</p>
+    <div>
+      <h1>🔗 Integrations</h1>
+      <p>LCC ecosystem — connected, coming soon, and planned</p>
     </div>
   </div>
   <div class="content">
+    <svg viewBox="0 0 900 1100" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;">
 
-    <div class="section-title">&#10003; Active — Connected to your node</div>
-    <div class="integrations-grid">
-      <div class="int-card">
-        <div class="int-icon">&#9889;</div>
-        <div class="int-info">
-          <div class="int-name">LND</div>
-          <div class="int-desc">Lightning Network Daemon — manages your payment channels and routes Lightning payments</div>
-        </div>
-        <span class="int-badge badge-connected">✓ Connected</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#8383;</div>
-        <div class="int-info">
-          <div class="int-name">Bitcoin Core</div>
-          <div class="int-desc">Full Bitcoin node — validates blocks and transactions on the network</div>
-        </div>
-        <span class="int-badge badge-connected">✓ Connected</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#127744;</div>
-        <div class="int-info">
-          <div class="int-name">RTL</div>
-          <div class="int-desc">Ride The Lightning — web interface for advanced LND management</div>
-        </div>
-        <span class="int-badge badge-connected">✓ Connected</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#9889;</div>
-        <div class="int-info">
-          <div class="int-name">LNbits</div>
-          <div class="int-desc">Open source Lightning wallet platform running on your node</div>
-        </div>
-        <span class="int-badge badge-connected">✓ Connected</span>
-      </div>
-    </div>
+      <!-- LCC Core -->
+      <rect x="350" y="20" width="200" height="50" rx="10" fill="#f7931a" opacity="0.15" stroke="#f7931a" stroke-width="1.5"/>
+      <text x="450" y="42" text-anchor="middle" fill="#f7931a" font-size="13" font-weight="700">⚡ LCC Core</text>
+      <text x="450" y="58" text-anchor="middle" fill="#f7931a" font-size="10">Lightning Control Center</text>
 
-    <div class="section-title">&#9899; Coming Soon — In development</div>
-    <div class="integrations-grid">
-      <div class="int-card">
-        <div class="int-icon">&#127758;</div>
-        <div class="int-info">
-          <div class="int-name">Amboss</div>
-          <div class="int-desc">Lightning node analytics, channel scoring, and routing insights</div>
-        </div>
-        <span class="int-badge badge-soon">Coming Soon</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#9889;</div>
-        <div class="int-info">
-          <div class="int-name">Lightning Network+</div>
-          <div class="int-desc">Ring swap coordination and liquidity management directly in LCC</div>
-        </div>
-        <span class="int-badge badge-soon">Coming Soon</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#128200;</div>
-        <div class="int-info">
-          <div class="int-name">mempool.space</div>
-          <div class="int-desc">Real-time mempool data, fee estimates, and transaction tracking</div>
-        </div>
-        <span class="int-badge badge-soon">Coming Soon</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#128279;</div>
-        <div class="int-info">
-          <div class="int-name">Boltz</div>
-          <div class="int-desc">Non-custodial submarine swaps for on-chain/Lightning liquidity management</div>
-        </div>
-        <span class="int-badge badge-soon">Coming Soon</span>
-      </div>
-    </div>
+      <!-- Vertical line from core -->
+      <line x1="450" y1="70" x2="450" y2="100" stroke="#1e2d45" stroke-width="1.5"/>
 
-    <div class="section-title">&#128203; Planned — On the roadmap</div>
-    <div class="integrations-grid">
-      <div class="int-card">
-        <div class="int-icon">&#128155;</div>
-        <div class="int-info">
-          <div class="int-name">Nostr Wallet Connect</div>
-          <div class="int-desc">Connect Primal, Damus and other Nostr apps directly to your node</div>
-        </div>
-        <span class="int-badge badge-planned">Planned</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#128176;</div>
-        <div class="int-info">
-          <div class="int-name">BTCPay Server</div>
-          <div class="int-desc">Self-hosted Bitcoin payment processor integration</div>
-        </div>
-        <span class="int-badge badge-planned">Planned</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#9889;</div>
-        <div class="int-info">
-          <div class="int-name">Zeus</div>
-          <div class="int-desc">Mobile Lightning wallet connecting directly to your node</div>
-        </div>
-        <span class="int-badge badge-planned">Planned</span>
-      </div>
-      <div class="int-card">
-        <div class="int-icon">&#128196;</div>
-        <div class="int-info">
-          <div class="int-name">Loop</div>
-          <div class="int-desc">Lightning Labs submarine swaps for channel rebalancing</div>
-        </div>
-        <span class="int-badge badge-planned">Planned</span>
-      </div>
-    </div>
+      <!-- Connected Section Label -->
+      <text x="450" y="120" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="700" letter-spacing="1">✓ CONNECTED</text>
+      <line x1="200" y1="130" x2="700" y2="130" stroke="#22c55e" stroke-width="0.5" opacity="0.4"/>
 
-    <div style="margin-top:32px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);text-align:center;">
-      <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Have a suggestion?</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Open an issue on GitHub or reach out on Nostr</div>
-      <button onclick="window.open('https://github.com/lioranecho-cpu/lightning-control-center/issues','_blank')" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);">&#128279; Suggest an Integration</button>
-    </div>
+      <!-- Connected nodes -->
+      <line x1="450" y1="130" x2="150" y2="175" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="130" x2="350" y2="175" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="130" x2="550" y2="175" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="130" x2="750" y2="175" stroke="#1e2d45" stroke-width="1"/>
 
+      <rect x="80" y="175" width="140" height="40" rx="8" fill="#111827" stroke="#22c55e" stroke-width="1"/>
+      <text x="150" y="191" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">⚡ LND</text>
+      <text x="150" y="206" text-anchor="middle" fill="#6b7280" font-size="9">Lightning Daemon</text>
+
+      <rect x="280" y="175" width="140" height="40" rx="8" fill="#111827" stroke="#22c55e" stroke-width="1"/>
+      <text x="350" y="191" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">₿ Bitcoin Core</text>
+      <text x="350" y="206" text-anchor="middle" fill="#6b7280" font-size="9">Full Node</text>
+
+      <rect x="480" y="175" width="140" height="40" rx="8" fill="#111827" stroke="#22c55e" stroke-width="1"/>
+      <text x="550" y="191" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">🌊 RTL</text>
+      <text x="550" y="206" text-anchor="middle" fill="#6b7280" font-size="9">Ride The Lightning</text>
+
+      <rect x="680" y="175" width="140" height="40" rx="8" fill="#111827" stroke="#22c55e" stroke-width="1"/>
+      <text x="750" y="191" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">⚡ LNbits</text>
+      <text x="750" y="206" text-anchor="middle" fill="#6b7280" font-size="9">Wallet Platform</text>
+
+      <!-- Coming Soon Section -->
+      <line x1="450" y1="130" x2="450" y2="260" stroke="#1e2d45" stroke-width="1.5"/>
+      <text x="450" y="278" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="700" letter-spacing="1">⏳ COMING SOON</text>
+      <line x1="200" y1="288" x2="700" y2="288" stroke="#f7931a" stroke-width="0.5" opacity="0.4"/>
+
+      <line x1="450" y1="288" x2="150" y2="330" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="288" x2="320" y2="330" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="288" x2="490" y2="330" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="288" x2="660" y2="330" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="288" x2="800" y2="330" stroke="#1e2d45" stroke-width="1"/>
+
+      <rect x="70" y="330" width="160" height="40" rx="8" fill="#111827" stroke="#f7931a44" stroke-width="1"/>
+      <text x="150" y="346" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="600">🔌 Remote Node</text>
+      <text x="150" y="361" text-anchor="middle" fill="#6b7280" font-size="9">TLS + Macaroon</text>
+
+      <rect x="240" y="330" width="160" height="40" rx="8" fill="#111827" stroke="#f7931a44" stroke-width="1"/>
+      <text x="320" y="346" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="600">📊 mempool.space</text>
+      <text x="320" y="361" text-anchor="middle" fill="#6b7280" font-size="9">Fee & TX tracking</text>
+
+      <rect x="410" y="330" width="160" height="40" rx="8" fill="#111827" stroke="#f7931a44" stroke-width="1"/>
+      <text x="490" y="346" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="600">🔄 Boltz</text>
+      <text x="490" y="361" text-anchor="middle" fill="#6b7280" font-size="9">Submarine Swaps</text>
+
+      <rect x="580" y="330" width="160" height="40" rx="8" fill="#111827" stroke="#f7931a44" stroke-width="1"/>
+      <text x="660" y="346" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="600">🌍 Amboss</text>
+      <text x="660" y="361" text-anchor="middle" fill="#6b7280" font-size="9">Node Analytics</text>
+
+      <rect x="720" y="330" width="160" height="40" rx="8" fill="#111827" stroke="#f7931a44" stroke-width="1"/>
+      <text x="800" y="346" text-anchor="middle" fill="#f7931a" font-size="11" font-weight="600">🐳 Docker Hub</text>
+      <text x="800" y="361" text-anchor="middle" fill="#6b7280" font-size="9">Official Image</text>
+
+      <!-- Planned Section -->
+      <line x1="450" y1="288" x2="450" y2="415" stroke="#1e2d45" stroke-width="1.5"/>
+      <text x="450" y="433" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="700" letter-spacing="1">📋 PLANNED</text>
+      <line x1="150" y1="443" x2="750" y2="443" stroke="#1e2d45" stroke-width="0.5" opacity="0.6"/>
+
+      <line x1="450" y1="443" x2="150" y2="480" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="443" x2="320" y2="480" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="443" x2="490" y2="480" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="443" x2="660" y2="480" stroke="#1e2d45" stroke-width="1"/>
+
+      <rect x="70" y="480" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="150" y="496" text-anchor="middle" fill="#9ca3af" font-size="11">🏠 Umbrel</text>
+      <text x="150" y="511" text-anchor="middle" fill="#6b7280" font-size="9">Home Server</text>
+
+      <rect x="240" y="480" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="320" y="496" text-anchor="middle" fill="#9ca3af" font-size="11">🍓 RaspiBlitz</text>
+      <text x="320" y="511" text-anchor="middle" fill="#6b7280" font-size="9">DIY Node</text>
+
+      <rect x="410" y="480" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="490" y="496" text-anchor="middle" fill="#9ca3af" font-size="11">⚙️ Start9</text>
+      <text x="490" y="511" text-anchor="middle" fill="#6b7280" font-size="9">Sovereign Platform</text>
+
+      <rect x="580" y="480" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="660" y="496" text-anchor="middle" fill="#9ca3af" font-size="11">💳 BTCPay</text>
+      <text x="660" y="511" text-anchor="middle" fill="#6b7280" font-size="9">Payment Processor</text>
+
+      <!-- Wallets row -->
+      <line x1="450" y1="520" x2="450" y2="560" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="220" y1="560" x2="680" y2="560" stroke="#1e2d45" stroke-width="0.5"/>
+      <line x1="220" y1="560" x2="220" y2="590" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="560" x2="450" y2="590" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="680" y1="560" x2="680" y2="590" stroke="#1e2d45" stroke-width="1"/>
+
+      <rect x="140" y="590" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="220" y="606" text-anchor="middle" fill="#9ca3af" font-size="11">⚡ Zeus</text>
+      <text x="220" y="621" text-anchor="middle" fill="#6b7280" font-size="9">Mobile Wallet</text>
+
+      <rect x="370" y="590" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="450" y="606" text-anchor="middle" fill="#9ca3af" font-size="11">🔥 Alby</text>
+      <text x="450" y="621" text-anchor="middle" fill="#6b7280" font-size="9">Browser Extension</text>
+
+      <rect x="600" y="590" width="160" height="40" rx="8" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="680" y="606" text-anchor="middle" fill="#9ca3af" font-size="11">🟣 NWC</text>
+      <text x="680" y="621" text-anchor="middle" fill="#6b7280" font-size="9">Nostr Wallet Connect</text>
+
+      <!-- Pro Features Section -->
+      <line x1="450" y1="630" x2="450" y2="680" stroke="#1e2d45" stroke-width="1.5"/>
+      <text x="450" y="698" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="700" letter-spacing="1">🏢 LCC PRO FEATURES</text>
+      <line x1="150" y1="708" x2="750" y2="708" stroke="#3b82f6" stroke-width="0.5" opacity="0.4"/>
+
+      <line x1="450" y1="708" x2="150" y2="745" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="708" x2="320" y2="745" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="708" x2="490" y2="745" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="708" x2="660" y2="745" stroke="#1e2d45" stroke-width="1"/>
+      <line x1="450" y1="708" x2="800" y2="745" stroke="#1e2d45" stroke-width="1"/>
+
+      <rect x="70" y="745" width="160" height="40" rx="8" fill="#111827" stroke="#3b82f644" stroke-width="1"/>
+      <text x="150" y="761" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">🤖 AI Assistant</text>
+      <text x="150" y="776" text-anchor="middle" fill="#6b7280" font-size="9">Routing Optimization</text>
+
+      <rect x="240" y="745" width="160" height="40" rx="8" fill="#111827" stroke="#3b82f644" stroke-width="1"/>
+      <text x="320" y="761" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">⚖️ Auto-Rebalance</text>
+      <text x="320" y="776" text-anchor="middle" fill="#6b7280" font-size="9">Hourly + Smart Fix</text>
+
+      <rect x="410" y="745" width="160" height="40" rx="8" fill="#111827" stroke="#3b82f644" stroke-width="1"/>
+      <text x="490" y="761" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">💬 Telegram Alerts</text>
+      <text x="490" y="776" text-anchor="middle" fill="#6b7280" font-size="9">Real-time Notifications</text>
+
+      <rect x="580" y="745" width="160" height="40" rx="8" fill="#111827" stroke="#3b82f644" stroke-width="1"/>
+      <text x="660" y="761" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">🖥️ Multi-Node</text>
+      <text x="660" y="776" text-anchor="middle" fill="#6b7280" font-size="9">Manage Many Nodes</text>
+
+      <rect x="720" y="745" width="160" height="40" rx="8" fill="#111827" stroke="#3b82f644" stroke-width="1"/>
+      <text x="800" y="761" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="600">🔌 Plugin System</text>
+      <text x="800" y="776" text-anchor="middle" fill="#6b7280" font-size="9">Extend LCC</text>
+
+      <!-- Legend -->
+      <rect x="50" y="1020" width="12" height="12" rx="2" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="68" y="1031" fill="#22c55e" font-size="10">Connected</text>
+      <rect x="170" y="1020" width="12" height="12" rx="2" fill="none" stroke="#f7931a" stroke-width="1.5"/>
+      <text x="188" y="1031" fill="#f7931a" font-size="10">Coming Soon</text>
+      <rect x="310" y="1020" width="12" height="12" rx="2" fill="none" stroke="#1e2d45" stroke-width="1.5"/>
+      <text x="328" y="1031" fill="#6b7280" font-size="10">Planned</text>
+      <rect x="420" y="1020" width="12" height="12" rx="2" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="438" y="1031" fill="#3b82f6" font-size="10">Pro Feature</text>
+
+      <!-- Suggest box -->
+      <rect x="250" y="850" width="400" height="60" rx="10" fill="#111827" stroke="#1e2d45" stroke-width="1"/>
+      <text x="450" y="876" text-anchor="middle" fill="#e8eaf0" font-size="13" font-weight="600">Have a suggestion?</text>
+      <text x="450" y="895" text-anchor="middle" fill="#6b7280" font-size="10">github.com/lioranecho-cpu/lightning-control-center/issues</text>
+
+    </svg>
   </div>
 </div>
+
+<script>
+function toggleSidebar(){
+  const s = document.querySelector('.sidebar');
+  s.style.width = s.style.width === '60px' ? '220px' : '60px';
+}
+fetch('/api/tier').then(r=>r.json()).then(d=>{
+  const b = document.getElementById('tier-badge');
+  if(b) b.textContent = {community:'🟠 Community',personal:'⚡ Personal',pro:'🏢 Pro'}[d.tier] || '🟠 Community';
+});
+</script>
 </body>
 </html>
