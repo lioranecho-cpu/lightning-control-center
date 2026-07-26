@@ -272,6 +272,10 @@
     </div>
 
     <!-- Tabs -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button onclick="rebalanceNow()" id="rebalance-btn" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">⚖️ Rebalance All Channels</button>
+      <span id="rebalance-status" style="margin-left:12px;font-size:11px;color:var(--muted);align-self:center;"></span>
+    </div>
     <div class="tabs">
       <button class="tab active" onclick="showTab(this,'active')">Active</button>
       <button class="tab" onclick="showTab(this,'pending')">Pending (<span id="pending-count">0</span>)</button>
@@ -360,7 +364,7 @@ fetch(API).then(r=>r.json()).then(d=>{
         </div>
         <div class="ch-actions">
           <button class="action-btn" onclick="alert('Phase 2: Update fee policy')">Update Fees</button>
-          <button class="action-btn" onclick="alert('Phase 2: Rebalance channel')">Rebalance</button>
+          <button class="action-btn" onclick="rebalanceNow()">Rebalance</button>
           <button class="action-btn danger" onclick="alert('Phase 2: Close channel via ProDesk')">Close Channel</button>
         </div>
       </div>`;
@@ -387,6 +391,40 @@ fetch(API).then(r=>r.json()).then(d=>{
       '<div class="pending-info">&#9203; Pending on-chain confirmation</div></div>';
   });
 });
+
+function rebalanceNow(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Auto-rebalancing is a Pro feature. Upgrade at satslist.shop');
+    return;
+  }
+  const btn = document.getElementById('rebalance-btn');
+  const status = document.getElementById('rebalance-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Rebalancing...';
+  status.textContent = '';
+  fetch('https://lcc.satslist.shop/api/rebalance', {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
+      const failed = d.results ? d.results.filter(r=>r.status==='failed').length : 0;
+      if(d.status === 'balanced'){
+        status.textContent = '✅ Already balanced!';
+        status.style.color = 'var(--green)';
+      } else {
+        status.textContent = '✅ ' + success + ' rebalanced, ' + failed + ' skipped';
+        status.style.color = success > 0 ? 'var(--green)' : 'var(--muted)';
+      }
+      btn.disabled = false;
+      btn.textContent = '⚖️ Rebalance All Channels';
+    })
+    .catch(()=>{
+      status.textContent = '❌ Rebalance failed';
+      status.style.color = '#ef4444';
+      btn.disabled = false;
+      btn.textContent = '⚖️ Rebalance All Channels';
+    });
+}
 
 function showTab(btn, tab) {
   localStorage.setItem('lcc_channels_tab', tab);
