@@ -377,14 +377,16 @@ function loadRouting(){
     const label = days == 365 ? 'All time' : 'Last ' + days + ' days';
     document.getElementById('fees-label').textContent = fmt(r.fees_30d_sats) + ' sats (' + label + ')';
     document.getElementById('volume-label').textContent = r.volume_30d_btc + ' BTC (' + label + ')';
-    const content = document.getElementById('fwd-content');
+    const fwdContent = document.getElementById('fwd-content');
     if(r.forwarding_events.length > 0){
       let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
       r.forwarding_events.forEach(e=>{
         html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--muted)">' + (e.chan_id_in||'').toString().slice(-8) + '</td><td style="color:var(--muted)">' + (e.chan_id_out||'').toString().slice(-8) + '</td></tr>';
       });
       html += '</tbody></table>';
-      content.innerHTML = html;
+      fwdContent.innerHTML = html;
+    } else {
+      fwdContent.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9203;</div><div class="empty-title">No routing events for this period</div></div>';
     }
   });
 }
@@ -431,22 +433,6 @@ fetch(API).then(r=>r.json()).then(d=>{
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:6},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#555',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}
   });
 
-  // Show forwarding events if any
-  if(r.forwarding_events.length > 0){
-    const content = document.getElementById('fwd-content');
-    let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
-    r.forwarding_events.forEach(e=>{
-      html += `<tr>
-        <td>${new Date(e.timestamp*1000).toLocaleString()}</td>
-        <td>${fmt(e.amt_out)} sats</td>
-        <td class="fee-earned">+${fmt(e.fee)} sats</td>
-        <td style="color:var(--muted)">${(e.chan_id_in||'').toString().slice(-8)}</td>
-        <td style="color:var(--muted)">${(e.chan_id_out||'').toString().slice(-8)}</td>
-      </tr>`;
-    });
-    html += '</tbody></table>';
-    content.innerHTML = html;
-  }
 });
 
 function updateFees(){

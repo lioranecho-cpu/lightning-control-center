@@ -303,6 +303,8 @@ def get_transactions(limit: int = 10):
 
     # Sort by time descending
     transactions.sort(key=lambda x: x["time"], reverse=True)
+    if limit > 0:
+        transactions = transactions[:limit]
     # Convert unix timestamps to human readable
     now = time_module.time()
     for tx in transactions:
