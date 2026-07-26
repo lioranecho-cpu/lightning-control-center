@@ -577,17 +577,16 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
 
 
 <script>
-// Countdown timer with tab memory
-var lccCountdown = 60;
+document.addEventListener("DOMContentLoaded", function(){
+  var lccCountdown = 60;
+  var lccInterval = setInterval(function(){
+    lccCountdown--;
+    var t = document.getElementById('lcc-refresh-timer');
+    if(t) t.textContent = 'Refreshing in ' + lccCountdown + 's';
+    if(lccCountdown <= 10 && t) t.style.color = '#f7931a';
+    if(lccCountdown <= 0){ clearInterval(lccInterval); location.reload(); }
+  }, 1000);
 });
-var lccTimerVisible = false;
-var lccInterval = setInterval(function(){
-  lccCountdown--;
-  var t = document.getElementById('lcc-refresh-timer');
-  if(t) t.textContent = 'Refreshing in ' + lccCountdown + 's';
-  if(lccCountdown <= 10 && t) t.style.color = '#f7931a';
-  if(lccCountdown <= 0){ clearInterval(lccInterval); location.reload(); }
-}, 1000);
 </script>
 
 <script>
