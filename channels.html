@@ -417,6 +417,7 @@ function rebalanceNow(){
       }
       btn.disabled = false;
       btn.textContent = '⚖️ Rebalance All Channels';
+      setTimeout(()=>location.reload(), 3000);
     })
     .catch(()=>{
       status.textContent = '❌ Rebalance failed';
