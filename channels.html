@@ -529,6 +529,11 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Enter' && cmdActive>=0) items[cmdActive].click();
 });
 document.addEventListener('DOMContentLoaded',()=>{
+  const savedTab = localStorage.getItem('lcc_channels_tab');
+  if(savedTab){
+    const btn = document.querySelector('.tab[onclick*="' + savedTab + '"]');
+    if(btn) showTab(btn, savedTab);
+  }
   const input = document.getElementById('cmd-input');
   if(input) input.addEventListener('input', e=>{ cmdActive=-1; renderCmd(e.target.value); });
 });
@@ -578,11 +583,11 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
 
 <script>
 document.addEventListener("DOMContentLoaded", function(){
-  var lccCountdown = 60;
+  var lccCountdown = 300;
   var lccInterval = setInterval(function(){
     lccCountdown--;
     var t = document.getElementById('lcc-refresh-timer');
-    if(t) t.textContent = 'Refreshing in ' + lccCountdown + 's';
+    if(t) t.textContent = 'Refreshing in ' + (lccCountdown >= 60 ? Math.ceil(lccCountdown/60) + 'm' : lccCountdown + 's') + '';
     if(lccCountdown <= 10 && t) t.style.color = '#f7931a';
     if(lccCountdown <= 0){ clearInterval(lccInterval); location.reload(); }
   }, 1000);
