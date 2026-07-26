@@ -230,7 +230,7 @@ def get_transactions(limit: int = 10):
     
     # Get sent payments
     try:
-        payments = run_lncli("listpayments", f"--max_payments={limit if limit > 0 else 1000}")
+        payments = run_lncli("listpayments", f"--max_payments={max(limit*3, 50) if limit > 0 else 1000}")
         for p in payments.get("payments", []):
             if p.get("status") == "SUCCEEDED":
                 transactions.append({
@@ -246,7 +246,7 @@ def get_transactions(limit: int = 10):
 
     # Get received invoices
     try:
-        invoices = run_lncli("listinvoices", f"--num_max_invoices={limit if limit > 0 else 1000}")
+        invoices = run_lncli("listinvoices", f"--num_max_invoices={max(limit*3, 50) if limit > 0 else 1000}")
         for inv in invoices.get("invoices", []):
             if inv.get("state") == "SETTLED":
                 transactions.append({

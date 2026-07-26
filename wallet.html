@@ -273,6 +273,16 @@
       </div>
     </div>
 
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="panel-header">
+        <h3>&#128279; Recent On-chain Deposits</h3>
+        <span style="font-size:11px;color:var(--muted)">Last 5</span>
+      </div>
+      <div id="onchain-deposits" style="padding:0;">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;">Loading...</div>
+      </div>
+    </div>
+
     <!-- Receive + Send -->
     <div class="two-col">
 
@@ -328,6 +338,13 @@
             <option value="50">Last 50</option>
             <option value="0">All</option>
           </select>
+          <select id="tx-filter" onchange="loadTransactions()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+            <option value="all">All Types</option>
+            <option value="received">Received</option>
+            <option value="sent">Sent</option>
+            <option value="forwarded">Forwarded</option>
+            <option value="onchain">On-chain</option>
+          </select>
           <button onclick="exportWalletCSV()" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);">&#8595; Export CSV</button>
         </div>
       </div>
@@ -363,13 +380,41 @@ const ADDR_API = 'https://lcc.satslist.shop/api/newaddress';
 function fmt(n){return Number(n).toLocaleString();}
 function toUsd(sats,price){return '&#8776; $'+((sats/100000000)*price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
+function loadOnchainDeposits(){
+  fetch('https://lcc.satslist.shop/api/transactions?limit=100')
+    .then(r=>r.json()).then(data=>{
+      const deposits = (data.transactions || [])
+        .filter(t => t.type === 'received' && t.desc && (t.desc.includes('On-chain') || t.desc.includes('sweep') || t.desc.includes('Channel closed')))
+        .slice(0, 5);
+      const el = document.getElementById('onchain-deposits');
+      if(!deposits.length){
+        el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">No on-chain deposits yet</div>';
+        return;
+      }
+      el.innerHTML = deposits.map(t =>
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div>' +
+        '<div><div style="font-size:13px;color:var(--text);">' + t.desc + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);">' + t.time + ' • <span style="color:var(--green);">✓ ' + (t.status||'confirmed') + '</span></div></div></div>' +
+
+        '<div style="font-family:var(--mono);font-size:13px;color:var(--green);">+' + Number(t.amount).toLocaleString() + ' sats</div></div>'
+      ).join('');
+    });
+}
+
 function loadTransactions(){
   const limit = document.getElementById('tx-limit') ? document.getElementById('tx-limit').value : 10;
   fetch('https://lcc.satslist.shop/api/transactions?limit=' + limit)
     .then(r=>r.json()).then(data=>{
       const tbody = document.getElementById('tx-tbody');
       tbody.innerHTML = '';
-      const txs = data.transactions || [];
+      const filter = document.getElementById('tx-filter') ? document.getElementById('tx-filter').value : 'all';
+      let txs = data.transactions || [];
+      if(filter === 'received') txs = txs.filter(t => t.type === 'received');
+      else if(filter === 'sent') txs = txs.filter(t => t.type === 'sent');
+      else if(filter === 'forwarded') txs = txs.filter(t => t.type === 'forwarded');
+      else if(filter === 'onchain') txs = txs.filter(t => t.desc && (t.desc.includes('On-chain') || t.desc.includes('Channel') || t.desc.includes('sweep')));
       if(!txs.length){
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No transactions found</td></tr>';
         return;
@@ -418,6 +463,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
 
   loadTransactions();
+  loadOnchainDeposits();
 });
 
 let currentAddress = '';
