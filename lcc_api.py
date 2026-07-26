@@ -256,6 +256,32 @@ def get_transactions(limit: int = 10):
     except:
         pass
 
+    # Get on-chain transactions
+    try:
+        chaintxns = run_lncli("listchaintxns")
+        for tx in chaintxns.get("transactions", []):
+            amount = int(tx.get("amount", 0))
+            if amount == 0:
+                continue
+            tx_type = "received" if amount > 0 else "sent"
+            label = tx.get("label", "")
+            if not label:
+                label = "On-chain deposit" if amount > 0 else "On-chain payment"
+            # Clean up ugly channel labels
+            if "openchannel" in label: label = "Channel opened on-chain"
+            if "closechannel" in label: label = "Channel closed on-chain"
+            if "sweep" in label: label = "Channel sweep received"
+            if label == "external": label = "On-chain payment"
+            transactions.append({
+                "type": tx_type,
+                "amount": abs(amount),
+                "fee": int(tx.get("total_fees", 0)),
+                "desc": label,
+                "status": "confirmed" if int(tx.get("num_confirmations", 0)) > 0 else "pending",
+                "time": int(tx.get("time_stamp", 0))
+            })
+    except:
+        pass
     # Get routing fees
     try:
         fwd = run_lncli("fwdinghistory", "--max_events=20")
