@@ -125,15 +125,19 @@ def get_channels():
     }
 
 @app.get("/api/routing")
-def get_routing():
+def get_routing(days: int = 30):
     if MOCK:
         return MOCK_DATA["routing"]
-    # Fetch all time history
-    history_all = run_lncli("fwdinghistory", "--max_events=10000")
-    events_all = history_all.get("forwarding_events", [])
     now_ts = int(time.time())
-    events = [e for e in events_all if int(e.get("timestamp",0)) >= now_ts - (30*86400)]
-    events_60 = [e for e in events_all if int(e.get("timestamp",0)) >= now_ts - (60*86400)]
+    start = now_ts - (days * 86400)
+    history = run_lncli("fwdinghistory", f"--start_time={start}", "--max_events=1000")
+    events = history.get("forwarding_events", [])
+    start_60 = now_ts - (60 * 86400)
+    history_60 = run_lncli("fwdinghistory", f"--start_time={start_60}", "--max_events=1000")
+    events_60 = history_60.get("forwarding_events", [])
+    start_all = now_ts - (365 * 86400)
+    history_all = run_lncli("fwdinghistory", f"--start_time={start_all}", "--max_events=5000")
+    events_all = history_all.get("forwarding_events", [])
     total_fees = sum(int(e.get("fee", 0)) for e in events)
     total_fees_60 = sum(int(e.get("fee", 0)) for e in events_60)
     total_fees_all = sum(int(e.get("fee", 0)) for e in events_all)

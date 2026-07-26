@@ -290,7 +290,11 @@
         <div class="panel-header">
           <h3>Forwarding History</h3>
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11px;color:var(--muted)">Last 30 days</span>
+            <select id="routing-period" onchange="loadRouting()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+              <option value="30">Last 30 days</option>
+              <option value="60">Last 60 days</option>
+              <option value="365">All time</option>
+            </select>
             <button onclick="exportRoutingCSV()" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);">&#8595; Export CSV</button>
           </div>
         </div>
@@ -360,6 +364,31 @@
 const API = 'https://lcc.satslist.shop/api/dashboard';
 function fmt(n){return Number(n).toLocaleString();}
 
+function loadRouting(){
+  const days = document.getElementById('routing-period') ? document.getElementById('routing-period').value : 30;
+  fetch('https://lcc.satslist.shop/api/routing?days=' + days).then(r=>r.json()).then(r=>{
+    const price = parseFloat(document.getElementById('btc-price')?.textContent?.replace('$','').replace(',','')) || 65000;
+    document.getElementById('fees-30d').textContent = fmt(r.fees_30d_sats) + ' sats';
+    document.getElementById('fees-usd').textContent = '$' + ((r.fees_30d_sats/100000000)*price).toFixed(4);
+    document.getElementById('volume-30d').textContent = r.volume_30d_btc + ' BTC';
+    document.getElementById('events-30d').textContent = r.forwarding_events.length;
+    const avg = r.forwarding_events.length > 0 ? Math.round(r.fees_30d_sats / r.forwarding_events.length) : 0;
+    document.getElementById('avg-fee').textContent = avg + ' sats';
+    const label = days == 365 ? 'All time' : 'Last ' + days + ' days';
+    document.getElementById('fees-label').textContent = fmt(r.fees_30d_sats) + ' sats (' + label + ')';
+    document.getElementById('volume-label').textContent = r.volume_30d_btc + ' BTC (' + label + ')';
+    const content = document.getElementById('fwd-content');
+    if(r.forwarding_events.length > 0){
+      let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
+      r.forwarding_events.forEach(e=>{
+        html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--muted)">' + (e.chan_id_in||'').toString().slice(-8) + '</td><td style="color:var(--muted)">' + (e.chan_id_out||'').toString().slice(-8) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      content.innerHTML = html;
+    }
+  });
+}
+
 fetch(API).then(r=>r.json()).then(d=>{
   const price = d.wallet.btc_price_usd;
   const total = d.wallet.confirmed_balance + d.wallet.channel_balance;
@@ -371,6 +400,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('mempool-size').textContent = d.mempool.size_mb + ' MB';
   document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
   document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
+  loadRouting();
 
   // Routing stats
   const r = d.routing;
