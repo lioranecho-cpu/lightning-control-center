@@ -25,7 +25,8 @@ MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))
 
 def run_lncli(*args):
     try:
-        result = subprocess.run(["lncli"] + list(args), capture_output=True, text=True, timeout=10)
+        timeout = 60 if "sendpayment" in args else 10
+        result = subprocess.run(["lncli"] + list(args), capture_output=True, text=True, timeout=timeout)
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"lncli error: {result.stderr.strip()}")
         return json.loads(result.stdout)
@@ -418,6 +419,75 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 @app.get("/dashboard")
 def dashboard():
     return FileResponse("index.html")
+
+@app.post("/api/rebalance")
+def rebalance_channels():
+    if MOCK:
+        return {"status": "mock", "message": "Rebalance simulated"}
+    try:
+        # Get all channels
+        channels = run_lncli("listchannels")["channels"]
+        results = []
+        
+        # Find overfull (>80%) and underfull (<20%) channels
+        overfull = [c for c in channels if int(c["capacity"]) > 0 and 
+                    int(c["local_balance"]) / int(c["capacity"]) > 0.80]
+        underfull = [c for c in channels if int(c["capacity"]) > 0 and 
+                     int(c["local_balance"]) / int(c["capacity"]) < 0.20]
+        
+        if not overfull or not underfull:
+            return {"status": "balanced", "message": "No rebalancing needed", "results": []}
+        
+        for src in overfull:
+            for dst in underfull:
+                src_cap = int(src["capacity"])
+                src_local = int(src["local_balance"])
+                dst_cap = int(dst["capacity"])
+                dst_local = int(dst["local_balance"])
+                
+                # Calculate amount to rebalance (move toward 50%)
+                amount = min(
+                    src_local - int(src_cap * 0.50),  # excess in source
+                    int(dst_cap * 0.50) - dst_local,  # deficit in destination
+                    50000  # max per rebalance
+                )
+                
+                if amount < 1000:
+                    continue
+                
+                try:
+                    # Create invoice to self
+                    invoice = run_lncli("addinvoice", f"--amt={amount}")
+                    payment_request = invoice.get("payment_request")
+                    
+                    # Pay via circular route using last_hop
+                    result = run_lncli(
+                        "sendpayment",
+                        "--pay_req=" + payment_request,
+                        "--last_hop=" + dst["remote_pubkey"],
+                        "--allow_self_payment",
+                        "--force",
+                        "--timeout=30s",
+                        "--json"
+                    )
+                    results.append({
+                        "from": src["remote_pubkey"][:16],
+                        "to": dst["remote_pubkey"][:16],
+                        "amount": amount,
+                        "status": "success"
+                    })
+                except Exception as e:
+                    results.append({
+                        "from": src["remote_pubkey"][:16],
+                        "to": dst["remote_pubkey"][:16],
+                        "amount": amount,
+                        "status": "failed",
+                        "error": str(e)
+                    })
+        
+        return {"status": "done", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/tier")
 def get_tier():
