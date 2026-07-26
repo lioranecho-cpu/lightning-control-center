@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LCC — Integrations</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0a0d14;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;--text:#e8eaf0;--muted:#6b7280;--orange:#f7931a;--orange-dim:#f7931a44;--green:#22c55e;--blue:#3b82f6;--radius:10px;--font:'Inter',system-ui,sans-serif;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:width .2s ease;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text span{display:block;line-height:1.2;}
+    .logo-text span:first-child{font-size:13px;font-weight:700;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;overflow-y:auto;min-height:0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:11px;color:var(--muted);margin-bottom:4px;}
+    .community-badge{font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main-content{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:15px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .integrations-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:24px;}
+    .int-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:16px;transition:border-color .15s;}
+    .int-card:hover{border-color:var(--orange-dim);}
+    .int-icon{font-size:28px;width:44px;text-align:center;flex-shrink:0;}
+    .int-info{flex:1;}
+    .int-name{font-size:14px;font-weight:600;margin-bottom:4px;}
+    .int-desc{font-size:11px;color:var(--muted);line-height:1.4;}
+    .int-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+    .badge-connected{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+    .badge-soon{background:rgba(247,147,26,.12);color:var(--orange);border:1px solid var(--orange-dim);}
+    .badge-planned{background:rgba(107,114,128,.12);color:var(--muted);border:1px solid var(--border);}
+    .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;margin-top:24px;}
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button onclick="toggleSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;">&#9776;</button></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span><span class="nav-label"> Dashboard</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span><span class="nav-label"> Channels</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span><span class="nav-label"> Peers</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span><span class="nav-label"> Routing</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span><span class="nav-label"> Wallet</span></div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="openCmd()"><span class="icon">&#9211;</span><span class="nav-label"> Palette </span><span style="font-size:10px;color:#555;margin-left:auto;">Ctrl+Space</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span><span class="nav-label"> Analytics</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
+    <div class="nav-item active" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'"><span class="icon">&#128279;</span><span class="nav-label"> Integrations</span></div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span><span class="nav-label"> SatsList</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.1</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
+    <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
+  </div>
+</aside>
+
+<div class="main-content">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>&#128279; Integrations</h1>
+      <p>Connect LCC with your Bitcoin and Lightning ecosystem</p>
+    </div>
+  </div>
+  <div class="content">
+
+    <div class="section-title">&#10003; Active — Connected to your node</div>
+    <div class="integrations-grid">
+      <div class="int-card">
+        <div class="int-icon">&#9889;</div>
+        <div class="int-info">
+          <div class="int-name">LND</div>
+          <div class="int-desc">Lightning Network Daemon — manages your payment channels and routes Lightning payments</div>
+        </div>
+        <span class="int-badge badge-connected">✓ Connected</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#8383;</div>
+        <div class="int-info">
+          <div class="int-name">Bitcoin Core</div>
+          <div class="int-desc">Full Bitcoin node — validates blocks and transactions on the network</div>
+        </div>
+        <span class="int-badge badge-connected">✓ Connected</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#127744;</div>
+        <div class="int-info">
+          <div class="int-name">RTL</div>
+          <div class="int-desc">Ride The Lightning — web interface for advanced LND management</div>
+        </div>
+        <span class="int-badge badge-connected">✓ Connected</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#9889;</div>
+        <div class="int-info">
+          <div class="int-name">LNbits</div>
+          <div class="int-desc">Open source Lightning wallet platform running on your node</div>
+        </div>
+        <span class="int-badge badge-connected">✓ Connected</span>
+      </div>
+    </div>
+
+    <div class="section-title">&#9899; Coming Soon — In development</div>
+    <div class="integrations-grid">
+      <div class="int-card">
+        <div class="int-icon">&#127758;</div>
+        <div class="int-info">
+          <div class="int-name">Amboss</div>
+          <div class="int-desc">Lightning node analytics, channel scoring, and routing insights</div>
+        </div>
+        <span class="int-badge badge-soon">Coming Soon</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#9889;</div>
+        <div class="int-info">
+          <div class="int-name">Lightning Network+</div>
+          <div class="int-desc">Ring swap coordination and liquidity management directly in LCC</div>
+        </div>
+        <span class="int-badge badge-soon">Coming Soon</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#128200;</div>
+        <div class="int-info">
+          <div class="int-name">mempool.space</div>
+          <div class="int-desc">Real-time mempool data, fee estimates, and transaction tracking</div>
+        </div>
+        <span class="int-badge badge-soon">Coming Soon</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#128279;</div>
+        <div class="int-info">
+          <div class="int-name">Boltz</div>
+          <div class="int-desc">Non-custodial submarine swaps for on-chain/Lightning liquidity management</div>
+        </div>
+        <span class="int-badge badge-soon">Coming Soon</span>
+      </div>
+    </div>
+
+    <div class="section-title">&#128203; Planned — On the roadmap</div>
+    <div class="integrations-grid">
+      <div class="int-card">
+        <div class="int-icon">&#128155;</div>
+        <div class="int-info">
+          <div class="int-name">Nostr Wallet Connect</div>
+          <div class="int-desc">Connect Primal, Damus and other Nostr apps directly to your node</div>
+        </div>
+        <span class="int-badge badge-planned">Planned</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#128176;</div>
+        <div class="int-info">
+          <div class="int-name">BTCPay Server</div>
+          <div class="int-desc">Self-hosted Bitcoin payment processor integration</div>
+        </div>
+        <span class="int-badge badge-planned">Planned</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#9889;</div>
+        <div class="int-info">
+          <div class="int-name">Zeus</div>
+          <div class="int-desc">Mobile Lightning wallet connecting directly to your node</div>
+        </div>
+        <span class="int-badge badge-planned">Planned</span>
+      </div>
+      <div class="int-card">
+        <div class="int-icon">&#128196;</div>
+        <div class="int-info">
+          <div class="int-name">Loop</div>
+          <div class="int-desc">Lightning Labs submarine swaps for channel rebalancing</div>
+        </div>
+        <span class="int-badge badge-planned">Planned</span>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);text-align:center;">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Have a suggestion?</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Open an issue on GitHub or reach out on Nostr</div>
+      <button onclick="window.open('https://github.com/lioranecho-cpu/lightning-control-center/issues','_blank')" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);">&#128279; Suggest an Integration</button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
