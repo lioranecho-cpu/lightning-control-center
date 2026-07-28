@@ -263,6 +263,25 @@
           </div>
         </div>
 
+        <!-- Auto-Rebalance Schedule -->
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-header"><h3>&#9878; Auto-Rebalance Schedule</h3></div>
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="form-label">Rebalance Interval</label>
+              <select class="form-input" id="rebalance-schedule">
+                <option value="0">Off — Manual only</option>
+                <option value="6">Every 6 hours</option>
+                <option value="12">Every 12 hours</option>
+                <option value="24" selected>Every 24 hours (default)</option>
+                <option value="48">Every 48 hours</option>
+              </select>
+            </div>
+            <button class="btn btn-orange" onclick="saveRebalanceSchedule()">Save Schedule</button>
+            <div id="rebalance-schedule-feedback" style="margin-top:10px;font-size:12px;"></div>
+          </div>
+        </div>
+
         <!-- Session -->
         <div class="panel">
           <div class="panel-header"><h3>&#128336; Session</h3></div>
@@ -473,6 +492,25 @@ function changePassword() {
   fb.style.height = 'auto';
 }
 
+function saveRebalanceSchedule(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    document.getElementById('rebalance-schedule-feedback').textContent = '⚡ Auto-rebalance is a Pro feature. Upgrade at satslist.shop';
+    return;
+  }
+  const hours = document.getElementById('rebalance-schedule').value;
+  fetch('https://lcc.satslist.shop/api/settings/rebalance?hours=' + hours, {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      const fb = document.getElementById('rebalance-schedule-feedback');
+      fb.style.color = 'var(--green)';
+      fb.textContent = hours == 0 ? '✅ Auto-rebalance disabled' : '✅ Auto-rebalance set to every ' + hours + ' hours';
+    })
+    .catch(()=>{
+      document.getElementById('rebalance-schedule-feedback').textContent = '❌ Failed to save';
+    });
+}
+
 function saveSessionSettings() {
   const duration = document.getElementById('session-duration').value;
   const s = getSettings();
@@ -542,6 +580,12 @@ loadSettings();
 
 function checkSession(){const s=localStorage.getItem('lcc_session');if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}try{const{expires}=JSON.parse(s);if(Date.now()>expires){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}}catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}}
 checkSession();
+// Load current rebalance schedule
+fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>{
+  const hours = d.auto_rebalance_hours || 24;
+  const sel = document.getElementById('rebalance-schedule');
+  if(sel) sel.value = hours;
+});
 setInterval(checkSession,5*60*1000);
 
 function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}

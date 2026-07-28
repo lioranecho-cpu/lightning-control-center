@@ -1,5 +1,6 @@
 
 import subprocess
+import threading
 import json
 import os
 import time
@@ -321,7 +322,8 @@ def get_transactions(limit: int = 10):
 
 @app.get("/api/system")
 def get_system():
-    import subprocess, platform, socket
+    import subprocess
+    import threading, platform, socket
     
     try:
         import psutil
@@ -551,6 +553,14 @@ def rebalance_channels(target_pubkey: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/settings/rebalance")
+def set_rebalance_schedule(hours: int = 24):
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data["auto_rebalance_hours"] = hours
+    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+        json.dump(data, f, indent=2)
+    return {"auto_rebalance_hours": hours, "status": "updated"}
+
 @app.get("/api/tier")
 def get_tier():
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
@@ -569,3 +579,27 @@ def set_tier(key: str):
     with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
         json.dump(data, f, indent=2)
     return {"tier": data["tier"], "status": "activated"}
+
+# Auto-rebalance scheduler
+def auto_rebalance_job():
+    while True:
+        try:
+            settings = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            hours = int(settings.get("auto_rebalance_hours", 24))
+            if hours > 0 and not MOCK:
+                channels = run_lncli("listchannels")["channels"]
+                overfull = [c for c in channels if int(c["capacity"]) > 0 and
+                            int(c["local_balance"]) / int(c["capacity"]) > 0.80]
+                underfull = [c for c in channels if int(c["capacity"]) > 0 and
+                             int(c["local_balance"]) / int(c["capacity"]) < 0.20]
+                if overfull and underfull:
+                    rebalance_channels()
+                wait = hours * 3600
+            else:
+                wait = 3600
+        except:
+            wait = 86400
+        threading.Event().wait(wait)
+
+scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
+scheduler_thread.start()
