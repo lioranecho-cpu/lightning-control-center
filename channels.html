@@ -734,8 +734,17 @@ function closeChannelConfirm(chanPoint, alias){
     alert('Channel closing is a Pro feature. Upgrade at satslist.shop');
     return;
   }
-  if(!confirm('⚠️ Close channel with ' + alias + '?\n\nThis will close the channel on-chain and may take time to confirm.')) return;
-  alert('Channel close submitted for ' + alias + '\n\nCheck LCC Channels page for status.');
+  if(!confirm('⚠️ Close channel with ' + alias + '?\n\nThis will broadcast a closing transaction on-chain. Funds will be returned to your wallet after confirmation.')) return;
+  if(!confirm('⚠️ FINAL CONFIRMATION\n\nClose ' + alias + ' channel?\n\nThis cannot be undone.')) return;
+  fetch('https://lcc.satslist.shop/api/closechannel?chan_point='+encodeURIComponent(chanPoint), {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.status === 'closing'){
+        alert('✅ Channel closing initiated for ' + alias + '\n\nClosing txid: ' + d.txid + '\n\nFunds will return to your wallet after confirmation.');
+        location.reload();
+      }
+    })
+    .catch(()=>alert('❌ Close channel failed — try again or use terminal'));
 }
 </script>
 </body>

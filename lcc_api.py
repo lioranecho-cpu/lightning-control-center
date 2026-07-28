@@ -421,6 +421,20 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 def dashboard():
     return FileResponse("index.html")
 
+@app.post("/api/closechannel")
+def close_channel(chan_point: str, force: bool = False):
+    if MOCK:
+        return {"status": "mock"}
+    try:
+        txid, output = chan_point.split(":")
+        args = ["closechannel", f"--funding_txid={txid}", f"--output_index={output}"]
+        if force:
+            args.append("--force")
+        result = run_lncli(*args)
+        return {"status": "closing", "txid": result.get("closing_txid", "pending")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/feepolicy")
 def get_fee_policy():
     if MOCK:
@@ -458,7 +472,7 @@ def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_de
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/rebalance")
-def rebalance_channels():
+def rebalance_channels(target_pubkey: str = None):
     if MOCK:
         return {"status": "mock", "message": "Rebalance simulated"}
     try:
@@ -471,6 +485,17 @@ def rebalance_channels():
                     int(c["local_balance"]) / int(c["capacity"]) > 0.80]
         underfull = [c for c in channels if int(c["capacity"]) > 0 and 
                      int(c["local_balance"]) / int(c["capacity"]) < 0.20]
+        
+        # If target_pubkey specified, only rebalance that channel
+        if target_pubkey:
+            target = [c for c in channels if c["remote_pubkey"] == target_pubkey]
+            if target:
+                ch = target[0]
+                pct = int(ch["local_balance"]) / int(ch["capacity"])
+                if pct > 0.50:
+                    overfull = [ch]
+                else:
+                    underfull = [ch]
         
         if not overfull or not underfull:
             return {"status": "balanced", "message": "No rebalancing needed", "results": []}
