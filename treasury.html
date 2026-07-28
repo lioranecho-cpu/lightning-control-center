@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LCC — Lightning Treasury</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0a0d14;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;--text:#e8eaf0;--muted:#6b7280;--orange:#f7931a;--orange-dim:#f7931a44;--green:#22c55e;--blue:#3b82f6;--red:#ef4444;--radius:10px;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .bolt{font-size:22px;}
+    .logo-text span{display:block;line-height:1.2;}
+    .logo-text span:first-child{font-size:13px;font-weight:700;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;overflow-y:auto;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);}
+    .main-content{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar h1{font-size:15px;font-weight:700;}
+    .topbar p{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+    .wallet-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+    .wallet-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--orange);}
+    .wc-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;}
+    .wc-value{font-size:28px;font-weight:800;color:var(--orange);font-family:var(--mono);}
+    .wc-usd{font-size:12px;color:var(--muted);margin-top:4px;}
+    .wc-name{font-size:12px;color:var(--text);margin-top:8px;font-weight:600;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .panel-header h3{font-size:13px;font-weight:600;}
+    .payment-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s;}
+    .payment-item:hover{background:var(--surface2);}
+    .payment-item:last-child{border-bottom:none;}
+    .pay-dot{width:8px;height:8px;border-radius:50%;margin-right:10px;flex-shrink:0;}
+    .pay-dot.in{background:var(--green);}
+    .pay-dot.out{background:var(--red);}
+    .pay-memo{font-size:13px;color:var(--text);}
+    .pay-time{font-size:11px;color:var(--muted);margin-top:2px;}
+    .pay-amount{font-family:var(--mono);font-size:13px;font-weight:600;}
+    .pay-amount.in{color:var(--green);}
+    .pay-amount.out{color:var(--red);}
+    .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+    .add-wallet-btn{background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);}
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">⚡</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button onclick="toggleSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">☰</button></div>
+  <nav class="nav">
+    <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'">🏠 Dashboard</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'">⚡ Channels</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'">👥 Peers</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'">🔀 Routing</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'">👛 Wallet</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'">📊 Analytics</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'">📓 Node Journal</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'">🔔 Alerts</div>
+    <div class="nav-item active">💰 Treasury</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'">⛏️ Mining</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'">💻 System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'">🔗 Integrations</div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')">🛒 SatsList</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'">⚙️ Settings</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.1</div>
+    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
+    <button class="donate-btn">⚡ Donate via Lightning</button>
+  </div>
+</aside>
+
+<div class="main-content">
+  <div class="topbar">
+    <div>
+      <h1>💰 Lightning Treasury</h1>
+      <p>Real-time payment monitoring across your Lightning wallets</p>
+    </div>
+    <button class="add-wallet-btn" onclick="addWallet()">+ Add Wallet</button>
+  </div>
+  <div class="content">
+
+    <!-- Wallet Cards -->
+    <div class="wallet-grid" id="wallet-grid">
+      <div class="wallet-card">
+        <div class="wc-label">Total Balance</div>
+        <div class="wc-value" id="total-balance">—</div>
+        <div class="wc-usd" id="total-usd">≈ $—</div>
+        <div class="wc-name">All Wallets Combined</div>
+      </div>
+      <div class="wallet-card" id="lnbits-card">
+        <div class="wc-label">LNbits — SatsList</div>
+        <div class="wc-value" id="lnbits-balance">—</div>
+        <div class="wc-usd" id="lnbits-usd">≈ $—</div>
+        <div class="wc-name">zap@satslist.shop</div>
+      </div>
+      <div class="wallet-card" style="border-style:dashed;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;" onclick="addWallet()">
+        <div style="font-size:24px;color:var(--muted);">+</div>
+        <div style="font-size:12px;color:var(--muted);">Add Wallet</div>
+      </div>
+    </div>
+
+    <!-- Live Payment Feed -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3><span class="live-dot"></span>Live Payment Feed</h3>
+        <span style="font-size:11px;color:var(--muted);" id="last-updated">Loading...</span>
+      </div>
+      <div id="payment-feed">
+        <div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">Loading payments...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const LNBITS_URL = 'https://lnbits.satslist.shop';
+const LNBITS_KEY = '3bd5a6cda60048a39f71d9ada8d3961d';
+let btcPrice = 65000;
+
+function fmt(n){ return Number(n).toLocaleString(); }
+function toUsd(sats){ return '$' + ((sats/100000000)*btcPrice).toFixed(2); }
+function timeAgo(dateStr){
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if(diff < 60) return Math.round(diff) + 's ago';
+  if(diff < 3600) return Math.round(diff/60) + 'm ago';
+  if(diff < 86400) return Math.round(diff/3600) + 'h ago';
+  return Math.round(diff/86400) + 'd ago';
+}
+
+async function loadTreasury(){
+  try{
+    // Get BTC price
+    const nodeResp = await fetch('https://lcc.satslist.shop/api/node');
+    if(nodeResp.ok){
+      const node = await nodeResp.json();
+      btcPrice = node.wallet?.btc_price_usd || 65000;
+    }
+
+    // Get LNbits wallet balance
+    const walletResp = await fetch(LNBITS_URL + '/api/v1/wallet', {
+      headers: {'X-Api-Key': LNBITS_KEY}
+    });
+    const wallet = await walletResp.json();
+    const balanceSats = Math.round(wallet.balance / 1000);
+
+    document.getElementById('lnbits-balance').textContent = fmt(balanceSats) + ' sats';
+    document.getElementById('lnbits-usd').textContent = '≈ ' + toUsd(balanceSats);
+    document.getElementById('total-balance').textContent = fmt(balanceSats) + ' sats';
+    document.getElementById('total-usd').textContent = '≈ ' + toUsd(balanceSats);
+
+    // Get payments
+    const payResp = await fetch(LNBITS_URL + '/api/v1/payments?limit=50', {
+      headers: {'X-Api-Key': LNBITS_KEY}
+    });
+    const payments = await payResp.json();
+
+    const feed = document.getElementById('payment-feed');
+    if(!payments.length){
+      feed.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No payments yet</div>';
+      return;
+    }
+
+    feed.innerHTML = payments.map(p => {
+      const isIn = p.amount > 0;
+      const sats = Math.abs(Math.round(p.amount / 1000));
+      const memo = p.memo || p.extra?.lnaddress || 'Lightning payment';
+      const time = timeAgo(p.created_at);
+      const tag = p.tag || p.extra?.tag || '';
+      const tagBadge = tag ? '<span style="font-size:10px;background:rgba(247,147,26,.1);color:var(--orange);padding:2px 6px;border-radius:4px;margin-left:6px;">' + tag + '</span>' : '';
+      return '<div class="payment-item">' +
+        '<div style="display:flex;align-items:center;flex:1;">' +
+        '<div class="pay-dot ' + (isIn?'in':'out') + '"></div>' +
+        '<div><div class="pay-memo">' + memo + tagBadge + '</div>' +
+        '<div class="pay-time">' + time + '</div></div></div>' +
+        '<div class="pay-amount ' + (isIn?'in':'out') + '">' + (isIn?'+':'-') + fmt(sats) + ' sats</div>' +
+        '</div>';
+    }).join('');
+
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e){
+    console.error(e);
+  }
+}
+
+function addWallet(){
+  const key = prompt('Enter LNbits Invoice/Read API key:');
+  if(key) alert('Multi-wallet support coming in Pro — for now monitoring your primary LNbits wallet.');
+}
+
+function toggleSidebar(){
+  const s = document.querySelector('.sidebar');
+  s.style.width = s.style.width === '60px' ? '220px' : '60px';
+}
+
+fetch('/api/tier').then(r=>r.json()).then(d=>{
+  const b = document.getElementById('tier-badge');
+  if(b) b.textContent = {community:'🟠 Community',personal:'⚡ Personal',pro:'🏢 Pro'}[d.tier] || '🟠 Community';
+});
+
+loadTreasury();
+setInterval(loadTreasury, 30000);
+</script>
+</body>
+</html>
