@@ -158,7 +158,7 @@ def get_routing(days: int = 30):
         "fees_60d_sats": total_fees_60,
         "fees_alltime_sats": total_fees_all,
         "volume_30d_btc": round(total_vol / 100_000_000, 8),
-        "forwarding_events": events[-10:],
+        "forwarding_events": events[-100:],
         "daily_fees": daily_fees,
         "daily_volume": [round(v / 100_000_000, 8) for v in daily_volume],
     }
@@ -198,12 +198,13 @@ def get_peers():
     result = run_lncli("listpeers")
     channels = run_lncli("listchannels")
     channel_pubkeys = {ch.get("remote_pubkey") for ch in channels.get("channels", [])}
+    alias_cache = {ch.get("remote_pubkey"): ch.get("peer_alias", "Unknown") for ch in channels.get("channels", []) if ch.get("peer_alias")}
     peers = []
     for p in result.get("peers", []):
         pubkey = p.get("pub_key")
         peers.append({
             "pub_key": pubkey,
-            "alias": p.get("peer_alias", "Unknown"),
+            "alias": alias_cache.get(p.get("pub_key", ""), "Unknown"),
             "address": p.get("address", ""),
             "bytes_sent": int(p.get("bytes_sent", 0)),
             "bytes_recv": int(p.get("bytes_recv", 0)),
@@ -419,6 +420,22 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 @app.get("/dashboard")
 def dashboard():
     return FileResponse("index.html")
+
+@app.get("/api/feepolicy")
+def get_fee_policy():
+    if MOCK:
+        return {"base_fee_msat": 1000, "fee_rate_ppm": 100, "time_lock_delta": 40}
+    try:
+        report = run_lncli("feereport")
+        fees = report.get("channel_fees", [])
+        if not fees:
+            return {"base_fee_msat": 0, "fee_rate_ppm": 0, "time_lock_delta": 40}
+        # Get most common fee across channels
+        base = int(fees[0].get("base_fee_msat", 0))
+        ppm = int(float(fees[0].get("fee_per_mil", 0)))
+        return {"base_fee_msat": base, "fee_rate_ppm": ppm, "time_lock_delta": 40}
+    except Exception as e:
+        return {"base_fee_msat": 0, "fee_rate_ppm": 0, "time_lock_delta": 40}
 
 @app.post("/api/updatefees")
 def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_delta: int = 40):

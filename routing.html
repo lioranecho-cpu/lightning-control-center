@@ -404,6 +404,11 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('fee-rate').textContent = d.mempool.fee_sat_vbyte + ' sat/vB';
   document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
   loadRouting();
+  // Load current fee policy
+  fetch('https://lcc.satslist.shop/api/feepolicy').then(r=>r.json()).then(d=>{
+    document.getElementById('current-base').textContent = d.base_fee_msat;
+    document.getElementById('current-ppm').textContent = d.fee_rate_ppm;
+  });
 
   // Routing stats
   const r = d.routing;
