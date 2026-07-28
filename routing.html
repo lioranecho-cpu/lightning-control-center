@@ -241,17 +241,17 @@
     <!-- Summary cards -->
     <div class="summary-grid">
       <div class="summary-card">
-        <div class="sc-label"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days">Fees Earned (30D)</span></span></span></div>
+        <div class="sc-label"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days"><span class="tip" data-tip="Total sats earned by forwarding Lightning payments through your node in the last 30 days" id="fees-earned-label">Fees Earned (30D)</span></span></span></div>
         <div class="sc-value orange" id="fees-30d">0 sats</div>
         <div class="sc-sub" id="fees-usd">$0.00</div>
       </div>
       <div class="summary-card">
-        <div class="sc-label"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC">Routed Volume (30D)</span></span></span></div>
+        <div class="sc-label"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC"><span class="tip" data-tip="Total value of payments forwarded through your node in BTC" id="volume-earned-label">Routed Volume (30D)</span></span></span></div>
         <div class="sc-value blue" id="volume-30d">0 BTC</div>
         <div class="sc-sub">payments forwarded</div>
       </div>
       <div class="summary-card">
-        <div class="sc-label">Total Events (30D)</div>
+        <div class="sc-label" id="events-earned-label">Total Events (30D)</div>
         <div class="sc-value" id="events-30d">0</div>
         <div class="sc-sub">forwarding events</div>
       </div>
@@ -379,6 +379,13 @@ function loadRouting(){
     const avg = r.forwarding_events.length > 0 ? Math.round(r.fees_30d_sats / r.forwarding_events.length) : 0;
     document.getElementById('avg-fee').textContent = avg + ' sats';
     const label = days == 365 ? 'All time' : 'Last ' + days + ' days';
+    const shortLabel = days == 365 ? 'All' : days + 'D';
+    const el1 = document.getElementById('fees-earned-label');
+    const el2 = document.getElementById('volume-earned-label');
+    const el3 = document.getElementById('events-earned-label');
+    if(el1) el1.textContent = 'Fees Earned (' + shortLabel + ')';
+    if(el2) el2.textContent = 'Routed Volume (' + shortLabel + ')';
+    if(el3) el3.textContent = 'Total Events (' + shortLabel + ')';
     document.getElementById('fees-label').textContent = fmt(r.fees_30d_sats) + ' sats (' + label + ')';
     document.getElementById('volume-label').textContent = r.volume_30d_btc + ' BTC (' + label + ')';
     const fwdContent = document.getElementById('fwd-content');
