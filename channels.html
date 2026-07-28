@@ -705,7 +705,7 @@ function applyFees(){
   fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40&chan_point='+encodeURIComponent(currentChanPoint), {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
-      status.textContent = '✅ ' + d.message;
+      status.textContent = '✅ Fees updated for ' + document.getElementById('fee-modal-peer').textContent;
       status.style.color = 'var(--green)';
       setTimeout(()=>{ closeFeeModal(); location.reload(); }, 1500);
     })

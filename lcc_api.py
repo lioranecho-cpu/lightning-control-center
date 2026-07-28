@@ -99,14 +99,29 @@ def get_channels():
     active = run_lncli("listchannels")
     pending = run_lncli("pendingchannels")
     channel_list = []
+    # Build fee lookup from feereport using channel_point
+    fee_lookup = {}
+    try:
+        feereport = run_lncli("feereport")
+        for f in feereport.get("channel_fees", []):
+            cp = f.get("channel_point", "")
+            fee_lookup[cp] = {
+                "fee_ppm": int(f.get("fee_per_mil", 0)),
+                "base_fee": int(f.get("base_fee_msat", 0))
+            }
+    except:
+        pass
     for ch in active.get("channels", []):
         channel_list.append({
             "peer_alias": ch.get("peer_alias", ch.get("remote_pubkey", "")[:12] + "..."),
             "capacity": int(ch.get("capacity", 0)),
             "local_balance": int(ch.get("local_balance", 0)),
             "remote_balance": int(ch.get("remote_balance", 0)),
-            "fee_ppm": 0,
-            "base_fee": 0,
+            "fee_ppm": fee_lookup.get(ch.get("channel_point",""), {}).get("fee_ppm", 0),
+            "base_fee": fee_lookup.get(ch.get("channel_point",""), {}).get("base_fee", 0),
+            "channel_point": ch.get("channel_point", ""),
+            "remote_pubkey": ch.get("remote_pubkey", ""),
+            "chan_id": ch.get("chan_id", ""),
             "status": "active" if ch.get("active") else "inactive",
         })
     return {
