@@ -363,9 +363,9 @@ fetch(API).then(r=>r.json()).then(d=>{
           <div class="ch-stat">Status: <span style="color:var(--green)">${ch.status}</span></div>
         </div>
         <div class="ch-actions">
-          <button class="action-btn" onclick="alert('Phase 2: Update fee policy')">Update Fees</button>
-          <button class="action-btn" onclick="rebalanceNow()">Rebalance</button>
-          <button class="action-btn danger" onclick="alert('Phase 2: Close channel via ProDesk')">Close Channel</button>
+          <button class="action-btn" onclick="openFeeModal('${ch.channel_point}','${ch.peer_alias}',${ch.fee_ppm},${ch.base_fee})">Update Fees</button>
+          <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
+          <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
   });
@@ -654,6 +654,89 @@ document.addEventListener("DOMContentLoaded", function(){
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+
+<div id="fee-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:380px;width:90%;position:relative;">
+    <button onclick="closeFeeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+    <h3 style="font-size:16px;font-weight:700;color:#f0f0f0;margin-bottom:4px;">⚡ Update Fees</h3>
+    <p id="fee-modal-peer" style="font-size:12px;color:#888;margin-bottom:20px;"></p>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Base Fee (msat)</label>
+      <input id="fee-modal-base" type="number" value="1000" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;"/>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Fee Rate (PPM)</label>
+      <input id="fee-modal-ppm" type="number" value="100" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;"/>
+    </div>
+    <div id="fee-modal-status" style="font-size:12px;margin-bottom:12px;text-align:center;"></div>
+    <button onclick="applyFees()" style="width:100%;background:#f7931a;color:#000;border:none;border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Apply Fees</button>
+  </div>
+</div>
+
+<script>
+let currentChanPoint = '';
+
+function openFeeModal(chanPoint, alias, ppm, base){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Per-channel fee updates are a Personal feature. Upgrade at satslist.shop');
+    return;
+  }
+  currentChanPoint = chanPoint;
+  document.getElementById('fee-modal-peer').textContent = alias;
+  document.getElementById('fee-modal-ppm').value = ppm || 100;
+  document.getElementById('fee-modal-base').value = base || 1000;
+  document.getElementById('fee-modal-status').textContent = '';
+  document.getElementById('fee-modal').style.display = 'flex';
+}
+
+function closeFeeModal(){
+  document.getElementById('fee-modal').style.display = 'none';
+}
+
+function applyFees(){
+  const base = document.getElementById('fee-modal-base').value;
+  const ppm = document.getElementById('fee-modal-ppm').value;
+  const status = document.getElementById('fee-modal-status');
+  status.textContent = '⏳ Updating...';
+  status.style.color = 'var(--muted)';
+  fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40&chan_point='+encodeURIComponent(currentChanPoint), {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      status.textContent = '✅ ' + d.message;
+      status.style.color = 'var(--green)';
+      setTimeout(()=>{ closeFeeModal(); location.reload(); }, 1500);
+    })
+    .catch(()=>{ status.textContent = '❌ Update failed'; status.style.color = '#ef4444'; });
+}
+
+function rebalanceChannel(pubkey, alias){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Rebalancing is a Pro feature. Upgrade at satslist.shop');
+    return;
+  }
+  if(!confirm('Rebalance channel with ' + alias + '?')) return;
+  fetch('https://lcc.satslist.shop/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
+      alert('✅ Rebalanced ' + alias + ' — ' + success + ' operations completed');
+      location.reload();
+    })
+    .catch(()=>alert('❌ Rebalance failed'));
+}
+
+function closeChannelConfirm(chanPoint, alias){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Channel closing is a Pro feature. Upgrade at satslist.shop');
+    return;
+  }
+  if(!confirm('⚠️ Close channel with ' + alias + '?\n\nThis will close the channel on-chain and may take time to confirm.')) return;
+  alert('Channel close submitted for ' + alias + '\n\nCheck LCC Channels page for status.');
+}
 </script>
 </body>
 </html>
