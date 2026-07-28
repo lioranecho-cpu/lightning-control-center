@@ -420,6 +420,23 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 def dashboard():
     return FileResponse("index.html")
 
+@app.post("/api/updatefees")
+def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_delta: int = 40):
+    if MOCK:
+        return {"status": "mock"}
+    try:
+        fee_rate = fee_rate_ppm / 1_000_000
+        result = run_lncli(
+            "updatechanpolicy",
+            f"--base_fee_msat={base_fee_msat}",
+            f"--fee_rate={fee_rate}",
+            f"--time_lock_delta={time_lock_delta}"
+        )
+        failed = result.get("failed_updates", [])
+        return {"status": "done", "failed": len(failed), "message": f"Updated all channels — {len(failed)} failed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/rebalance")
 def rebalance_channels():
     if MOCK:

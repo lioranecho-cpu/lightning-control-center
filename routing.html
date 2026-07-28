@@ -333,7 +333,7 @@
             <div style="font-size:10px;color:var(--muted);margin-top:4px;">CLTV delta for routed payments</div>
           </div>
           <button class="btn btn-orange" onclick="updateFees()">Update All Channels</button>
-          <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">Phase 2: runs lncli updatechanpolicy on ProDesk</div>
+          <div id="fee-update-status" style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">Phase 2: runs lncli updatechanpolicy on ProDesk</div>
         </div>
       </div>
 
@@ -441,7 +441,23 @@ function updateFees(){
   const ppm = document.getElementById('fee-rate-input').value;
   const tld = document.getElementById('time-lock').value;
   const rate = (parseInt(ppm)/1000000).toFixed(6);
-  alert('Phase 2 — Run on ProDesk:\n\nlncli updatechanpolicy --base_fee_msat '+base+' --fee_rate '+rate+' --time_lock_delta '+tld+' --all');
+  const btn = document.querySelector('.btn.btn-orange');
+  const statusEl = document.getElementById('fee-update-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Updating...';
+  fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+Math.round(parseFloat(rate)*1000000)+'&time_lock_delta='+tld, {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      btn.disabled = false;
+      btn.textContent = 'Update All Channels';
+      if(statusEl) statusEl.innerHTML = '✅ ' + d.message;
+      if(statusEl) statusEl.style.color = 'var(--green)';
+    })
+    .catch(()=>{
+      btn.disabled = false;
+      btn.textContent = 'Update All Channels';
+      if(statusEl){ statusEl.textContent = '❌ Update failed'; statusEl.style.color = '#ef4444'; }
+    });
 }
 
 
