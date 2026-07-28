@@ -421,7 +421,7 @@
               <div class="version-big">v0.1.1</div>
               <div class="version-name">Lightning Control Center</div>
               <div class="version-sub">Built for prodeskltn-node</div>
-              <div class="edition-badge">&#9889; Community Edition</div>
+              <div class="edition-badge" id="about-tier-badge">&#9889; Community Edition</div>
             </div>
             <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.8;">
               <div>&#127968; Built by <a href="https://satslist.shop" target="_blank" style="color:var(--orange);text-decoration:none;">SatsList</a></div>
@@ -640,6 +640,9 @@ const TIER_BADGE = {
 };
 document.addEventListener("DOMContentLoaded", function(){
   fetch('/api/tier').then(r=>r.json()).then(d=>{
+  const labels = {community:'🟠 Community Edition', personal:'⚡ Personal Edition', pro:'🏢 Pro Edition'};
+  const aboutBadge = document.getElementById('about-tier-badge');
+  if(aboutBadge) aboutBadge.textContent = labels[d.tier] || '🟠 Community Edition';
     window.LCC_TIER = d.tier;
     const badge = document.getElementById('tier-badge');
     if(badge) badge.textContent = TIER_BADGE[d.tier] || '🟠 Community';
