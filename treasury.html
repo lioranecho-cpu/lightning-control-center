@@ -51,6 +51,7 @@
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
     .add-wallet-btn{background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);}
   </style>
+<script src="https://cdn.jsdelivr.net/npm/@getalby/sdk@8.0.3/dist/alby-sdk.umd.js"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -196,10 +197,57 @@ async function loadTreasury(){
   }
 }
 
-function addWallet(){
-  const key = prompt('Enter LNbits Invoice/Read API key:');
-  if(key) alert('Multi-wallet support coming in Pro — for now monitoring your primary LNbits wallet.');
+async function addWallet(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier !== 'pro'){
+    alert('Multi-wallet NWC support is a Pro feature. Upgrade at satslist.shop');
+    return;
+  }
+  const nwcUrl = prompt('Paste your Nostr Wallet Connect URL:\n(nostr+walletconnect://...)');
+  if(!nwcUrl || !nwcUrl.startsWith('nostr+walletconnect://')) {
+    alert('Invalid NWC URL');
+    return;
+  }
+  try {
+    const client = new AlbySDK.NWCClient({nostrWalletConnectUrl: nwcUrl});
+    const info = await client.getBalance();
+    const balSats = Math.round(info.balance / 1000);
+    alert('✅ Wallet connected!\nBalance: ' + balSats.toLocaleString() + ' sats');
+    // Store in localStorage for this session
+    localStorage.setItem('lcc_nwc_url', nwcUrl);
+    loadNWCWallet(nwcUrl);
+  } catch(e) {
+    alert('❌ Connection failed: ' + e.message);
+  }
 }
+
+async function loadNWCWallet(nwcUrl){
+  try {
+    const client = new AlbySDK.NWCClient({nostrWalletConnectUrl: nwcUrl});
+    const info = await client.getBalance();
+    const balSats = Math.round(info.balance / 1000);
+    // Add wallet card
+    const grid = document.getElementById('wallet-grid');
+    const existing = document.getElementById('nwc-card');
+    if(existing) existing.remove();
+    const card = document.createElement('div');
+    card.id = 'nwc-card';
+    card.className = 'wallet-card';
+    card.innerHTML = '<div class="wc-label">NWC Wallet</div>' +
+      '<div class="wc-value">' + balSats.toLocaleString() + ' sats</div>' +
+      '<div class="wc-usd">≈ ' + toUsd(balSats) + '</div>' +
+      '<div class="wc-name">Nostr Wallet Connect</div>';
+    grid.insertBefore(card, grid.lastElementChild);
+  } catch(e) {
+    console.error('NWC wallet error:', e);
+  }
+}
+
+// Load saved NWC wallet on page load
+document.addEventListener('DOMContentLoaded', ()=>{
+  const saved = localStorage.getItem('lcc_nwc_url');
+  if(saved) loadNWCWallet(saved);
+});
 
 function toggleSidebar(){
   const s = document.querySelector('.sidebar');
