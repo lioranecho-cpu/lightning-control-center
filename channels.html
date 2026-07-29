@@ -245,7 +245,7 @@
         <h2>Channels</h2>
         <p>Manage your Lightning Network channels and liquidity.</p>
       </div>
-      <button class="btn btn-orange" onclick="alert('Phase 2: Open channel via ProDesk backend')">&#43; Open Channel</button>
+      <button class="btn btn-orange" onclick="openChannelModal()">&#43; Open Channel</button>
     </div>
 
     <!-- Summary -->
@@ -746,6 +746,92 @@ function closeChannelConfirm(chanPoint, alias){
       }
     })
     .catch(()=>alert('❌ Close channel failed — try again or use terminal'));
+}
+</script>
+
+<div id="open-channel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:480px;width:90%;position:relative;">
+    <button onclick="closeOpenChannelModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+    <h3 style="font-size:16px;font-weight:700;color:#f0f0f0;margin-bottom:4px;">⚡ Open New Channel</h3>
+    <p style="font-size:12px;color:#888;margin-bottom:20px;">Connect and open a Lightning channel to a peer</p>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Peer Address (pubkey@host:port)</label>
+      <input id="oc-peer" type="text" placeholder="03abc...@node.example.com:9735" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:monospace;font-size:12px;outline:none;"/>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Local Amount (sats)</label>
+      <input id="oc-amount" type="number" value="1000000" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;"/>
+    </div>
+    <div style="margin-bottom:20px;display:flex;align-items:center;gap:8px;">
+      <input id="oc-private" type="checkbox" style="width:16px;height:16px;cursor:pointer;"/>
+      <label style="font-size:12px;color:#888;cursor:pointer;" for="oc-private">Private channel (not announced to network)</label>
+    </div>
+    <div id="oc-status" style="font-size:12px;margin-bottom:12px;text-align:center;min-height:20px;"></div>
+    <button onclick="submitOpenChannel()" id="oc-submit-btn" style="width:100%;background:#f7931a;color:#000;border:none;border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Open Channel</button>
+  </div>
+</div>
+
+<script>
+function openChannelModal(){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Opening channels from LCC is a Personal feature. Upgrade at satslist.shop');
+    return;
+  }
+  document.getElementById('oc-status').textContent = '';
+  document.getElementById('oc-peer').value = '';
+  document.getElementById('oc-amount').value = '1000000';
+  document.getElementById('oc-private').checked = false;
+  document.getElementById('open-channel-modal').style.display = 'flex';
+}
+
+function closeOpenChannelModal(){
+  document.getElementById('open-channel-modal').style.display = 'none';
+}
+
+function submitOpenChannel(){
+  const peer = document.getElementById('oc-peer').value.trim();
+  const amount = document.getElementById('oc-amount').value;
+  const isPrivate = document.getElementById('oc-private').checked;
+  const status = document.getElementById('oc-status');
+  const btn = document.getElementById('oc-submit-btn');
+
+  if(!peer || !peer.includes('@')){
+    status.style.color = '#ef4444';
+    status.textContent = '❌ Invalid peer address — use pubkey@host:port format';
+    return;
+  }
+  if(!amount || amount < 20000){
+    status.style.color = '#ef4444';
+    status.textContent = '❌ Minimum channel size is 20,000 sats';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Opening channel...';
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Connecting to peer and opening channel...';
+
+  fetch('https://lcc.satslist.shop/api/openchannel?peer_address=' + encodeURIComponent(peer) + '&local_amt=' + amount + '&private=' + isPrivate, {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      btn.disabled = false;
+      btn.textContent = 'Open Channel';
+      if(d.funding_txid){
+        status.style.color = 'var(--green)';
+        status.textContent = '✅ Channel opening! Txid: ' + d.funding_txid.slice(0,16) + '...';
+        setTimeout(()=>{ closeOpenChannelModal(); location.reload(); }, 3000);
+      } else {
+        status.style.color = '#ef4444';
+        status.textContent = '❌ ' + (d.detail || 'Failed to open channel');
+      }
+    })
+    .catch(()=>{
+      btn.disabled = false;
+      btn.textContent = 'Open Channel';
+      status.style.color = '#ef4444';
+      status.textContent = '❌ Connection error — check ProDesk is online';
+    });
 }
 </script>
 </body>

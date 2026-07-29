@@ -398,7 +398,9 @@ function loadOnchainDeposits(){
         '<div style="display:flex;align-items:center;gap:10px;">' +
         '<div style="width:8px;height:8px;border-radius:50%;background:var(--green);"></div>' +
         '<div><div style="font-size:13px;color:var(--text);">' + t.desc + '</div>' +
-        '<div style="font-size:11px;color:var(--muted);">' + t.time + ' • <span style="color:var(--green);">✓ ' + (t.status||'confirmed') + '</span></div></div></div>' +
+        '<div style="font-size:11px;color:var(--muted);">' + t.time + ' • <span style="color:' + (t.status==='pending'?'var(--orange)':'var(--green)') + ';">● ' + (t.status||'confirmed') + '</span></div>' +
+        (t.tx_hash ? '<div style="font-size:10px;color:#444;font-family:monospace;margin-top:2px;cursor:pointer;" onclick="window.open(\'https://mempool.space/tx/' + t.tx_hash + '\')">' + t.tx_hash.slice(0,16) + '...' + t.tx_hash.slice(-8) + ' ↗</div>' : '') +
+        '</div></div></div>' +
 
         '<div style="font-family:var(--mono);font-size:13px;color:var(--green);">+' + Number(t.amount).toLocaleString() + ' sats</div></div>'
       ).join('');

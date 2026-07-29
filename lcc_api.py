@@ -300,7 +300,9 @@ def get_transactions(limit: int = 10):
                 "fee": int(tx.get("total_fees", 0)),
                 "desc": label,
                 "status": "confirmed" if int(tx.get("num_confirmations", 0)) > 0 else "pending",
-                "time": int(tx.get("time_stamp", 0))
+                "time": int(tx.get("time_stamp", 0)),
+                "tx_hash": tx.get("tx_hash", ""),
+                "num_confirmations": int(tx.get("num_confirmations", 0))
             })
     except:
         pass
@@ -438,6 +440,26 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 def dashboard():
     return FileResponse("index.html")
 
+@app.post("/api/openchannel")
+def open_channel(peer_address: str, local_amt: int, private: bool = False):
+    if MOCK:
+        return {"status": "mock"}
+    try:
+        # Connect to peer first
+        try:
+            run_lncli("connect", peer_address)
+        except:
+            pass  # Already connected is fine
+        # Extract pubkey from address
+        pubkey = peer_address.split("@")[0]
+        args = ["openchannel", f"--node_key={pubkey}", f"--local_amt={local_amt}"]
+        if private:
+            args.append("--private")
+        result = run_lncli(*args)
+        return {"status": "pending", "funding_txid": result.get("funding_txid", "")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/closechannel")
 def close_channel(chan_point: str, force: bool = False):
     if MOCK:
@@ -536,7 +558,7 @@ def rebalance_channels(target_pubkey: str = None):
                 
                 try:
                     # Create invoice to self
-                    invoice = run_lncli("addinvoice", f"--amt={amount}")
+                    invoice = run_lncli("addinvoice", f"--amt={amount}", "--memo=LCC Auto-Rebalance")
                     payment_request = invoice.get("payment_request")
                     
                     # Pay via circular route using last_hop
