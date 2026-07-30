@@ -8,357 +8,141 @@
     :root {
       --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
       --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --purple:#8b5cf6;--purple-dim:rgba(139,92,246,.15);
       --text:#f0f0f0;--muted:#888;
       --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
       --radius:10px;
     }
     *{box-sizing:border-box;margin:0;padding:0;}
     body{
-      background:var(--bg);
-      color:var(--text);
-      font-family:var(--font);
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-      overflow:hidden;
+      background:var(--bg);color:var(--text);font-family:var(--font);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      position:relative;overflow:hidden;
     }
-
-    /* Background grid effect */
     body::before{
-      content:'';
-      position:fixed;
-      inset:0;
-      background-image:
-        linear-gradient(rgba(247,147,26,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(247,147,26,.03) 1px, transparent 1px);
-      background-size:40px 40px;
-      pointer-events:none;
+      content:'';position:fixed;inset:0;
+      background-image:linear-gradient(rgba(247,147,26,.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(247,147,26,.03) 1px,transparent 1px);
+      background-size:40px 40px;pointer-events:none;
     }
-
-    /* Glow orb */
     body::after{
-      content:'';
-      position:fixed;
-      top:30%;
-      left:50%;
-      transform:translate(-50%,-50%);
-      width:600px;
-      height:600px;
-      background:radial-gradient(circle, rgba(247,147,26,.06) 0%, transparent 70%);
+      content:'';position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);
+      width:600px;height:600px;
+      background:radial-gradient(circle,rgba(247,147,26,.06) 0%,transparent 70%);
       pointer-events:none;
     }
-
-    .login-wrap{
-      width:100%;
-      max-width:420px;
-      padding:24px;
-      position:relative;
-      z-index:1;
-    }
-
-    /* Logo */
-    .logo{
-      text-align:center;
-      margin-bottom:40px;
-    }
-
-    .logo-icon{
-      width:64px;
-      height:64px;
-      background:rgba(247,147,26,.12);
-      border:1px solid rgba(247,147,26,.3);
-      border-radius:16px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:28px;
-      margin:0 auto 16px;
-    }
-
-    .logo-title{
-      font-size:22px;
-      font-weight:700;
-      color:var(--text);
-      margin-bottom:4px;
-    }
-
-    .logo-sub{
-      font-size:13px;
-      color:var(--muted);
-    }
-
-    .logo-sub span{
-      color:var(--orange);
-    }
-
-    /* Card */
-    .login-card{
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:32px;
-    }
-
-    .card-title{
-      font-size:15px;
-      font-weight:600;
-      margin-bottom:6px;
-    }
-
-    .card-sub{
-      font-size:12px;
-      color:var(--muted);
-      margin-bottom:24px;
-      line-height:1.5;
-    }
-
-    /* Form */
-    .form-group{
-      margin-bottom:16px;
-    }
-
-    .form-label{
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.07em;
-      color:var(--muted);
-      margin-bottom:6px;
-      display:block;
-    }
-
-    .form-input{
-      width:100%;
-      background:var(--surface2);
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:11px 14px;
-      color:var(--text);
-      font-family:var(--font);
-      font-size:14px;
-      outline:none;
-      transition:border-color .15s;
-    }
-
-    .form-input:focus{
-      border-color:var(--orange-dim);
-    }
-
-    .form-input::placeholder{
-      color:var(--muted);
-    }
-
-    .password-wrap{
-      position:relative;
-    }
-
-    .toggle-pw{
-      position:absolute;
-      right:12px;
-      top:50%;
-      transform:translateY(-50%);
-      background:none;
-      border:none;
-      color:var(--muted);
-      cursor:pointer;
-      font-size:14px;
-      padding:4px;
-    }
-
+    .login-wrap{width:100%;max-width:440px;padding:24px;position:relative;z-index:1;}
+    .logo{text-align:center;margin-bottom:40px;}
+    .logo-icon{width:64px;height:64px;background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.3);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;}
+    .logo-title{font-size:22px;font-weight:700;margin-bottom:4px;}
+    .logo-sub{font-size:13px;color:var(--muted);}
+    .logo-sub span{color:var(--orange);}
+    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;}
+    .card-title{font-size:15px;font-weight:600;margin-bottom:6px;}
+    .card-sub{font-size:12px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+    .form-group{margin-bottom:16px;}
+    .form-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;display:block;}
+    .form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .15s;}
+    .form-input:focus{border-color:var(--orange-dim);}
+    .form-input::placeholder{color:var(--muted);}
+    .password-wrap{position:relative;}
+    .toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px;}
     .toggle-pw:hover{color:var(--text);}
-
-    /* Login button */
-    .login-btn{
-      width:100%;
-      background:var(--orange);
-      color:#000;
-      border:none;
-      border-radius:8px;
-      padding:12px;
-      font-family:var(--font);
-      font-size:14px;
-      font-weight:700;
-      cursor:pointer;
-      transition:background .15s;
-      margin-top:8px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-    }
-
+    .login-btn{width:100%;background:var(--orange);color:#000;border:none;border-radius:8px;padding:12px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;}
     .login-btn:hover{background:#e8851a;}
     .login-btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
-
-    /* Error */
-    .error-msg{
-      background:rgba(239,68,68,.1);
-      border:1px solid rgba(239,68,68,.3);
-      border-radius:8px;
-      padding:10px 14px;
-      font-size:12px;
-      color:var(--red);
-      margin-bottom:16px;
-      display:none;
-    }
-
+    .nostr-btn{width:100%;background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);border-radius:8px;padding:12px;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;}
+    .nostr-btn:hover{background:rgba(139,92,246,.25);}
+    .nsec-btn{width:100%;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--font);font-size:12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .nsec-btn:hover{border-color:var(--purple);color:var(--purple);}
+    .error-msg{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:16px;display:none;}
     .error-msg.show{display:block;}
-
-    /* Success */
-    .success-msg{
-      background:rgba(34,197,94,.1);
-      border:1px solid rgba(34,197,94,.3);
-      border-radius:8px;
-      padding:10px 14px;
-      font-size:12px;
-      color:var(--green);
-      margin-bottom:16px;
-      display:none;
-      text-align:center;
-    }
-
+    .success-msg{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:16px;display:none;text-align:center;}
     .success-msg.show{display:block;}
-
-    /* Divider */
-    .divider{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin:20px 0;
-      color:var(--muted);
-      font-size:11px;
-    }
-
-    .divider::before,.divider::after{
-      content:'';
-      flex:1;
-      height:1px;
-      background:var(--border);
-    }
-
-    /* Node info */
-    .node-info{
-      background:var(--surface2);
-      border:1px solid var(--border);
-      border-radius:8px;
-      padding:12px 14px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    .node-dot{
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      background:var(--green);
-      box-shadow:0 0 6px var(--green);
-      flex-shrink:0;
-    }
-
-    .node-alias{
-      font-family:var(--mono);
-      color:var(--orange);
-      font-weight:600;
-    }
-
-    /* Footer */
-    .login-footer{
-      text-align:center;
-      margin-top:24px;
-      font-size:11px;
-      color:var(--muted);
-      line-height:1.6;
-    }
-
-    .login-footer a{
-      color:var(--orange);
-      text-decoration:none;
-    }
-
-    /* Spinner */
+    .divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted);font-size:11px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .node-info{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);}
+    .node-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;}
+    .node-alias{font-family:var(--mono);color:var(--orange);font-weight:600;}
+    .login-footer{text-align:center;margin-top:24px;font-size:11px;color:var(--muted);line-height:1.6;}
+    .login-footer a{color:var(--orange);text-decoration:none;}
+    .nsec-wrap{display:none;margin-top:12px;}
+    .nsec-wrap.show{display:block;}
+    .info-box{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.6;}
+    .info-box strong{color:var(--purple);}
     @keyframes spin{to{transform:rotate(360deg);}}
-    .spinner{
-      width:16px;height:16px;
-      border:2px solid rgba(0,0,0,.3);
-      border-top-color:#000;
-      border-radius:50%;
-      animation:spin .6s linear infinite;
-      display:none;
-    }
+    .spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;display:none;}
     .spinner.show{display:block;}
   </style>
 </head>
 <body>
-
 <div class="login-wrap">
-
-  <!-- Logo -->
   <div class="logo">
-    <div class="logo-icon">&#9889;</div>
+    <div class="logo-icon">⚡</div>
     <div class="logo-title">Lightning Control Center</div>
     <div class="logo-sub">Manage your Bitcoin &amp; <span>Lightning node</span></div>
   </div>
-
-  <!-- Card -->
   <div class="login-card">
-    <div class="card-title">&#128274; Secure Access</div>
-    <div class="card-sub">Enter your LCC password to access your node dashboard. This session is valid for 24 hours.</div>
+    <div class="card-title">🔒 Secure Access</div>
+    <div class="card-sub">Sign in with Nostr or your LCC password to access your node dashboard.</div>
 
-    <div class="error-msg" id="error-msg">&#10060; Incorrect password. Please try again.</div>
-    <div class="success-msg" id="success-msg">&#10003; Access granted — redirecting to dashboard...</div>
+    <div class="error-msg" id="error-msg">❌ Incorrect password. Please try again.</div>
+    <div class="success-msg" id="success-msg">✅ Access granted — redirecting...</div>
 
+    <!-- Nostr Login -->
+    <button class="nostr-btn" onclick="loginWithNostr()">
+      🟣 Sign in with Nostr
+    </button>
+    <button class="nsec-btn" onclick="toggleNsec()">
+      📋 Use nsec key instead
+    </button>
+    <div class="nsec-wrap" id="nsec-wrap">
+      <div class="info-box"><strong>Note:</strong> Paste your nsec only on your own device. Never share it.</div>
+      <div class="form-group">
+        <label class="form-label">nsec private key</label>
+        <input class="form-input" type="password" id="nsec-input" placeholder="nsec1...">
+      </div>
+      <button class="nostr-btn" onclick="loginWithNsec()">⚡ Verify & Login</button>
+    </div>
+
+    <div class="divider">or use password</div>
+
+    <!-- Password Login -->
     <div class="form-group">
       <label class="form-label">Password</label>
       <div class="password-wrap">
-        <input
-          class="form-input"
-          type="password"
-          id="password"
-          placeholder="Enter your LCC password"
-          onkeydown="if(event.key==='Enter')login()"
-          autofocus
-        />
-        <button class="toggle-pw" onclick="togglePw()" id="toggle-btn">&#128065;</button>
+        <input class="form-input" type="password" id="password" placeholder="Enter your LCC password" onkeydown="if(event.key==='Enter')login()" autofocus/>
+        <button class="toggle-pw" onclick="togglePw()" id="toggle-btn">👁</button>
       </div>
     </div>
-
     <button class="login-btn" id="login-btn" onclick="login()">
       <div class="spinner" id="spinner"></div>
-      <span id="btn-text">&#9889; Access Node</span>
+      <span id="btn-text">⚡ Access Node</span>
     </button>
 
     <div class="divider">node identity</div>
-
     <div class="node-info">
       <div class="node-dot"></div>
-      <div>
-        <span class="node-alias">prodeskltn-node</span>
-        &nbsp;&mdash;&nbsp;
-        <span>lcc.satslist.shop</span>
-      </div>
+      <div><span class="node-alias">prodeskltn-node</span> &mdash; <span>lcc.satslist.shop</span></div>
     </div>
   </div>
-
   <div class="login-footer">
-    LCC v0.1.2 &middot; Community Edition<br>
-    Made with &#9889; and &#8383; for the Bitcoin community<br>
+    LCC v0.1.2 &middot; Pro Edition<br>
+    Made with ⚡ and ₿ for the Bitcoin community<br>
     <a href="https://satslist.shop" target="_blank">satslist.shop</a>
   </div>
-
 </div>
 
 <script>
-  // Simple password check — Phase 2 replaces this with backend JWT auth
-  // Change this to your preferred password
-  const LCC_PASSWORD_HASH = 'Maiale6544$'; // Change this!
   const SESSION_KEY = 'lcc_session';
-  const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  const SESSION_DURATION = 24 * 60 * 60 * 1000;
+  const LCC_PASSWORD = ''; // password verified server-side
+  // Authorized Nostr pubkeys (hex) — add yours here
+  const AUTHORIZED_PUBKEYS = [
+    'e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd',
+    '63ea8c2d54dd4f2f25bdb7e77e6e71b5613f8de2de4c6edc3627520321cbc60c'
+  ];
 
-  // Check if already logged in
   function checkSession() {
     const session = localStorage.getItem(SESSION_KEY);
     if(session) {
@@ -373,9 +157,75 @@
     }
     return false;
   }
+  checkSession();
 
-  if(!checkSession()) {
-    // Not logged in — show the form
+  function grantAccess(method) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      expires: Date.now() + SESSION_DURATION,
+      node: 'prodeskltn-node',
+      method: method
+    }));
+    document.getElementById('success-msg').classList.add('show');
+    setTimeout(() => {
+      window.location.href = 'https://lcc.satslist.shop/dashboard';
+    }, 1000);
+  }
+
+  async function loginWithNostr() {
+    const errorMsg = document.getElementById('error-msg');
+    errorMsg.classList.remove('show');
+    if(!window.nostr) {
+      errorMsg.textContent = '❌ No Nostr extension found. Install Alby or nos2x, or use nsec below.';
+      errorMsg.classList.add('show');
+      return;
+    }
+    try {
+      const pubkey = await window.nostr.getPublicKey();
+      if(AUTHORIZED_PUBKEYS.includes(pubkey)) {
+        grantAccess('nostr-nip07');
+      } else {
+        errorMsg.textContent = '❌ This Nostr pubkey is not authorized to access this node.';
+        errorMsg.classList.add('show');
+      }
+    } catch(e) {
+      errorMsg.textContent = '❌ Nostr sign-in cancelled or failed.';
+      errorMsg.classList.add('show');
+    }
+  }
+
+  function toggleNsec() {
+    const wrap = document.getElementById('nsec-wrap');
+    wrap.classList.toggle('show');
+  }
+
+  async function loginWithNsec() {
+    const nsec = document.getElementById('nsec-input').value.trim();
+    const errorMsg = document.getElementById('error-msg');
+    errorMsg.classList.remove('show');
+    if(!nsec.startsWith('nsec1')) {
+      errorMsg.textContent = '❌ Invalid nsec — must start with nsec1';
+      errorMsg.classList.add('show');
+      return;
+    }
+    // Derive pubkey from nsec using nostr-tools if available
+    // For now verify against stored node nsec
+    try {
+      const resp = await fetch('https://lcc.satslist.shop/api/nostr/verify-nsec', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({nsec})
+      });
+      const data = await resp.json();
+      if(data.authorized) {
+        grantAccess('nostr-nsec');
+      } else {
+        errorMsg.textContent = '❌ This nsec is not authorized.';
+        errorMsg.classList.add('show');
+      }
+    } catch(e) {
+      errorMsg.textContent = '❌ Verification failed.';
+      errorMsg.classList.add('show');
+    }
   }
 
   function login() {
@@ -384,40 +234,34 @@
     const spinner = document.getElementById('spinner');
     const btnText = document.getElementById('btn-text');
     const errorMsg = document.getElementById('error-msg');
-    const successMsg = document.getElementById('success-msg');
-
     if(!pw) return;
-
-    // Show loading state
     btn.disabled = true;
     spinner.classList.add('show');
     btnText.textContent = 'Verifying...';
     errorMsg.classList.remove('show');
-
-    // Simulate a small delay for UX
-    setTimeout(() => {
-      if(pw === LCC_PASSWORD_HASH) {
-        // Save session
-        localStorage.setItem(SESSION_KEY, JSON.stringify({
-          expires: Date.now() + SESSION_DURATION,
-          node: 'prodeskltn-node'
-        }));
-        spinner.classList.remove('show');
-        btnText.textContent = 'Access granted!';
-        successMsg.classList.add('show');
-        setTimeout(() => {
-          window.location.href = 'https://lcc.satslist.shop/dashboard';
-        }, 1000);
+    fetch('https://lcc.satslist.shop/api/auth/verify-password', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: pw})
+    }).then(r=>r.json()).then(data => {
+      if(data.authorized) {
+        grantAccess('password');
       } else {
-        // Wrong password
         btn.disabled = false;
         spinner.classList.remove('show');
-        btnText.textContent = '&#9889; Access Node';
+        btnText.innerHTML = '⚡ Access Node';
+        errorMsg.textContent = '❌ Incorrect password. Please try again.';
         errorMsg.classList.add('show');
         document.getElementById('password').value = '';
         document.getElementById('password').focus();
       }
-    }, 600);
+    }).catch(() => {
+      btn.disabled = false;
+      spinner.classList.remove('show');
+      btnText.innerHTML = '⚡ Access Node';
+      errorMsg.textContent = '❌ Server error. Please try again.';
+      errorMsg.classList.add('show');
+    });
   }
 
   function togglePw() {
@@ -425,10 +269,10 @@
     const btn = document.getElementById('toggle-btn');
     if(input.type === 'password') {
       input.type = 'text';
-      btn.textContent = '&#128683;';
+      btn.textContent = '🚫';
     } else {
       input.type = 'password';
-      btn.textContent = '&#128065;';
+      btn.textContent = '👁';
     }
   }
 </script>
