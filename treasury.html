@@ -52,6 +52,7 @@
     .add-wallet-btn{background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);}
   </style>
 <script src="https://cdn.jsdelivr.net/npm/@getalby/sdk@8.0.3/dist/alby-sdk.umd.js"></script>
+  <script src="/static/lcc-theme.js?v=3"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -69,6 +70,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'">📓 Node Journal</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'">🔔 Alerts</div>
     <div class="nav-item active">💰 Treasury</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'">⚡ NWC <span style="font-size:9px;background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.3);color:#f7931a;padding:1px 5px;border-radius:10px;margin-left:4px;">PRO</span></div>
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'">⛏️ Mining</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'">💻 System</div>
@@ -77,9 +79,10 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'">⚙️ Settings</div>
   </nav>
   <div class="sidebar-footer">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.1</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.2</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-    <button class="donate-btn">⚡ Donate via Lightning</button>
+        <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+<button class="donate-btn">⚡ Donate via Lightning</button>
   </div>
 </aside>
 

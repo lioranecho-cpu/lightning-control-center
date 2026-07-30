@@ -28,6 +28,7 @@
     .content{padding:24px;flex:1;display:flex;justify-content:center;}
     svg text{font-family:'Inter',system-ui,sans-serif;}
   </style>
+  <script src="/static/lcc-theme.js?v=3"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -44,6 +45,8 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span>📊</span> Analytics</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span>📓</span> Node Journal</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span>🔔</span> Alerts</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/treasury.html'"><span>💰</span> Treasury</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'"><span>⚡</span> NWC <span style='font-size:9px;background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.3);color:#f7931a;padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></div>
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span>⛏️</span> Mining</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span>💻</span> System</div>
@@ -52,10 +55,11 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span>⚙️</span> Settings</div>
   </nav>
   <div class="sidebar-footer">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.1</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.2</div>
     <div style="font-size:10px;color:var(--muted);margin-bottom:8px;">Made with ⚡ and ₿<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-    <button class="donate-btn">⚡ Donate via Lightning</button>
+        <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+<button class="donate-btn">⚡ Donate via Lightning</button>
   </div>
 </aside>
 

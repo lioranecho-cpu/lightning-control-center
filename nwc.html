@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NWC — LCC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;
+      --orange:#f7931a;--orange-dim:#b36a12;--green:#22c55e;--red:#ef4444;
+      --blue:#3b82f6;--text:#f0f0f0;--muted:#888;
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Courier New',monospace;
+      --radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;min-height:100vh;font-size:14px;}
+    .sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid var(--border);}
+    .sidebar-logo .bolt{font-size:22px;}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2;}
+    .logo-text span:first-child{font-weight:700;font-size:15px;}
+    .logo-text span:last-child{font-size:10px;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;}
+    .nav{flex:1;padding:12px 0;overflow-y:auto;min-height:0;}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .15s;font-size:13.5px;}
+    .nav-item:hover{color:var(--text);background:var(--surface2);}
+    .nav-item.active{color:var(--orange);border-left-color:var(--orange);background:rgba(247,147,26,.06);}
+    .nav-item .icon{font-size:15px;width:18px;text-align:center;}
+    .nav-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:14px 18px 4px;}
+    .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);}
+    .version-badge{font-size:10px;color:var(--muted);margin-bottom:8px;}
+    .community-badge{font-size:10px;color:var(--muted);text-align:center;padding:0 0 6px;line-height:1.5;}
+    .donate-btn{width:100%;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px;border-radius:var(--radius);cursor:pointer;font-size:12px;font-family:var(--font);transition:background .15s;}
+    .donate-btn:hover{background:rgba(247,147,26,.2);}
+    .main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+    .topbar-left h1{font-size:16px;font-weight:700;}
+    .topbar-left p{font-size:11px;color:var(--muted);}
+    .topbar-right{display:flex;align-items:center;gap:20px;}
+    .status-pill{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .status-pill.ok{color:var(--green);}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+    .block-height{font-family:var(--mono);font-size:12px;color:var(--muted);}
+    .block-height span{color:var(--orange);font-weight:600;}
+    .balance-display{text-align:right;}
+    .balance-display .sats{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--orange);}
+    .balance-display .usd{font-size:11px;color:var(--muted);}
+    .content{padding:24px;flex:1;}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;}
+    .page-header h2{font-size:20px;font-weight:700;}
+    .page-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+    .btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .15s;}
+    .btn-orange{background:var(--orange);color:#000;}
+    .btn-orange:hover{background:#e8851a;}
+
+    /* Summary cards */
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+    .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
+    .sc-value{font-family:var(--mono);font-size:22px;font-weight:700;}
+    .sc-value.orange{color:var(--orange);}
+    .sc-value.green{color:var(--green);}
+    .sc-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+    /* Tabs */
+    .tabs{display:flex;gap:4px;margin-bottom:16px;}
+    .tab{padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .tab:hover{color:var(--text);}
+    .tab.active{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600;}
+
+    /* Channel cards */
+    .channel-list{display:flex;flex-direction:column;gap:10px;}
+    .channel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:border-color .15s;}
+    .channel-card:hover{border-color:var(--orange-dim);}
+    .channel-card.pending{border-color:rgba(247,147,26,.3);background:rgba(247,147,26,.03);}
+    .ch-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .ch-peer{display:flex;align-items:center;gap:10px;}
+    .ch-avatar{width:32px;height:32px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;flex-shrink:0;}
+    .ch-avatar.pending-av{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+    .ch-alias{font-weight:600;font-size:14px;}
+    .ch-pubkey{font-size:10px;color:var(--muted);font-family:var(--mono);}
+    .ch-right{display:flex;align-items:center;gap:10px;}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:600;}
+    .badge.active{background:rgba(34,197,94,.12);color:var(--green);}
+    .badge.pending{background:rgba(247,147,26,.12);color:var(--orange);}
+    .badge.inactive{background:rgba(239,68,68,.12);color:var(--red);}
+    .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+    /* Balance bar */
+    .balance-bar-wrap{margin-bottom:10px;}
+    .balance-bar-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);}
+    .balance-bar-labels span:first-child{color:var(--orange);}
+    .balance-bar-labels span:last-child{color:var(--blue);}
+    .balance-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+    .balance-bar-fill{height:100%;background:linear-gradient(to right,var(--orange),var(--orange-dim));border-radius:3px;transition:width .3s;}
+
+    /* Channel stats row */
+    .ch-stats{display:flex;gap:24px;font-size:12px;color:var(--muted);}
+    .ch-stat span{color:var(--text);font-family:var(--mono);}
+
+    /* Actions */
+    .ch-actions{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+    .action-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .action-btn:hover{color:var(--text);border-color:var(--orange-dim);}
+    .action-btn.danger:hover{color:var(--red);border-color:var(--red);}
+
+    /* Pending info */
+    .pending-info{background:rgba(247,147,26,.06);border:1px solid rgba(247,147,26,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--orange);margin-top:8px;}
+
+    /* Status bar */
+    .statusbar{background:var(--surface);border-top:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:32px;}
+    .sb-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+    .sb-icon{font-size:14px;}
+    .sb-val{color:var(--text);font-family:var(--mono);}
+    .sb-label{font-size:10px;}
+
+  /* ── DONATE MODAL ── */
+  .cmd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;align-items:flex-start;justify-content:center;padding-top:120px;}
+  .cmd-overlay.show{display:flex;}
+  .cmd-box{background:#161b27;border:1px solid #f7931a44;border-radius:12px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 24px 64px #000a;}
+  .cmd-input-wrap{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #252d3d;}
+  .cmd-input-wrap span{font-size:16px;}
+  .cmd-input{flex:1;background:transparent;border:none;outline:none;color:#f0f0f0;font-size:15px;font-family:var(--font);}
+  .cmd-input::placeholder{color:#555;}
+  .cmd-results{max-height:320px;overflow-y:auto;}
+  .cmd-item{display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;font-size:13px;color:#ccc;transition:background .1s;}
+  .cmd-item:hover,.cmd-item.active{background:rgba(247,147,26,.08);color:#f7931a;}
+  .cmd-item .cmd-icon{font-size:15px;width:20px;text-align:center;}
+  .cmd-item .cmd-label{flex:1;}
+  .cmd-item .cmd-hint{font-size:11px;color:#555;}
+  .cmd-empty{padding:20px;text-align:center;color:#555;font-size:13px;}
+  .donate-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;}
+  .donate-modal-overlay.show{display:flex;}
+  .donate-modal{background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:320px;width:90%;text-align:center;position:relative;}
+  .donate-modal h3{font-size:16px;font-weight:700;color:#f0f0f0;margin-bottom:4px;}
+  .donate-modal p{font-size:12px;color:#888;margin-bottom:20px;}
+  .donate-qr{width:200px;height:200px;margin:0 auto 16px;border-radius:8px;background:#fff;padding:8px;}
+  .donate-qr img{width:100%;height:100%;}
+  .donate-address{background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;color:#f7931a;margin-bottom:16px;word-break:break-all;}
+  .donate-copy-btn{width:100%;background:#f7931a;color:#000;border:none;border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;}
+  .donate-copy-btn:hover{background:#e8851a;}
+  .donate-close{background:transparent;border:1px solid #252d3d;color:#888;border-radius:8px;padding:8px 16px;font-family:var(--font);font-size:12px;cursor:pointer;width:100%;}
+  .donate-close:hover{border-color:#ef4444;color:#ef4444;}
+  .donate-modal-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;line-height:1;}
+  .donate-modal-x:hover{color:#f0f0f0;}
+
+  
+  .sidebar{transition:width .2s ease;}
+  .sidebar.collapsed{width:60px;}
+  .sidebar.collapsed .logo-text,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .community-badge,
+  .sidebar.collapsed .version-badge,
+  .sidebar.collapsed .donate-btn,
+  .sidebar.collapsed #tier-badge,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .cmd-hint{display:none;}
+  .sidebar.collapsed [style*="margin-left:auto"]{display:none;}
+  .sidebar.collapsed .nav-item{justify-content:center;padding:10px 0;}
+  .sidebar.collapsed .sidebar-logo{justify-content:center;padding:20px 0;}
+  .sidebar.collapsed .sidebar-footer{padding:8px 0;text-align:center;}
+  .sidebar-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;transition:color .15s;}
+  .sidebar-toggle:hover{color:var(--orange);}
+  .main-content{transition:margin-left .2s ease;}
+  .main-content.expanded{margin-left:60px;}
+  .sidebar.collapsed ~ .main-content{margin-left:60px;}
+
+
+  /* ── TOOLTIPS ── */
+  .tip{position:relative;cursor:help;}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    transform:none;
+    background:#0a0d14;
+    color:#f0f0f0;
+    border:1px solid #252d3d;
+    border-radius:8px;
+    padding:8px 12px;
+    font-size:11px;
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    width:220px;
+    text-align:center;
+    white-space:normal;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s;
+    z-index:9999;
+    box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+  .tip:hover::after{opacity:1;}
+  .tip-right::after{left:auto;right:0;transform:none;}
+  .tip-left::after{left:0;transform:none;}
+</style>
+
+  <style>
+  :root{
+    --text:#f0f0f0;--muted:#555;--orange:#f7931a;--orange-dim:#f7931a33;
+    --green:#2ecc71;--red:#e74c3c;--blue:#3498db;
+    --radius:10px;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;} .main{background:var(--bg);}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
+  .pro-badge{display:inline-block;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:10px;vertical-align:middle;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px;}
+  @media(max-width:700px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
+  .card h2{font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text);}
+  .form-group{margin-bottom:14px;}
+  label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;}
+  input,select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;}
+  input:focus,select:focus{border-color:var(--orange);}
+  .checkbox-group{display:flex;flex-direction:column;gap:8px;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);}
+  .checkbox-row input[type=checkbox]{width:auto;accent-color:var(--orange);}
+  .btn{padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;transition:all .15s;}
+  .btn-orange{background:var(--orange);color:#000;width:100%;margin-top:8px;}
+  .btn-orange:hover{background:#e8851a;}
+  .btn-red{background:rgba(231,76,60,.15);border:1px solid var(--red);color:var(--red);padding:6px 12px;font-size:11px;}
+  .btn-red:hover{background:rgba(231,76,60,.3);}
+  .btn-muted{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;font-size:11px;}
+
+  /* Connections list */
+  .connections-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .panel-header h2{font-size:14px;font-weight:600;}
+  .conn-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .conn-row:last-child{border-bottom:none;}
+  .conn-name{font-size:13px;font-weight:600;color:var(--text);}
+  .conn-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .conn-perms{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .perm-tag{font-size:10px;background:rgba(52,152,219,.12);border:1px solid rgba(52,152,219,.3);color:var(--blue);padding:2px 8px;border-radius:20px;}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .status-active{background:var(--green);}
+  .status-revoked{background:var(--red);}
+  .conn-actions{display:flex;gap:8px;align-items:center;}
+  .empty-state{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:1000;display:none;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:100%;max-width:420px;}
+  .modal h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+  .modal p{font-size:12px;color:var(--muted);margin-bottom:20px;}
+  .qr-container{background:#fff;border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+  .uri-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--mono);font-size:9px;color:var(--muted);word-break:break-all;margin-bottom:16px;line-height:1.6;}
+  .modal-btns{display:flex;gap:10px;}
+  .modal-btns .btn{flex:1;}
+  .copy-feedback{font-size:11px;color:var(--green);text-align:center;height:16px;margin-top:6px;}
+
+  /* Info box */
+  .info-box{background:rgba(247,147,26,.06);border:1px solid var(--orange-dim);border-radius:8px;padding:14px 16px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
+  .info-box strong{color:var(--orange);}
+</style>
+  <script src="/static/lcc-theme.js?v=3"></script>
+</head>
+<body>
+<div style="display:flex;">
+<aside class="sidebar">
+  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
+  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#9776;</button></div>
+  <nav class="nav">
+        <div class="nav-section">Node</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span><span class="nav-label"> Dashboard</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span><span class="nav-label"> Channels</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span><span class="nav-label"> Peers</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span><span class="nav-label"> Routing</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span><span class="nav-label"> Wallet</span></div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="openCmd()"><span class="icon">&#9211;</span><span class="nav-label"> Palette </span><span style="font-size:10px;color:#555;margin-left:auto;">Ctrl+Space</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span><span class="nav-label"> Analytics</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/treasury.html'"><span class="icon">&#128176;</span><span class="nav-label"> Treasury</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'"><span class="icon">⚡</span><span class="nav-label"> NWC <span style='font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></span></div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'"><span class="icon">&#128279;</span><span class="nav-label"> Integrations</span></div>
+    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span><span class="nav-label"> SatsList</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="version-badge">LCC v0.1.2</div>
+    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
+    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
+    <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+<button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
+  </div>
+</aside>
+
+<div class="main" style="padding:32px;background:var(--bg);">
+<h1>⚡ Nostr Wallet Connect <span class="pro-badge">PRO</span></h1>
+<p class="subtitle">Connect external apps to your node — Zeus, Alby, Damus, and more.</p>
+
+<div class="info-box">
+  <strong>How it works:</strong> Generate a connection string below, scan the QR code in any NWC-compatible app, and that app can send/receive payments directly through your node — with no custodian in between. You control permissions and can revoke access anytime.
+</div>
+
+<!-- Active Connections -->
+<div class="connections-panel">
+  <div class="panel-header">
+    <h2>🔌 Active Connections</h2>
+    <span id="conn-count" style="font-size:11px;color:var(--muted);">Loading...</span>
+  </div>
+  <div id="connections-list">
+    <div class="empty-state">Loading connections...</div>
+  </div>
+</div>
+
+<!-- New Connection + Info -->
+<div class="grid">
+  <div class="card">
+    <h2>➕ New Connection</h2>
+    <div class="form-group">
+      <label>App Name</label>
+      <input type="text" id="app-name" placeholder="e.g. Zeus, Alby, Damus">
+    </div>
+    <div class="form-group">
+      <label>Spending Budget (sats) — 0 = unlimited</label>
+      <input type="number" id="budget" value="0" min="0">
+    </div>
+    <div class="form-group">
+      <label>Permissions</label>
+      <div class="checkbox-group">
+        <label class="checkbox-row"><input type="checkbox" id="perm-balance" checked> get_balance</label>
+        <label class="checkbox-row"><input type="checkbox" id="perm-pay" checked> pay_invoice</label>
+        <label class="checkbox-row"><input type="checkbox" id="perm-invoice" checked> make_invoice</label>
+        <label class="checkbox-row"><input type="checkbox" id="perm-lookup"> lookup_invoice</label>
+        <label class="checkbox-row"><input type="checkbox" id="perm-history"> list_transactions</label>
+      </div>
+    </div>
+    <button class="btn btn-orange" onclick="generateConnection()">⚡ Generate Connection String</button>
+  </div>
+
+  <div class="card">
+    <h2>📱 Compatible Apps</h2>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">⚡</div>
+        <div><div style="font-size:13px;font-weight:600;">Zeus</div><div style="font-size:11px;color:var(--muted);">Mobile Lightning wallet — iOS & Android</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">👾</div>
+        <div><div style="font-size:13px;font-weight:600;">Alby Extension</div><div style="font-size:11px;color:var(--muted);">Browser wallet for web payments</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🟣</div>
+        <div><div style="font-size:13px;font-weight:600;">Damus</div><div style="font-size:11px;color:var(--muted);">Nostr social client with zaps</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:28px;">🌊</div>
+        <div><div style="font-size:13px;font-weight:600;">Primal</div><div style="font-size:11px;color:var(--muted);">Nostr client with built-in wallet</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal">
+    <h3>📱 Scan to Connect</h3>
+    <p>Open your app, go to wallet settings, choose "NWC" or "Nostr Wallet Connect", then scan this QR code.</p>
+    <div class="qr-container">
+      <div id="qr-code"></div>
+    </div>
+    <div class="uri-box" id="uri-display"></div>
+    <div class="copy-feedback" id="copy-fb"></div>
+    <div class="modal-btns">
+      <button class="btn btn-orange" onclick="copyURI()">📋 Copy URI</button>
+      <button class="btn btn-muted" onclick="closeModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'https://lcc.satslist.shop/api';
+let currentURI = '';
+
+function timeAgo(ts){
+  if(!ts) return 'Never';
+  const d = Math.floor((Date.now()/1000 - ts)/60);
+  if(d < 1) return 'Just now';
+  if(d < 60) return d + 'm ago';
+  if(d < 1440) return Math.floor(d/60) + 'h ago';
+  return Math.floor(d/1440) + 'd ago';
+}
+
+function loadConnections(){
+  fetch(API + '/nwc/connections')
+    .then(r=>r.json())
+    .then(data=>{
+      const conns = data.connections || [];
+      const active = conns.filter(c=>c.active);
+      document.getElementById('conn-count').textContent = active.length + ' active';
+      const el = document.getElementById('connections-list');
+      if(!conns.length){
+        el.innerHTML = '<div class="empty-state">No connections yet — generate your first one below ⚡</div>';
+        return;
+      }
+      el.innerHTML = conns.map(c=>`
+        <div class="conn-row">
+          <div>
+            <div class="conn-name">
+              <span class="status-dot ${c.active?'status-active':'status-revoked'}"></span>
+              ${c.name}
+            </div>
+            <div class="conn-meta">
+              Created ${timeAgo(c.created_at)} · Last used: ${timeAgo(c.last_used)}
+              ${c.budget_sats > 0 ? ' · Budget: ' + c.budget_sats.toLocaleString() + ' sats' : ' · No budget limit'}
+            </div>
+            <div class="conn-perms">
+              ${(c.permissions||[]).map(p=>`<span class="perm-tag">${p}</span>`).join('')}
+            </div>
+          </div>
+          <div class="conn-actions">
+            ${c.active ? `
+              <button class="btn btn-muted" onclick="showQR('${c.nwc_uri}')">QR</button>
+              <button class="btn btn-red" onclick="revokeConn('${c.id}')">Revoke</button>
+            ` : `<span style="font-size:11px;color:var(--red);">Revoked</span> <button class="btn btn-red" onclick="deleteConn('${c.id}')">Delete</button>`}
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(()=>{
+      document.getElementById('connections-list').innerHTML = '<div class="empty-state">Could not load connections</div>';
+    });
+}
+
+function generateConnection(){
+  const name = document.getElementById('app-name').value.trim() || 'Unnamed App';
+  const budget = parseInt(document.getElementById('budget').value) || 0;
+  const perms = [];
+  if(document.getElementById('perm-balance').checked) perms.push('get_balance');
+  if(document.getElementById('perm-pay').checked) perms.push('pay_invoice');
+  if(document.getElementById('perm-invoice').checked) perms.push('make_invoice');
+  if(document.getElementById('perm-lookup').checked) perms.push('lookup_invoice');
+  if(document.getElementById('perm-history').checked) perms.push('list_transactions');
+
+  fetch(API + '/nwc/generate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, permissions: perms, budget_sats: budget})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    loadConnections();
+    showQR(data.nwc_uri);
+    document.getElementById('app-name').value = '';
+  })
+  .catch(()=>alert('Failed to generate connection'));
+}
+
+function showQR(uri){
+  currentURI = uri;
+  document.getElementById('uri-display').textContent = uri;
+  document.getElementById('qr-code').innerHTML = '';
+  new QRCode(document.getElementById('qr-code'), {
+    text: uri,
+    width: 200,
+    height: 200,
+    colorDark: '#000',
+    colorLight: '#fff',
+  });
+  document.getElementById('qr-modal').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('qr-modal').classList.remove('open');
+}
+
+function copyURI(){
+  navigator.clipboard.writeText(currentURI).then(()=>{
+    document.getElementById('copy-fb').textContent = '✅ Copied!';
+    setTimeout(()=>document.getElementById('copy-fb').textContent='', 2000);
+  });
+}
+
+function deleteConn(id){
+  if(!confirm('Permanently delete this connection?')) return;
+  fetch(API + '/nwc/connection/' + id, {method:'DELETE'})
+    .then(()=>loadConnections());
+}
+
+function revokeConn(id){
+  if(!confirm('Revoke this connection? The app will lose access immediately.')) return;
+  fetch(API + '/nwc/revoke', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  }).then(()=>loadConnections());
+}
+
+// Close modal on overlay click
+document.getElementById('qr-modal').addEventListener('click', function(e){
+  if(e.target === this) closeModal();
+});
+
+loadConnections();
+</script>
+</div></div>
+</body>
+</html>
