@@ -706,6 +706,28 @@ def nwc_delete(conn_id: str):
     save_nwc_data(data)
     return {"status": "deleted"}
 
+@app.post("/api/auth/verify-password")
+def verify_password(body: dict = Body(...)):
+    pw = body.get("password", "")
+    cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    correct = cfg.get("lcc_password", "")
+    return {"authorized": pw == correct}
+
+@app.post("/api/nostr/verify-nsec")
+def verify_nsec(body: dict = Body(...)):
+    from nostr_sdk import SecretKey, Keys
+    try:
+        nsec = body.get("nsec", "")
+        sk = SecretKey.parse(nsec)
+        keys = Keys(sk)
+        pubkey_hex = keys.public_key().to_hex()
+        cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        node_pubkey = cfg.get("nwc_pubkey_hex", "")
+        authorized = pubkey_hex == node_pubkey
+        return {"authorized": authorized}
+    except Exception as e:
+        return {"authorized": False, "error": str(e)}
+
 # Auto-rebalance scheduler
 def auto_rebalance_job():
     while True:
