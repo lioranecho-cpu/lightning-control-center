@@ -445,13 +445,13 @@ def open_channel(peer_address: str, local_amt: int, private: bool = False):
     if MOCK:
         return {"status": "mock"}
     try:
-        # Connect to peer first
+        # Extract pubkey from address
+        pubkey = peer_address.split("@")[0]
+        # Connect to peer first (ignore if already connected)
         try:
             run_lncli("connect", peer_address)
         except:
             pass  # Already connected is fine
-        # Extract pubkey from address
-        pubkey = peer_address.split("@")[0]
         args = ["openchannel", f"--node_key={pubkey}", f"--local_amt={local_amt}"]
         if private:
             args.append("--private")
