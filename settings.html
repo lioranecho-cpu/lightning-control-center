@@ -168,6 +168,7 @@
   .sidebar.collapsed ~ .main-content{margin-left:60px;}
 
 </style>
+  <script src="/static/lcc-theme.js?v=3"></script>
 </head>
 <body>
 
@@ -187,6 +188,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/treasury.html'"><span class="icon">&#128176;</span><span class="nav-label"> Treasury</span></div>
+    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'"><span class="icon">⚡</span><span class="nav-label"> NWC <span style='font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></span></div>
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
@@ -195,9 +197,10 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
   </nav>
   <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.1</div>
+    <div class="version-badge">LCC v0.1.2</div>
     <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
+    <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
 <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
     <button onclick="logout()" style="width:100%;margin-top:8px;background:transparent;border:1px solid #252d3d;color:#888;padding:8px;border-radius:10px;cursor:pointer;font-size:12px;font-family:var(--font);" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#252d3d';this.style.color='#888'">&#128274; Logout</button>
   </div>
@@ -275,6 +278,15 @@
                 <option value="12">Every 12 hours</option>
                 <option value="24" selected>Every 24 hours (default)</option>
                 <option value="48">Every 48 hours</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
+              <label class="form-label">Rebalance Amount per Operation <span style="font-size:10px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 6px;border-radius:10px;margin-left:6px;">PRO</span></label>
+              <select class="form-input" id="rebalance-amount">
+                <option value="10000">10,000 sats — Conservative</option>
+                <option value="30000">30,000 sats</option>
+                <option value="50000" selected>50,000 sats — Default</option>
+                <option value="100000">100,000 sats — Aggressive</option>
               </select>
             </div>
             <button class="btn btn-orange" onclick="saveRebalanceSchedule()">Save Schedule</button>
@@ -418,7 +430,7 @@
           <div class="panel-header"><h3>&#128196; About LCC</h3></div>
           <div class="panel-body">
             <div class="version-card">
-              <div class="version-big">v0.1.1</div>
+              <div class="version-big">v0.1.2</div>
               <div class="version-name">Lightning Control Center</div>
               <div class="version-sub">Built for prodeskltn-node</div>
               <div class="edition-badge" id="about-tier-badge">&#9889; Community Edition</div>
@@ -498,8 +510,17 @@ function saveRebalanceSchedule(){
     document.getElementById('rebalance-schedule-feedback').textContent = '⚡ Auto-rebalance is a Pro feature. Upgrade at satslist.shop';
     return;
   }
+  // Show/hide custom amount input
+  document.getElementById('rebalance-amount').addEventListener('change', function(){
+    document.getElementById('rebalance-custom-wrap').style.display = this.value === 'custom' ? 'block' : 'none';
+  });
+
   const hours = document.getElementById('rebalance-schedule').value;
-  fetch('https://lcc.satslist.shop/api/settings/rebalance?hours=' + hours, {method:'POST'})
+  let amount = document.getElementById('rebalance-amount').value;
+  if(amount === 'custom'){
+    amount = document.getElementById('rebalance-custom-amount').value || 50000;
+  }
+  fetch('https://lcc.satslist.shop/api/settings/rebalance?hours=' + hours + '&amount=' + amount, {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       const fb = document.getElementById('rebalance-schedule-feedback');
@@ -517,7 +538,7 @@ function saveSessionSettings() {
   s.session_duration = duration;
   saveSettings(s);
   const fb = document.getElementById('session-feedback');
-  fb.textContent = '&#10003; Session settings saved';
+  fb.innerHTML = '✅ Session settings saved';
   fb.className = 'feedback ok';
   setTimeout(() => fb.textContent = '', 2000);
 }
@@ -529,14 +550,14 @@ function saveFeeDefaults() {
   s.def_timelock = document.getElementById('def-timelock').value;
   saveSettings(s);
   const fb = document.getElementById('fee-feedback');
-  fb.textContent = '&#10003; Fee defaults saved';
+  fb.innerHTML = '✅ Fee defaults saved';
   fb.className = 'feedback ok';
   setTimeout(() => fb.textContent = '', 2000);
 }
 
 function copyText(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '&#10003;';
+    btn.innerHTML = '✅';
     btn.style.color = 'var(--green)';
     setTimeout(() => { btn.textContent = '📋'; btn.style.color = ''; }, 1500);
   });

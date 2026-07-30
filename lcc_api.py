@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime, timezone
 import time as time_module
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -169,12 +169,31 @@ def get_routing(days: int = 30):
             idx = 29 - day
             daily_fees[idx] += int(e.get("fee", 0))
             daily_volume[idx] += int(e.get("amt_out", 0))
+    # Build chan_id -> peer alias map
+    channels = run_lncli("listchannels").get("channels", [])
+    chan_map = {}
+    for ch in channels:
+        cid = ch.get("chan_id", "")
+        alias = ch.get("peer_alias") or ch.get("remote_pubkey", "")[:12] + "..."
+        if cid:
+            chan_map[str(cid)] = alias
+
+    # Enrich events with aliases
+    def enrich(evts):
+        out = []
+        for e in evts:
+            e2 = dict(e)
+            e2["alias_in"]  = chan_map.get(str(e.get("chan_id_in",  "")), str(e.get("chan_id_in",  ""))[-8:])
+            e2["alias_out"] = chan_map.get(str(e.get("chan_id_out", "")), str(e.get("chan_id_out", ""))[-8:])
+            out.append(e2)
+        return out
+
     return {
         "fees_30d_sats": total_fees,
         "fees_60d_sats": total_fees_60,
         "fees_alltime_sats": total_fees_all,
         "volume_30d_btc": round(total_vol / 100_000_000, 8),
-        "forwarding_events": events[-100:],
+        "forwarding_events": enrich(events[-100:]),
         "daily_fees": daily_fees,
         "daily_volume": [round(v / 100_000_000, 8) for v in daily_volume],
     }
@@ -550,7 +569,7 @@ def rebalance_channels(target_pubkey: str = None):
                 amount = min(
                     src_local - int(src_cap * 0.50),  # excess in source
                     int(dst_cap * 0.50) - dst_local,  # deficit in destination
-                    50000  # max per rebalance
+                    int(settings.get("rebalance_amount", 50000))  # max per rebalance
                 )
                 
                 if amount < 1000:
@@ -616,6 +635,76 @@ def set_tier(key: str):
     with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
         json.dump(data, f, indent=2)
     return {"tier": data["tier"], "status": "activated"}
+
+
+# ─── NWC (Nostr Wallet Connect) ───────────────────────────────────────────────
+import secrets
+from nostr_sdk import Keys
+
+NWC_RELAY = "wss://relay.primal.net"
+NWC_DATA_FILE = os.path.join(os.path.dirname(__file__), "nwc_connections.json")
+
+def load_nwc_data():
+    if not os.path.exists(NWC_DATA_FILE):
+        return {"connections": []}
+    with open(NWC_DATA_FILE) as f:
+        return json.load(f)
+
+def save_nwc_data(data):
+    with open(NWC_DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+@app.get("/api/nwc/connections")
+def nwc_list_connections():
+    data = load_nwc_data()
+    return {"connections": data.get("connections", [])}
+
+@app.post("/api/nwc/generate")
+def nwc_generate(body: dict = Body(...)):
+    name = body.get("name", "Unnamed App")
+    permissions = body.get("permissions", ["pay_invoice", "get_balance"])
+    budget_sats = body.get("budget_sats", 0)
+    client_keys = Keys.generate()
+    client_secret = client_keys.secret_key().to_hex()
+    client_pubkey = client_keys.public_key().to_bech32()
+    try:
+        cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        node_pubkey = cfg.get("nwc_pubkey_hex", cfg.get("nwc_pubkey", ""))
+    except:
+        node_pubkey = ""
+    nwc_uri = f"nostr+walletconnect://{node_pubkey}?relay={NWC_RELAY}&secret={client_secret}"
+    conn = {
+        "id": secrets.token_hex(8),
+        "name": name,
+        "permissions": permissions,
+        "budget_sats": budget_sats,
+        "client_pubkey": client_pubkey,
+        "created_at": int(time.time()),
+        "last_used": None,
+        "active": True,
+        "nwc_uri": nwc_uri
+    }
+    data = load_nwc_data()
+    data["connections"].append(conn)
+    save_nwc_data(data)
+    return {"connection": conn, "nwc_uri": nwc_uri}
+
+@app.post("/api/nwc/revoke")
+def nwc_revoke(body: dict = Body(...)):
+    conn_id = body.get("id")
+    data = load_nwc_data()
+    for c in data["connections"]:
+        if c["id"] == conn_id:
+            c["active"] = False
+    save_nwc_data(data)
+    return {"status": "revoked"}
+
+@app.delete("/api/nwc/connection/{conn_id}")
+def nwc_delete(conn_id: str):
+    data = load_nwc_data()
+    data["connections"] = [c for c in data["connections"] if c["id"] != conn_id]
+    save_nwc_data(data)
+    return {"status": "deleted"}
 
 # Auto-rebalance scheduler
 def auto_rebalance_job():
