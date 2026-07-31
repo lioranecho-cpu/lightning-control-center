@@ -13,7 +13,7 @@
       "budget_sats": 0,
       "client_pubkey": "npub18fd0vgutj36ga877talezt3ywnywq26qqwrwwpc5ym5ztejxtl4s035ar9",
       "created_at": 1785418356,
-      "last_used": 1785438567,
+      "last_used": 1785440185,
       "active": true,
       "nwc_uri": "nostr+walletconnect://e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd?relay=wss://relay.primal.net&secret=a26864fcfecd407eb1ce8fb93bcf3bb0789f8104425dad56b5622e67039f6add"
     }

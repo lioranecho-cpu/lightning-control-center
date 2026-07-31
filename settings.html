@@ -273,7 +273,6 @@
             <div class="form-group">
               <label class="form-label">Rebalance Interval</label>
               <select class="form-input" id="rebalance-schedule">
-                <option value="0">Off — Manual only</option>
                 <option value="6">Every 6 hours</option>
                 <option value="12">Every 12 hours</option>
                 <option value="24" selected>Every 24 hours (default)</option>
@@ -606,6 +605,9 @@ fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>{
   const hours = d.auto_rebalance_hours || 24;
   const sel = document.getElementById('rebalance-schedule');
   if(sel) sel.value = hours;
+  const amt = d.rebalance_amount || 50000;
+  const amtSel = document.getElementById('rebalance-amount');
+  if(amtSel) amtSel.value = amt;
 });
 setInterval(checkSession,5*60*1000);
 
