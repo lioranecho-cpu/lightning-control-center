@@ -66,6 +66,8 @@ def get_node_info():
         "block_height": info.get("block_height"),
         "num_peers": info.get("num_peers"),
         "uptime_seconds": 0,
+        "auto_rebalance_hours": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("auto_rebalance_hours", 24),
+        "rebalance_amount": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("rebalance_amount", 50000),
     }
 
 def get_btc_price():
@@ -610,12 +612,13 @@ def rebalance_channels(target_pubkey: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/settings/rebalance")
-def set_rebalance_schedule(hours: int = 24):
+def set_rebalance_schedule(hours: int = 24, amount: int = 50000):
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
     data["auto_rebalance_hours"] = hours
+    data["rebalance_amount"] = amount
     with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
         json.dump(data, f, indent=2)
-    return {"auto_rebalance_hours": hours, "status": "updated"}
+    return {"auto_rebalance_hours": hours, "rebalance_amount": amount, "status": "updated"}
 
 @app.get("/api/tier")
 def get_tier():
