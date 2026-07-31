@@ -568,6 +568,7 @@ def rebalance_channels(target_pubkey: str = None):
                 dst_local = int(dst["local_balance"])
                 
                 # Calculate amount to rebalance (move toward 50%)
+                settings = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
                 amount = min(
                     src_local - int(src_cap * 0.50),  # excess in source
                     int(dst_cap * 0.50) - dst_local,  # deficit in destination
@@ -578,12 +579,19 @@ def rebalance_channels(target_pubkey: str = None):
                     continue
                 
                 try:
+                    # Get numeric chan_id for source channel via getchaninfo
+                    src_chan_point = src.get("channel_point", "")
+                    src_chan_id = None
+                    if src_chan_point:
+                        chan_info = run_lncli("getchaninfo", f"--chan_point={src_chan_point}")
+                        src_chan_id = chan_info.get("channel_id")
+
                     # Create invoice to self
                     invoice = run_lncli("addinvoice", f"--amt={amount}", "--memo=LCC Auto-Rebalance")
                     payment_request = invoice.get("payment_request")
-                    
-                    # Pay via circular route using last_hop
-                    result = run_lncli(
+
+                    # Build sendpayment args with both source and destination control
+                    pay_args = [
                         "sendpayment",
                         "--pay_req=" + payment_request,
                         "--last_hop=" + dst["remote_pubkey"],
@@ -591,17 +599,21 @@ def rebalance_channels(target_pubkey: str = None):
                         "--force",
                         "--timeout=30s",
                         "--json"
-                    )
+                    ]
+                    if src_chan_id:
+                        pay_args.append(f"--outgoing_chan_id={src_chan_id}")
+
+                    result = run_lncli(*pay_args)
                     results.append({
-                        "from": src["remote_pubkey"][:16],
-                        "to": dst["remote_pubkey"][:16],
+                        "from": src.get("peer_alias", src["remote_pubkey"][:16]),
+                        "to": dst.get("peer_alias", dst["remote_pubkey"][:16]),
                         "amount": amount,
                         "status": "success"
                     })
                 except Exception as e:
                     results.append({
-                        "from": src["remote_pubkey"][:16],
-                        "to": dst["remote_pubkey"][:16],
+                        "from": src.get("peer_alias", src["remote_pubkey"][:16]),
+                        "to": dst.get("peer_alias", dst["remote_pubkey"][:16]),
                         "amount": amount,
                         "status": "failed",
                         "error": str(e)
