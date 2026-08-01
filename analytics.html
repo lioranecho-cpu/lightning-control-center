@@ -323,14 +323,24 @@
         </div>
       </div>
 
-      <!-- Volume chart -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>&#128257; Routed Volume</h3>
-          <span class="panel-meta" id="volume-label">&#8212;</span>
+      <!-- Volume chart + Fee Recommendations -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>&#128257; Routed Volume</h3>
+            <span class="panel-meta" id="volume-label">&#8212;</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="volumeChart"></canvas>
+          </div>
         </div>
-        <div class="chart-container">
-          <canvas id="volumeChart"></canvas>
+        <div class="panel">
+          <div class="panel-header">
+            <h3>💡 Fee Recommendations <span style="font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;">PRO</span></h3>
+          </div>
+          <div id="fee-recommendations" style="padding:12px 16px;">
+            <div style="color:var(--muted);font-size:12px;">Loading...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -463,6 +473,30 @@ function loadAnalytics(days) {
       });
       html += '</tbody></table>';
       pairsContent.innerHTML = html;
+    }
+
+    // Fee Recommendations
+    const recEl = document.getElementById('fee-recommendations');
+    if(recEl && pairs.length > 0) {
+      const topPairs = pairs.slice(0, 5);
+      let recHtml = '';
+      topPairs.forEach(([route, data]) => {
+        const outChannel = route.split(' -> ')[1] || route;
+        const eventsPerDay = data.count / (days === 'ALL' ? 30 : days);
+        let icon, msg, color;
+        if(eventsPerDay >= 3) {
+          icon = '🔥'; msg = 'High demand — consider raising PPM'; color = 'var(--orange)';
+        } else if(eventsPerDay >= 1) {
+          icon = '✅'; msg = 'Healthy routing rate'; color = 'var(--green)';
+        } else {
+          icon = '💤'; msg = 'Low activity — consider lowering PPM'; color = 'var(--muted)';
+        }
+        recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);">' +
+          '<div><div style="font-size:12px;color:var(--text);">' + icon + ' ' + outChannel + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + data.count + ' events · ' + fmt(data.vol) + ' sats</div></div>' +
+          '<div style="font-size:11px;color:' + color + ';text-align:right;max-width:140px;">' + msg + '</div></div>';
+      });
+      recEl.innerHTML = recHtml || '<div style="color:var(--muted);font-size:12px;">No data yet</div>';
     }
   });
 }
