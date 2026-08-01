@@ -270,13 +270,22 @@ def get_transactions(limit: int = 10):
     # Get sent payments
     try:
         payments = run_lncli("listpayments", f"--max_payments={max(limit*3, 50) if limit > 0 else 1000}")
+        NODE_PUBKEY = "03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1"
         for p in payments.get("payments", []):
             if p.get("status") == "SUCCEEDED":
+                # Detect circular rebalance — last hop is our own node
+                is_rebalance = False
+                try:
+                    hops = p.get("htlcs", [{}])[0].get("route", {}).get("hops", [])
+                    if hops and hops[-1].get("pub_key") == NODE_PUBKEY:
+                        is_rebalance = True
+                except:
+                    pass
                 transactions.append({
-                    "type": "sent",
+                    "type": "forwarded" if is_rebalance else "sent",
                     "amount": int(p.get("value_sat", 0)),
                     "fee": int(p.get("fee_sat", 0)),
-                    "desc": "Lightning payment sent",
+                    "desc": "🔀 Channel rebalance (circular)" if is_rebalance else "Lightning payment sent",
                     "status": "confirmed",
                     "time": int(p.get("creation_date", 0))
                 })
@@ -288,11 +297,15 @@ def get_transactions(limit: int = 10):
         invoices = run_lncli("listinvoices", f"--num_max_invoices={max(limit*3, 50) if limit > 0 else 1000}")
         for inv in invoices.get("invoices", []):
             if inv.get("state") == "SETTLED":
+                memo = inv.get("memo", "Lightning payment received")
+                # Skip rebalance invoices — they show as sent already
+                if "Auto-Rebalance" in memo or "Rebalance" in memo:
+                    continue
                 transactions.append({
                     "type": "received",
                     "amount": int(inv.get("amt_paid_sat", 0)),
                     "fee": 0,
-                    "desc": inv.get("memo", "Lightning payment received"),
+                    "desc": memo,
                     "status": "confirmed",
                     "time": int(inv.get("settle_date", 0))
                 })
