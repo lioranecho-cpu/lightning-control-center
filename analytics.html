@@ -495,8 +495,10 @@ function loadAnalytics(days) {
         const inChannel = route.split(' → ')[0].trim() || route.split(' -> ')[0].trim() || route;
         if(eventsPerDay >= 1 && eventsPerDay < 3) return;
         const currentPPM = feeMap[inChannel] || 0;
-        if(eventsPerDay >= 3) {
+        if(eventsPerDay >= 3 && currentPPM < 500) {
           icon = '🔥'; msg = 'Raise PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--orange)';
+        } else if(eventsPerDay >= 3 && currentPPM >= 500) {
+          icon = '✅'; msg = inChannel + ' at ' + currentPPM + ' PPM — good rate for demand'; color = 'var(--green)'; return;
         } else if(currentPPM <= 100) {
           icon = '💤'; msg = inChannel + ' at ' + currentPPM + ' PPM — already low, check liquidity balance'; color = 'var(--muted)';
         } else {
