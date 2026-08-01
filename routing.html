@@ -376,6 +376,10 @@
 const API = 'https://lcc.satslist.shop/api/dashboard';
 function fmt(n){return Number(n).toLocaleString();}
 
+let currentPage = 1;
+const PAGE_SIZE = 25;
+let allEvents = [];
+
 function loadRouting(){
   const days = document.getElementById('routing-period') ? document.getElementById('routing-period').value : 30;
   fetch('https://lcc.satslist.shop/api/routing?days=' + days).then(r=>r.json()).then(r=>{
@@ -398,19 +402,31 @@ function loadRouting(){
     document.getElementById('volume-label').textContent = r.volume_30d_btc + ' BTC (' + label + ')';
     const fwdContent = document.getElementById('fwd-content');
     if(r.forwarding_events.length > 0){
-      let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
       const sortOrder = document.getElementById('routing-sort') ? document.getElementById('routing-sort').value : 'desc';
-      const events = sortOrder === 'desc' ? [...r.forwarding_events].reverse() : r.forwarding_events;
-      events.forEach(e=>{
-        html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--text)">' + (e.peer_alias_in||e.chan_id_in||'?') + '</td><td style="color:var(--text)">' + (e.peer_alias_out||e.chan_id_out||'?') + '</td></tr>';
-      });
-      html += '</tbody></table>';
-      fwdContent.innerHTML = html;
-    } else {
-      fwdContent.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9203;</div><div class="empty-title">No routing events for this period</div></div>';
+      allEvents = sortOrder === 'desc' ? [...r.forwarding_events].reverse() : r.forwarding_events;
+      currentPage = 1;
+      renderPage();
     }
   });
 }
+
+  function renderPage() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+    const pageEvents = allEvents.slice(start, start + PAGE_SIZE);
+    const totalPages = Math.ceil(allEvents.length / PAGE_SIZE);
+    let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
+    pageEvents.forEach(e=>{
+      html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--text)">' + (e.peer_alias_in||e.chan_id_in||'?') + '</td><td style="color:var(--text)">' + (e.peer_alias_out||e.chan_id_out||'?') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    // Pagination controls
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">';
+    html += '<button onclick="changePage(-1)" ' + (currentPage===1?'disabled':'') + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;">← Prev</button>';
+    html += '<span>Page ' + currentPage + ' of ' + totalPages + ' &nbsp;·&nbsp; ' + allEvents.length + ' events</span>';
+    html += '<button onclick="changePage(1)" ' + (currentPage===totalPages?'disabled':'') + ' style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Next →</button>';
+    html += '</div>';
+    document.getElementById('fwd-content').innerHTML = html;
+  }
 
 fetch(API).then(r=>r.json()).then(d=>{
   const price = d.wallet.btc_price_usd;
@@ -495,6 +511,12 @@ function updateFees(){
       btn.style.background='#22c55e';
       setTimeout(()=>{btn.textContent='📋 Copy Lightning Address';btn.style.background='';},2000);
     });
+  }
+
+  function changePage(dir) {
+    const totalPages = Math.ceil(allEvents.length / PAGE_SIZE);
+    currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+    renderPage();
   }
 
   function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
