@@ -478,18 +478,22 @@ function loadAnalytics(days) {
     // Fee Recommendations
     const recEl = document.getElementById('fee-recommendations');
     if(recEl && pairs.length > 0) {
-      const topPairs = pairs.slice(0, 5);
+      // Only show channels needing action (not healthy ones)
+      const topPairs = pairs.slice(0, 8).filter(([route, data]) => {
+        const epd = data.count / (days === 'ALL' ? 30 : days);
+        return epd >= 3 || epd < 1;
+      });
       let recHtml = '';
       topPairs.forEach(([route, data]) => {
         const outChannel = route.split(' -> ')[1] || route;
         const eventsPerDay = data.count / (days === 'ALL' ? 30 : days);
         let icon, msg, color;
+        const inChannel = route.split(' → ')[0].trim() || route.split(' -> ')[0].trim() || route;
+        if(eventsPerDay >= 1 && eventsPerDay < 3) return;
         if(eventsPerDay >= 3) {
-          icon = '🔥'; msg = 'High demand — consider raising PPM'; color = 'var(--orange)';
-        } else if(eventsPerDay >= 1) {
-          icon = '✅'; msg = 'Healthy routing rate'; color = 'var(--green)';
+          icon = '🔥'; msg = 'Raise PPM on ' + inChannel; color = 'var(--orange)';
         } else {
-          icon = '💤'; msg = 'Low activity — consider lowering PPM'; color = 'var(--muted)';
+          icon = '💤'; msg = 'Lower PPM on ' + inChannel + ' to attract more volume'; color = 'var(--muted)';
         }
         recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);">' +
           '<div><div style="font-size:12px;color:var(--text);">' + icon + ' ' + outChannel + '</div>' +
