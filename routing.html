@@ -296,11 +296,16 @@
           <h3>Forwarding History</h3>
           <div style="display:flex;align-items:center;gap:10px;">
             <select id="routing-period" onchange="loadRouting()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+              <option value="1">Last 1 day</option>
               <option value="7">Last 7 days</option>
               <option value="10">Last 10 days</option>
               <option value="30">Last 30 days</option>
               <option value="60">Last 60 days</option>
               <option value="365">All time</option>
+            </select>
+            <select id="routing-sort" onchange="loadRouting()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
             </select>
             <button onclick="exportRoutingCSV()" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);">&#8595; Export CSV</button>
           </div>
@@ -394,7 +399,9 @@ function loadRouting(){
     const fwdContent = document.getElementById('fwd-content');
     if(r.forwarding_events.length > 0){
       let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
-      r.forwarding_events.forEach(e=>{
+      const sortOrder = document.getElementById('routing-sort') ? document.getElementById('routing-sort').value : 'desc';
+      const events = sortOrder === 'desc' ? [...r.forwarding_events].reverse() : r.forwarding_events;
+      events.forEach(e=>{
         html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--text)">' + (e.peer_alias_in||e.chan_id_in||'?') + '</td><td style="color:var(--text)">' + (e.peer_alias_out||e.chan_id_out||'?') + '</td></tr>';
       });
       html += '</tbody></table>';
