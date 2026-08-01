@@ -163,10 +163,12 @@ def get_routing(days: int = 30):
     total_vol = sum(int(e.get("amt_out", 0)) for e in events)
     daily_fees = [0] * 30
     daily_volume = [0] * 30
-    now = time.time()
+    from datetime import date
+    today = date.today()
     for e in events:
         ts = int(e.get("timestamp", 0))
-        day = int((now - ts) / 86400)
+        event_date = date.fromtimestamp(ts)  # uses local time
+        day = (today - event_date).days
         if 0 <= day < 30:
             idx = 29 - day
             daily_fees[idx] += int(e.get("fee", 0))
@@ -269,7 +271,7 @@ def get_transactions(limit: int = 10):
     
     # Get sent payments
     try:
-        payments = run_lncli("listpayments", f"--max_payments={max(limit*3, 50) if limit > 0 else 1000}")
+        payments = run_lncli("listpayments", f"--max_payments={max(limit*10, 200) if limit > 0 else 2000}")
         NODE_PUBKEY = "03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1"
         for p in payments.get("payments", []):
             if p.get("status") == "SUCCEEDED":
@@ -294,7 +296,12 @@ def get_transactions(limit: int = 10):
 
     # Get received invoices
     try:
-        invoices = run_lncli("listinvoices", f"--num_max_invoices={max(limit*3, 50) if limit > 0 else 1000}")
+        # Get newest invoices by finding total count first then using offset
+        all_inv = run_lncli("listinvoices", "--max_invoices=1")
+        total = int(all_inv.get("last_index_offset", 200))
+        fetch_count = max(limit*10, 200) if limit > 0 else 2000
+        offset = max(0, total - fetch_count)
+        invoices = run_lncli("listinvoices", f"--max_invoices={fetch_count}", f"--index_offset={offset}", "--paginate-forwards")
         for inv in invoices.get("invoices", []):
             if inv.get("state") == "SETTLED":
                 memo = inv.get("memo", "Lightning payment received")
@@ -357,6 +364,7 @@ def get_transactions(limit: int = 10):
 
     # Sort by time descending
     transactions.sort(key=lambda x: x["time"], reverse=True)
+    # Apply limit AFTER sorting
     if limit > 0:
         transactions = transactions[:limit]
     # Convert unix timestamps to human readable
@@ -369,7 +377,7 @@ def get_transactions(limit: int = 10):
         elif diff < 604800: tx["time"] = f"{int(diff/86400)} days ago"
         else: tx["time"] = datetime.fromtimestamp(t).strftime("%b %d %Y")
     
-    return {"transactions": transactions[:20]}
+    return {"transactions": transactions}
 
 @app.get("/api/system")
 def get_system():

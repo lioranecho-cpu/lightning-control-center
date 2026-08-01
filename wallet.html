@@ -349,7 +349,12 @@
             <option value="sent">Sent</option>
             <option value="forwarded">Forwarded</option>
             <option value="onchain">On-chain</option>
+            <option value="rebalance">Rebalances only</option>
           </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" id="hide-rebalance" onchange="loadTransactions()" style="accent-color:var(--orange);cursor:pointer;">
+            Hide rebalances
+          </label>
           <button onclick="exportWalletCSV()" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);">&#8595; Export CSV</button>
         </div>
       </div>
@@ -423,11 +428,16 @@ function loadTransactions(){
       const tbody = document.getElementById('tx-tbody');
       tbody.innerHTML = '';
       const filter = document.getElementById('tx-filter') ? document.getElementById('tx-filter').value : 'all';
+      const hideRebalance = document.getElementById('hide-rebalance') ? document.getElementById('hide-rebalance').checked : false;
       let txs = data.transactions || [];
+      // Apply type filter
       if(filter === 'received') txs = txs.filter(t => t.type === 'received');
       else if(filter === 'sent') txs = txs.filter(t => t.type === 'sent');
       else if(filter === 'forwarded') txs = txs.filter(t => t.type === 'forwarded');
       else if(filter === 'onchain') txs = txs.filter(t => t.desc && (t.desc.includes('On-chain') || t.desc.includes('Channel') || t.desc.includes('sweep')));
+      else if(filter === 'rebalance') txs = txs.filter(t => t.desc && (t.desc.includes('rebalance') || t.desc.includes('Rebalance')));
+      // Apply hide rebalance checkbox
+      if(hideRebalance) txs = txs.filter(t => !t.desc || (!t.desc.toLowerCase().includes('rebalance')));
       if(!txs.length){
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No transactions found</td></tr>';
         return;
