@@ -475,9 +475,13 @@ function loadAnalytics(days) {
       pairsContent.innerHTML = html;
     }
 
-    // Fee Recommendations
+    // Fee Recommendations — fetch channel fee data first
     const recEl = document.getElementById('fee-recommendations');
     if(recEl && pairs.length > 0) {
+      // Build fee map from channels API
+      fetch('https://lcc.satslist.shop/api/channels').then(r=>r.json()).then(chData => {
+        const feeMap = {};
+        (chData.list||[]).forEach(ch => { feeMap[ch.peer_alias] = ch.fee_ppm || 0; });
       // Only show channels needing action (not healthy ones)
       const topPairs = pairs.slice(0, 8).filter(([route, data]) => {
         const epd = data.count / (days === 'ALL' ? 30 : days);
@@ -490,17 +494,23 @@ function loadAnalytics(days) {
         let icon, msg, color;
         const inChannel = route.split(' → ')[0].trim() || route.split(' -> ')[0].trim() || route;
         if(eventsPerDay >= 1 && eventsPerDay < 3) return;
+        const currentPPM = feeMap[inChannel] || 0;
         if(eventsPerDay >= 3) {
-          icon = '🔥'; msg = 'Raise PPM on ' + inChannel; color = 'var(--orange)';
+          icon = '🔥'; msg = 'Raise PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--orange)';
+        } else if(currentPPM <= 100) {
+          icon = '💤'; msg = inChannel + ' at ' + currentPPM + ' PPM — already low, check liquidity balance'; color = 'var(--muted)';
         } else {
-          icon = '💤'; msg = 'Lower PPM on ' + inChannel + ' to attract more volume'; color = 'var(--muted)';
+          icon = '💤'; msg = 'Lower PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--muted)';
         }
         recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);">' +
           '<div><div style="font-size:12px;color:var(--text);">' + icon + ' ' + outChannel + '</div>' +
           '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + data.count + ' events · ' + fmt(data.vol) + ' sats</div></div>' +
           '<div style="font-size:11px;color:' + color + ';text-align:right;max-width:140px;">' + msg + '</div></div>';
       });
-      recEl.innerHTML = recHtml || '<div style="color:var(--muted);font-size:12px;">No data yet</div>';
+        recEl.innerHTML = recHtml || '<div style="color:var(--muted);font-size:12px;">No action needed</div>';
+      }).catch(()=>{
+        recEl.innerHTML = '<div style="color:var(--muted);font-size:12px;">Could not load fee data</div>';
+      });
     }
   });
 }
