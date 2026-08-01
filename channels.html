@@ -369,6 +369,7 @@ fetch(API).then(r=>r.json()).then(d=>{
         <div class="ch-actions">
           <button class="action-btn" onclick="openFeeModal('${ch.channel_point}','${ch.peer_alias}',${ch.fee_ppm},${ch.base_fee})">Update Fees</button>
           <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
+          <button class="action-btn" onclick="showPeerPolicy('${ch.scid}','${ch.peer_alias}')">Peer Policy</button>
           <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
@@ -713,6 +714,25 @@ function applyFees(){
       setTimeout(()=>{ closeFeeModal(); location.reload(); }, 1500);
     })
     .catch(()=>{ status.textContent = '❌ Update failed'; status.style.color = '#ef4444'; });
+}
+
+function showPeerPolicy(scid, alias) {
+  fetch('https://lcc.satslist.shop/api/chaninfo?scid=' + scid)
+    .then(r=>r.json())
+    .then(data=>{
+      const p1 = data.node1_policy || {};
+      const p2 = data.node2_policy || {};
+      const myPubkey = '03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1';
+      const myPolicy = data.node1_pub === myPubkey ? p1 : p2;
+      const theirPolicy = data.node1_pub === myPubkey ? p2 : p1;
+      const peerMsg = 
+        '📋 ' + alias + ' Fee Policy\n\n' +
+        '🟠 Your policy: base=' + (myPolicy.fee_base_msat||0) + ' msat  ppm=' + (myPolicy.fee_rate_milli_msat||0) + '\n' +
+        '👤 Their policy: base=' + (theirPolicy.fee_base_msat||0) + ' msat  ppm=' + (theirPolicy.fee_rate_milli_msat||0) + '\n\n' +
+        'Lower their PPM = more traffic flows your way.';
+      alert(peerMsg);
+    })
+    .catch(()=>alert('Could not load peer policy'));
 }
 
 function rebalanceChannel(pubkey, alias){

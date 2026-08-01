@@ -124,6 +124,7 @@ def get_channels():
             "channel_point": ch.get("channel_point", ""),
             "remote_pubkey": ch.get("remote_pubkey", ""),
             "chan_id": ch.get("chan_id", ""),
+            "scid": str(ch.get("scid", "")),
             "status": "active" if ch.get("active") else "inactive",
         })
     return {
@@ -515,6 +516,13 @@ def close_channel(chan_point: str, force: bool = False):
         return {"status": "closing", "txid": result.get("closing_txid", "pending")}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/chaninfo")
+def get_chaninfo(scid: str = ""):
+    if not scid:
+        raise HTTPException(status_code=400, detail="scid required")
+    result = run_lncli("getchaninfo", f"--chan_id={scid}")
+    return result
 
 @app.get("/api/feepolicy")
 def get_fee_policy():
