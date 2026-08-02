@@ -136,6 +136,7 @@ def get_channels():
                 "peer_alias": p.get("channel", {}).get("remote_node_pub", "Unknown")[:16] + "...",
                 "capacity": int(p.get("channel", {}).get("capacity", 0)),
                 "local_balance": int(p.get("channel", {}).get("local_balance", 0)),
+                "channel_point": p.get("channel", {}).get("channel_point", ""),
                 "status": "pending_open"
             }
             for p in pending.get("pending_open_channels", [])

@@ -393,7 +393,9 @@ fetch(API).then(r=>r.json()).then(d=>{
       '<span>Local: ' + fmt(ch.local_balance) + ' sats</span>' +
       '<span>Waiting for confirmation</span></div>' +
       '<div class="balance-bar"><div class="balance-bar-fill" style="width:50%;background:var(--orange-dim)"></div></div></div>' +
-      '<div class="pending-info">&#9203; Pending on-chain confirmation</div></div>';
+      '<div class="pending-info">&#9203; Pending on-chain confirmation' +
+      (ch.channel_point ? ' &nbsp;|&nbsp; <a href="https://mempool.space/tx/' + ch.channel_point.split(':')[0] + '" target="_blank" style="color:var(--orange);font-family:monospace;font-size:10px;">' + ch.channel_point.split(':')[0].slice(0,16) + '... ↗</a>' : '') +
+      '</div></div>';
   });
 });
 
