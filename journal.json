@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1785593497036,
+    "title": "ACINQ raised fee",
+    "body": "Fee PPM: 200\nBase Fee: 0 msat",
+    "tag": "channel",
+    "date": "2026-08-01T14:11:37.036Z",
+    "block": "960,567"
+  },
+  {
+    "id": 1785582847911,
+    "title": "raised fee draining too fast",
+    "body": "[LNBiG [Hub-2]\nLocal: 28,486 sats (3%)\nRemote: 970,290 sats (97%)\n 0 base - PPM: 200",
+    "tag": "channel",
+    "date": "2026-08-01T11:14:07.911Z",
+    "block": "960,554"
+  },
+  {
+    "id": 1785362839159,
+    "title": "ACINQ raised fee 400ppm",
+    "body": "ACINQ raised fee 400 ppm",
+    "tag": "channel",
+    "date": "2026-07-29T22:07:19.159Z",
+    "block": "960,154"
+  },
+  {
+    "id": 1784838929576,
+    "title": "v0.1.1 release",
+    "body": "v0.1.1 release 7/23/2026",
+    "tag": "milestone",
+    "date": "2026-07-23T20:35:29.576Z",
+    "block": "959,307"
+  }
+]

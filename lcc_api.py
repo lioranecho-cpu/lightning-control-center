@@ -661,6 +661,29 @@ def set_rebalance_schedule(hours: int = 24, amount: int = 50000):
         json.dump(data, f, indent=2)
     return {"auto_rebalance_hours": hours, "rebalance_amount": amount, "status": "updated"}
 
+@app.get("/api/journal")
+def get_journal():
+    import os
+    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    try:
+        with open(journal_path, "r") as f:
+            return {"entries": json.load(f)}
+    except:
+        return {"entries": []}
+
+@app.post("/api/journal")
+def save_journal(request: Request):
+    import asyncio, os
+    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    try:
+        body = asyncio.run(request.json())
+        entries = body.get("entries", [])
+        with open(journal_path, "w") as f:
+            json.dump(entries, f, indent=2)
+        return {"status": "saved", "count": len(entries)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/tier")
 def get_tier():
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))

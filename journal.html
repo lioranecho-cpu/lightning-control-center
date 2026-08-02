@@ -343,6 +343,7 @@
 <script>
 const API = 'https://lcc.satslist.shop/api/dashboard';
 const STORAGE_KEY = 'lcc_journal_entries';
+const API_URL = 'https://lcc.satslist.shop/api/journal';
 
 // Load node data
 fetch(API).then(r=>r.json()).then(d=>{
@@ -357,14 +358,43 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('peer-count').textContent = d.node.num_peers + ' peers';
 }).catch(()=>{});
 
-// Journal storage (localStorage)
+// Journal storage (API synced + localStorage fallback)
+let _journalCache = null;
 function getEntries() {
+  if(_journalCache !== null) return _journalCache;
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
   catch { return []; }
 }
-
 function saveEntries(entries) {
+  _journalCache = entries;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  fetch('https://lcc.satslist.shop/api/journal', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({entries: entries})
+  }).catch(e => console.error('Journal sync failed:', e));
+}
+async function loadEntriesFromAPI() {
+  const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  _journalCache = local;
+  renderEntries();
+  try {
+    const r = await fetch('https://lcc.satslist.shop/api/journal');
+    const d = await r.json();
+    if(d.entries && d.entries.length > 0) {
+      _journalCache = d.entries;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(d.entries));
+      renderEntries();
+    } else if(local.length > 0) {
+      fetch('https://lcc.satslist.shop/api/journal', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({entries: local})
+      });
+    }
+  } catch(e) {
+    console.error('Failed to load journal from API:', e);
+  }
 }
 
 let selectedTag = 'note';
@@ -463,7 +493,7 @@ function renderEntries(search = '') {
 }
 
 // Initial render
-renderEntries();
+loadEntriesFromAPI();
 
 
   function openDonateModal(){document.getElementById('donate-modal').classList.add('show');}
