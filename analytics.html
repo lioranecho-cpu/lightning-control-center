@@ -448,7 +448,9 @@ function loadAnalytics(days) {
     // Routing pairs
     const pairMap = {};
     events.forEach(e => {
-      const key = (e.peer_alias_in || '?') + ' → ' + (e.peer_alias_out || '?');
+      const ain = (e.peer_alias_in && !e.peer_alias_in.includes('unable')) ? e.peer_alias_in : (e.chan_id_in ? e.chan_id_in.toString().slice(-8) : '?');
+      const aout = (e.peer_alias_out && !e.peer_alias_out.includes('unable')) ? e.peer_alias_out : (e.chan_id_out ? e.chan_id_out.toString().slice(-8) : '?');
+      const key = ain + ' → ' + aout;
       if(!pairMap[key]) pairMap[key] = {fee: 0, count: 0, vol: 0};
       pairMap[key].fee += parseInt(e.fee || 0);
       pairMap[key].count++;
