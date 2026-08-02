@@ -403,7 +403,10 @@ function loadRouting(){
     const fwdContent = document.getElementById('fwd-content');
     if(r.forwarding_events.length > 0){
       const sortOrder = document.getElementById('routing-sort') ? document.getElementById('routing-sort').value : 'desc';
-      allEvents = sortOrder === 'desc' ? [...r.forwarding_events].reverse() : r.forwarding_events;
+      const nowTs = Math.floor(Date.now()/1000);
+      const cutoffTs = days == 365 ? 0 : nowTs - (days * 86400);
+      const filteredEvents = r.forwarding_events.filter(e => e.timestamp >= cutoffTs);
+      allEvents = sortOrder === 'desc' ? [...filteredEvents].reverse() : filteredEvents;
       currentPage = 1;
       renderPage();
     }
