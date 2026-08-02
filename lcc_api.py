@@ -357,7 +357,10 @@ def get_transactions(limit: int = 10):
                 "type": "forwarded",
                 "amount": int(e.get("amt_out", 0)),
                 "fee": int(e.get("fee", 0)),
-                "desc": f"Routed {e.get('peer_alias_in','?')} → {e.get('peer_alias_out','?')}",
+                "desc": "Routed {} → {}".format(
+                    'Unknown' if not e.get('peer_alias_in') or 'lookup' in e.get('peer_alias_in','') or 'rpc' in e.get('peer_alias_in','') else e.get('peer_alias_in','').split(':')[0],
+                    'Unknown' if not e.get('peer_alias_out') or 'lookup' in e.get('peer_alias_out','') or 'rpc' in e.get('peer_alias_out','') else e.get('peer_alias_out','').split(':')[0]
+                ),
                 "status": "confirmed",
                 "time": int(e.get("timestamp", 0))
             })
