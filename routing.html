@@ -390,8 +390,8 @@ function loadRouting(){
     document.getElementById('events-30d').textContent = r.forwarding_events.length;
     const avg = r.forwarding_events.length > 0 ? Math.round(r.fees_30d_sats / r.forwarding_events.length) : 0;
     document.getElementById('avg-fee').textContent = avg + ' sats';
-    const label = days == 365 ? 'All time' : 'Last ' + days + ' days';
-    const shortLabel = days == 365 ? 'All' : days + 'D';
+    const label = days == 365 ? 'All time' : days == 1 ? 'Last 24 hours' : 'Last ' + days + ' days';
+    const shortLabel = days == 365 ? 'All' : days == 1 ? '24H' : days + 'D';
     const el1 = document.getElementById('fees-earned-label');
     const el2 = document.getElementById('volume-earned-label');
     const el3 = document.getElementById('events-earned-label');
