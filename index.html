@@ -372,7 +372,22 @@ fetch(API).then(r=>r.json()).then(d=>{
 
   function updateTime(){document.getElementById('utc-time').textContent=new Date().toUTCString().split(' ').slice(1,5).join(' ');}
 updateTime();setInterval(updateTime,1000);
-function setFilter(btn){document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function setFilter(btn, range){
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const label = btn.textContent.trim();
+  const daysMap = {'1D':1,'7D':7,'30D':30,'90D':90,'1Y':365,'ALL':365};
+  const days = daysMap[label] || 30;
+  fetch('https://lcc.satslist.shop/api/routing?days='+days).then(r=>r.json()).then(d=>{
+    const price = parseFloat(document.getElementById('btc-price')?.textContent?.replace('$','').replace(',','')) || 65000;
+    document.getElementById('routing-fees').textContent = fmt(d.fees_30d_sats) + ' sats';
+    document.getElementById('fees-usd').textContent = '≈$' + ((d.fees_30d_sats/100000000)*price).toFixed(2);
+    document.getElementById('routed-volume').textContent = d.volume_30d_btc + ' BTC';
+    document.getElementById('fees-chart-label').textContent = fmt(d.fees_30d_sats) + ' sats (' + label + ')';
+    document.getElementById('volume-chart-label').textContent = d.volume_30d_btc + ' BTC (' + label + ')';
+    document.getElementById('routing-events').textContent = d.forwarding_events.length;
+  });
+}
 </script>
 <div class="cmd-overlay" id="cmd-palette" onclick="if(event.target===this)closeCmd()">
   <div class="cmd-box">

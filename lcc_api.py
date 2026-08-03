@@ -142,7 +142,7 @@ def get_channels():
             for p in pending.get("pending_open_channels", [])
         ],
         "total_capacity": sum(c["capacity"] for c in channel_list),
-        "list": channel_list,
+        "list": sorted(channel_list, key=lambda c: c["capacity"], reverse=True),
     }
 
 @app.get("/api/routing")
