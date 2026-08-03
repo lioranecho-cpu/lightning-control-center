@@ -341,6 +341,15 @@
 </div>
 
 <script>
+// Session check
+(function(){
+  const s = localStorage.getItem('lcc_session');
+  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
+  try{
+    const {expires} = JSON.parse(s);
+    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
+  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
+})();
 const API = 'https://lcc.satslist.shop/api/dashboard';
 const STORAGE_KEY = 'lcc_journal_entries';
 const API_URL = 'https://lcc.satslist.shop/api/journal';
