@@ -120,7 +120,21 @@
     <div class="panel">
       <div class="panel-header">
         <h3><span class="live-dot"></span>Live Payment Feed</h3>
-        <span style="font-size:11px;color:var(--muted);" id="last-updated">Loading...</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select id="tx-filter" onchange="loadTreasury()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+            <option value="all">All Types</option>
+            <option value="in">Received</option>
+            <option value="out">Sent</option>
+          </select>
+          <select id="tx-limit" onchange="loadTreasury()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;">
+            <option value="10">Last 10</option>
+            <option value="25">Last 25</option>
+            <option value="50">Last 50</option>
+            <option value="100">Last 100</option>
+            <option value="0">All</option>
+          </select>
+          <span style="font-size:11px;color:var(--muted);" id="last-updated">Loading...</span>
+        </div>
       </div>
       <div id="payment-feed">
         <div style="padding:30px;text-align:center;color:var(--muted);font-size:13px;">Loading payments...</div>
@@ -167,18 +181,24 @@ async function loadTreasury(){
     document.getElementById('total-usd').textContent = '≈ ' + toUsd(balanceSats);
 
     // Get payments
-    const payResp = await fetch(LNBITS_URL + '/api/v1/payments?limit=50', {
+    const limit = document.getElementById('tx-limit') ? document.getElementById('tx-limit').value : 50;
+    const filterType = document.getElementById('tx-filter') ? document.getElementById('tx-filter').value : 'all';
+    const payResp = await fetch(LNBITS_URL + '/api/v1/payments?limit=' + (limit == 0 ? 200 : limit), {
       headers: {'X-Api-Key': LNBITS_KEY}
     });
     const payments = await payResp.json();
 
+    let payments_filtered = payments;
+    if(filterType === 'in') payments_filtered = payments.filter(p => p.amount > 0);
+    else if(filterType === 'out') payments_filtered = payments.filter(p => p.amount < 0);
+    const payments_limited = limit == 0 ? payments_filtered : payments_filtered.slice(0, parseInt(limit));
     const feed = document.getElementById('payment-feed');
-    if(!payments.length){
+    if(!payments_limited.length){
       feed.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No payments yet</div>';
       return;
     }
 
-    feed.innerHTML = payments.map(p => {
+    feed.innerHTML = payments_limited.map(p => {
       const isIn = p.amount > 0;
       const sats = Math.abs(Math.round(p.amount / 1000));
       const memo = p.memo || p.extra?.lnaddress || 'Lightning payment';
