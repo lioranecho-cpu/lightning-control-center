@@ -133,6 +133,11 @@
             <option value="100">Last 100</option>
             <option value="0">All</option>
           </select>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button onclick="changePage(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;">◀</button>
+            <span id="treasury-page-info" style="font-size:11px;color:var(--muted);padding:0 4px;">1/1</span>
+            <button onclick="changePage(1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;">▶</button>
+          </div>
           <span style="font-size:11px;color:var(--muted);" id="last-updated">Loading...</span>
         </div>
       </div>
@@ -191,33 +196,52 @@ async function loadTreasury(){
     let payments_filtered = payments;
     if(filterType === 'in') payments_filtered = payments.filter(p => p.amount > 0);
     else if(filterType === 'out') payments_filtered = payments.filter(p => p.amount < 0);
-    const payments_limited = limit == 0 ? payments_filtered : payments_filtered.slice(0, parseInt(limit));
-    const feed = document.getElementById('payment-feed');
-    if(!payments_limited.length){
-      feed.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No payments yet</div>';
-      return;
-    }
-
-    feed.innerHTML = payments_limited.map(p => {
-      const isIn = p.amount > 0;
-      const sats = Math.abs(Math.round(p.amount / 1000));
-      const memo = p.memo || p.extra?.lnaddress || 'Lightning payment';
-      const time = timeAgo(p.created_at);
-      const tag = p.tag || p.extra?.tag || '';
-      const tagBadge = tag ? '<span style="font-size:10px;background:rgba(247,147,26,.1);color:var(--orange);padding:2px 6px;border-radius:4px;margin-left:6px;">' + tag + '</span>' : '';
-      return '<div class="payment-item">' +
-        '<div style="display:flex;align-items:center;flex:1;">' +
-        '<div class="pay-dot ' + (isIn?'in':'out') + '"></div>' +
-        '<div><div class="pay-memo">' + memo + tagBadge + '</div>' +
-        '<div class="pay-time">' + time + '</div></div></div>' +
-        '<div class="pay-amount ' + (isIn?'in':'out') + '">' + (isIn?'+':'-') + fmt(sats) + ' sats</div>' +
-        '</div>';
-    }).join('');
+    const PAGE_SIZE = 10;
+    window._treasuryPayments = payments_filtered;
+    window._treasuryPage = 1;
+    renderTreasuryPage();
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch(e){
     console.error(e);
   }
+}
+
+async function renderTreasuryPage(){
+  const PAGE_SIZE = 10;
+  const payments = window._treasuryPayments || [];
+  const page = window._treasuryPage || 1;
+  const totalPages = Math.max(1, Math.ceil(payments.length / PAGE_SIZE));
+  window._treasuryPage = Math.min(Math.max(1, page), totalPages);
+  const start = (window._treasuryPage - 1) * PAGE_SIZE;
+  const pagePayments = payments.slice(start, start + PAGE_SIZE);
+  const feed = document.getElementById('payment-feed');
+  const pageInfo = document.getElementById('treasury-page-info');
+  if(pageInfo) pageInfo.textContent = window._treasuryPage + '/' + totalPages;
+  if(!pagePayments.length){
+    feed.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">No payments found</div>';
+    return;
+  }
+  feed.innerHTML = pagePayments.map(p => {
+    const isIn = p.amount > 0;
+    const sats = Math.abs(Math.round(p.amount / 1000));
+    const memo = p.memo || p.extra?.lnaddress || 'Lightning payment';
+    const time = timeAgo(p.created_at);
+    const tag = p.tag || p.extra?.tag || '';
+    const tagBadge = tag ? '<span style="font-size:10px;background:rgba(247,147,26,.1);color:var(--orange);padding:2px 6px;border-radius:4px;margin-left:6px;">' + tag + '</span>' : '';
+    return '<div class="payment-item">' +
+      '<div style="display:flex;align-items:center;flex:1;">' +
+      '<div class="pay-dot ' + (isIn?'in':'out') + '"></div>' +
+      '<div><div class="pay-memo">' + memo + tagBadge + '</div>' +
+      '<div class="pay-time">' + time + '</div></div></div>' +
+      '<div class="pay-amount ' + (isIn?'in':'out') + '">' + (isIn?'+':'-') + fmt(sats) + ' sats</div>' +
+      '</div>';
+  }).join('');
+}
+
+function changePage(dir){
+  window._treasuryPage = (window._treasuryPage || 1) + dir;
+  renderTreasuryPage();
 }
 
 async function addWallet(){
