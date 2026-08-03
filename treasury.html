@@ -309,5 +309,15 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 loadTreasury();
 setInterval(loadTreasury, 30000);
 </script>
+<script>
+// Session check
+(function(){
+  const s = localStorage.getItem('lcc_session');
+  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
+  try{
+    const {expires} = JSON.parse(s);
+    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
+  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
+})();</script>
 </body>
 </html>
