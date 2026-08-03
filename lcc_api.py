@@ -688,6 +688,14 @@ def save_journal(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/settings/lnbits")
+def get_lnbits_settings():
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    return {
+        "url": data.get("lnbits_url", ""),
+        "invoice_key": data.get("lnbits_invoice_key", "")
+    }
+
 @app.get("/api/tier")
 def get_tier():
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))

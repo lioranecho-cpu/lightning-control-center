@@ -150,8 +150,8 @@
 </div>
 
 <script>
-const LNBITS_URL = 'https://lnbits.satslist.shop';
-const LNBITS_KEY = '3bd5a6cda60048a39f71d9ada8d3961d';
+let LNBITS_URL = '';
+let LNBITS_KEY = '';
 let btcPrice = 65000;
 
 function fmt(n){ return Number(n).toLocaleString(); }
@@ -165,6 +165,14 @@ function timeAgo(dateStr){
 }
 
 async function loadTreasury(){
+  // Load LNbits settings from API if not already loaded
+  if(!LNBITS_KEY){
+    try{
+      const cfg = await fetch('https://lcc.satslist.shop/api/settings/lnbits').then(r=>r.json());
+      LNBITS_KEY = cfg.invoice_key;
+      LNBITS_URL = cfg.url;
+    } catch(e){ console.error('Failed to load LNbits config:', e); }
+  }
   try{
     // Get BTC price
     const nodeResp = await fetch('https://lcc.satslist.shop/api/node');
