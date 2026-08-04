@@ -24,3 +24,5 @@ node_modules/
 
 # Deployment scripts with credentials
 deploy.sh
+.env
+data.json

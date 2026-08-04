@@ -295,7 +295,45 @@
 
   </div>
 
-  <footer class="statusbar">
+  <!-- Strategy Modal -->
+<div id="strategy-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;width:100%;max-width:400px;margin:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">⚡ Automation Strategy <span style="font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 6px;border-radius:10px;margin-left:6px;">PRO</span></h3>
+    <p id="strat-alias" style="font-size:12px;color:var(--muted);margin-bottom:20px;"></p>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Strategy</label>
+      <select id="strat-type" onchange="toggleStratFields()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--font);font-size:13px;">
+        <option value="none">⚖️ None — Manual control</option>
+        <option value="drain_trap">🌊 Drain & Trap</option>
+      </select>
+    </div>
+    <div id="drain-trap-fields" style="display:none;">
+      <div style="background:rgba(247,147,26,.06);border:1px solid var(--orange-dim);border-radius:8px;padding:12px;font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.7;">
+        <strong style="color:var(--orange);">How it works:</strong> Channel drains at low PPM to attract volume. When balance hits the floor %, fees automatically spike to trap high PPM payments. Resets when balance recovers.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Drain PPM</label>
+          <input type="number" id="drain-ppm" value="50" min="0" max="500" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:12px;">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Trap PPM</label>
+          <input type="number" id="trap-ppm" value="1200" min="100" max="5000" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:12px;">
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;">Floor %</label>
+          <input type="number" id="floor-pct" value="2" min="0" max="20" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:12px;">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="saveStrategy()" style="flex:1;background:var(--orange);color:#000;border:none;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;font-family:var(--font);">Save Strategy</button>
+      <button onclick="closeStrategyModal()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:10px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<footer class="statusbar">
     <div class="sb-item"><span class="sb-icon">&#8383;</span><div><div class="sb-label">Bitcoin Price</div><div class="sb-val" id="btc-price">$&#8212;</div></div></div>
     <div class="sb-item"><span class="sb-icon">&#128230;</span><div><div class="sb-label">Mempool</div><div class="sb-val" id="mempool-size">&#8212;</div></div></div>
     <div class="sb-item"><span class="sb-icon">&#128184;</span><div><div class="sb-label">Fee Rate</div><div class="sb-val" id="fee-rate">&#8212;</div></div></div>
@@ -379,6 +417,7 @@ fetch(API).then(r=>r.json()).then(d=>{
           <button class="action-btn" onclick="openFeeModal('${ch.channel_point}','${ch.peer_alias}',${ch.fee_ppm},${ch.base_fee})">Update Fees</button>
           <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
           <button class="action-btn" onclick="showPeerPolicy('${ch.scid}','${ch.peer_alias}')">Peer Policy</button>
+          <button class="action-btn" onclick="openStrategyModal('${ch.channel_point}','${ch.peer_alias}')">⚡ Strategy</button>
           <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
@@ -726,6 +765,71 @@ function applyFees(){
     })
     .catch(()=>{ status.textContent = '❌ Update failed'; status.style.color = '#ef4444'; });
 }
+
+window.currentStratChanPoint = '';
+
+function openStrategyModal(chanPoint, alias) {
+  window.currentStratChanPoint = chanPoint;
+  document.getElementById('strat-alias').textContent = alias;
+  document.getElementById('strategy-modal').style.display = 'flex';
+  fetch('https://lcc.satslist.shop/api/channel-strategies')
+    .then(r=>r.json()).then(data=>{
+      const s = data.strategies[chanPoint];
+      if(s) {
+        document.getElementById('strat-type').value = s.strategy;
+        document.getElementById('drain-ppm').value = s.drain_ppm || 50;
+        document.getElementById('trap-ppm').value = s.trap_ppm || 1200;
+        document.getElementById('floor-pct').value = s.floor_pct || 2;
+      } else {
+        document.getElementById('strat-type').value = 'none';
+      }
+      toggleStratFields();
+    });
+}
+
+function closeStrategyModal() {
+  document.getElementById('strategy-modal').style.display = 'none';
+}
+
+function toggleStratFields() {
+  const type = document.getElementById('strat-type').value;
+  document.getElementById('drain-trap-fields').style.display = type === 'drain_trap' ? 'block' : 'none';
+}
+
+function saveStrategy() {
+  const strategy = document.getElementById('strat-type').value;
+  const body = {
+    strategy,
+    drain_ppm: parseInt(document.getElementById('drain-ppm').value),
+    trap_ppm: parseInt(document.getElementById('trap-ppm').value),
+    floor_pct: parseInt(document.getElementById('floor-pct').value)
+  };
+  fetch('https://lcc.satslist.shop/api/channel-strategies/' + window.currentStratChanPoint, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(r=>r.json()).then(()=>{
+    if(strategy === 'drain_trap') {
+      const ppm = body.drain_ppm;
+      const cp = window.currentStratChanPoint;
+      fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat=0&fee_rate_ppm=' + ppm + '&time_lock_delta=40&chan_point=' + cp, {method:'POST'})
+        .finally(()=>{
+          closeStrategyModal();
+          alert('✅ Strategy active! Channel draining at ' + ppm + ' PPM.');
+          setTimeout(()=>loadChannels(), 1500);
+        });
+    } else {
+      closeStrategyModal();
+      alert('✅ Strategy cleared.');
+      setTimeout(()=>loadChannels(), 500);
+    }
+  }).catch(()=>alert('❌ Failed to save strategy'));
+}
+
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('strategy-modal');
+  if(e.target === modal) closeStrategyModal();
+});
 
 function showPeerPolicy(scid, alias) {
   fetch('https://lcc.satslist.shop/api/chaninfo?scid=' + scid)
