@@ -3,6 +3,8 @@ import subprocess
 import threading
 import json
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import time
 from datetime import datetime, timezone
 import time as time_module
@@ -38,7 +40,9 @@ def run_lncli(*args):
 
 def run_bitcoin_cli(*args):
     try:
-        result = subprocess.run(["/snap/bitcoin-core/current/bin/bitcoin-cli", "-rpcuser=luca", "-rpcpassword=bitcoinnode2026"] + list(args), capture_output=True, text=True, timeout=10)
+        rpc_user = os.getenv("RPC_USER", "luca")
+        rpc_pass = os.getenv("RPC_PASS", "bitcoinnode2026")
+        result = subprocess.run(["/snap/bitcoin-core/current/bin/bitcoin-cli", f"-rpcuser={rpc_user}", f"-rpcpassword={rpc_pass}"] + list(args), capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"bitcoin-cli error: {result.stderr.strip()}")
         return json.loads(result.stdout)
@@ -807,6 +811,35 @@ def verify_nsec(body: dict = Body(...)):
     except Exception as e:
         return {"authorized": False, "error": str(e)}
 
+
+# ─── Drain & Trap Channel Strategy ───────────────────────────────────────────
+@app.get("/api/channel-strategies")
+def get_channel_strategies():
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    return {"strategies": data.get("channel_strategies", {})}
+
+@app.post("/api/channel-strategies/{chan_point:path}")
+def set_channel_strategy(chan_point: str, body: dict = Body(...)):
+    f = os.path.join(os.path.dirname(__file__), "data.json")
+    data = json.load(open(f))
+    if "channel_strategies" not in data:
+        data["channel_strategies"] = {}
+    strategy = body.get("strategy", "balanced")
+    if strategy == "none":
+        data["channel_strategies"].pop(chan_point, None)
+    else:
+        data["channel_strategies"][chan_point] = {
+            "strategy": strategy,
+            "drain_ppm": body.get("drain_ppm", 50),
+            "trap_ppm": body.get("trap_ppm", 1200),
+            "floor_pct": body.get("floor_pct", 2),
+            "state": "draining",
+            "set_at": int(time.time())
+        }
+    with open(f, "w") as file:
+        json.dump(data, file, indent=2)
+    return {"status": "saved", "strategy": data["channel_strategies"].get(chan_point)}
+
 # Auto-rebalance scheduler
 def auto_rebalance_job():
     while True:
@@ -827,6 +860,55 @@ def auto_rebalance_job():
         except:
             wait = 86400
         threading.Event().wait(wait)
+
+def drain_trap_worker():
+    while True:
+        try:
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            strategies = data.get("channel_strategies", {})
+            if strategies and not MOCK:
+                channels = run_lncli("listchannels").get("channels", [])
+                for ch in channels:
+                    chan_point = ch.get("channel_point", "")
+                    s = strategies.get(chan_point)
+                    if not s or s.get("strategy") != "drain_trap":
+                        continue
+                    cap = int(ch.get("capacity", 1))
+                    local = int(ch.get("local_balance", 0))
+                    pct = (local / cap) * 100
+                    floor = s.get("floor_pct", 2)
+                    drain_ppm = s.get("drain_ppm", 50)
+                    trap_ppm = s.get("trap_ppm", 1200)
+                    current_state = s.get("state", "draining")
+                    if pct <= floor and current_state != "trapped":
+                        # Switch to trap mode
+                        run_lncli("updatechanpolicy",
+                            f"--base_fee_msat=0",
+                            f"--fee_rate_ppm={trap_ppm}",
+                            "--time_lock_delta=40",
+                            f"--chan_point={chan_point}")
+                        strategies[chan_point]["state"] = "trapped"
+                        strategies[chan_point]["trapped_at"] = int(time.time())
+                        data["channel_strategies"] = strategies
+                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            json.dump(data, f, indent=2)
+                    elif pct > floor and current_state == "trapped":
+                        # Back to drain mode
+                        run_lncli("updatechanpolicy",
+                            f"--base_fee_msat=0",
+                            f"--fee_rate_ppm={drain_ppm}",
+                            "--time_lock_delta=40",
+                            f"--chan_point={chan_point}")
+                        strategies[chan_point]["state"] = "draining"
+                        data["channel_strategies"] = strategies
+                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            json.dump(data, f, indent=2)
+        except Exception as e:
+            pass
+        threading.Event().wait(300)  # Check every 5 minutes
+
+drain_trap_thread = threading.Thread(target=drain_trap_worker, daemon=True)
+drain_trap_thread.start()
 
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
