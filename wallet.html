@@ -505,7 +505,7 @@ function generateAddress() {
   fetch(ADDR_API, {headers:{'x-api-key':'lcc-local-only'}}).then(r=>r.json()).then(d=>{
     currentAddress = d.address;
     document.getElementById('addr-box').textContent = d.address;
-    document.getElementById('qr-box').innerHTML = '&#128247;<br><span style="font-size:9px">QR in Phase 2</span>';
+    document.getElementById('qr-box').innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=bitcoin%3A' + d.address + '&bgcolor=ffffff&color=000000&margin=0" alt="QR" style="border-radius:8px;" />';
   });
 }
 
@@ -519,9 +519,31 @@ function copyAddress() {
 
 function sendPayment() {
   const dest = document.getElementById('payment-dest').value.trim();
-  if(!dest){ document.getElementById('send-feedback').textContent = 'Enter a payment destination'; return; }
-  document.getElementById('send-feedback').textContent = 'Phase 2: real payments via ProDesk backend';
-  document.getElementById('send-feedback').style.color = 'var(--orange)';
+  const amt = document.getElementById('payment-amt').value.trim();
+  const fb = document.getElementById('send-feedback');
+  if(!dest){ fb.textContent = 'Enter a payment destination'; fb.style.color = 'var(--red)'; return; }
+  if(!confirm('Send payment to:\n' + dest.substring(0,40) + '...\n' + (amt ? amt + ' sats' : 'Invoice amount') + '\n\nConfirm?')) return;
+  fb.textContent = 'Sending...';
+  fb.style.color = 'var(--orange)';
+  fetch('https://lcc.satslist.shop/api/sendpayment', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({dest: dest, amount: parseInt(amt) || 0})
+  }).then(r=>r.json()).then(d=>{
+    if(d.status === 'success'){
+      fb.textContent = '✅ ' + d.detail + (d.fee ? ' (fee: ' + d.fee + ' sats)' : '');
+      fb.style.color = 'var(--green)';
+      document.getElementById('payment-dest').value = '';
+      document.getElementById('payment-amt').value = '';
+      setTimeout(()=>loadTransactions(), 2000);
+    } else {
+      fb.textContent = '❌ ' + (d.detail || 'Payment failed');
+      fb.style.color = 'var(--red)';
+    }
+  }).catch(()=>{
+    fb.textContent = '❌ Payment failed — check connection';
+    fb.style.color = 'var(--red)';
+  });
 }
 
 
