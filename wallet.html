@@ -461,7 +461,7 @@ function loadTransactions(){
         tbody.innerHTML += '<tr>' +
           '<td><div class="tx-type"><div class="tx-dot ' + dotClass + '"></div>' + tx.type + '</div></td>' +
           '<td class="tx-amount ' + amtClass + '">' + amtPrefix + fmt(Math.abs(tx.amount)) + ' sats</td>' +
-          '<td style="color:var(--muted);font-family:var(--font)">' + (tx.desc||'') + '</td>' +
+          '<td style="color:var(--muted);font-family:var(--font)">' + (tx.desc||'') + (tx.fee && tx.desc && tx.desc.includes('rebalance') ? ' <span style="color:var(--red);font-size:10px;">(-' + fmt(tx.fee) + ' sats fee)</span>' : '') + '</td>' +
           '<td><span class="tag confirmed">' + (tx.status||'confirmed') + '</span></td>' +
           '<td style="color:var(--muted)">' + (tx.time||'') + '</td></tr>';
       });
