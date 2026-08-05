@@ -532,6 +532,34 @@ def get_chaninfo(scid: str = ""):
     result = run_lncli("getchaninfo", f"--chan_id={scid}")
     return result
 
+@app.post("/api/sendpayment")
+def send_payment(body: dict = Body(...)):
+    dest = body.get("dest", "")
+    amount = body.get("amount", 0)
+    if not dest:
+        raise HTTPException(status_code=400, detail="Destination required")
+    try:
+        if dest.startswith("lnbc") or dest.startswith("lntb"):
+            # Lightning invoice
+            if amount > 0:
+                result = run_lncli("sendpayment", "--pay_req=" + dest, "--amt=" + str(amount), "--json", "--force")
+            else:
+                result = run_lncli("sendpayment", "--pay_req=" + dest, "--json", "--force")
+            if result.get("status") == "SUCCEEDED" or result.get("payment_hash"):
+                return {"status": "success", "detail": "Lightning payment sent!", "fee": result.get("fee_sat", 0)}
+            else:
+                return {"status": "failed", "detail": result.get("failure_reason", "Payment failed")}
+        elif dest.startswith("bc1") or dest.startswith("1") or dest.startswith("3"):
+            # On-chain payment
+            if amount <= 0:
+                raise HTTPException(status_code=400, detail="Amount required for on-chain payments")
+            result = run_lncli("sendcoins", "--addr=" + dest, "--amt=" + str(amount))
+            return {"status": "success", "detail": "On-chain payment sent!", "txid": result.get("txid", "")}
+        else:
+            raise HTTPException(status_code=400, detail="Unrecognized payment destination")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/feepolicy")
 def get_fee_policy():
     if MOCK:
