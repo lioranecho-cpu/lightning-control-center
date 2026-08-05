@@ -560,6 +560,25 @@ def send_payment(body: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/estimatefee")
+def estimate_rebalance_fee(target_pubkey: str = "", amount: int = 0):
+    if not target_pubkey:
+        raise HTTPException(status_code=400, detail="target_pubkey required")
+    if amount <= 0:
+        data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        amount = data.get("rebalance_amount", 50000)
+    try:
+        node_info = run_lncli("getinfo")
+        my_pubkey = node_info.get("identity_pubkey", "")
+        result = run_lncli("queryroutes", f"--dest={my_pubkey}", f"--amt={amount}")
+        routes = result.get("routes", [])
+        if routes:
+            fee = int(routes[0].get("total_fees_msat", 0)) // 1000
+            return {"status": "ok", "estimated_fee_sats": fee, "amount": amount, "hops": len(routes[0].get("hops", []))}
+        return {"status": "no_route", "estimated_fee_sats": 0, "amount": amount, "detail": "No route found"}
+    except Exception as e:
+        return {"status": "error", "estimated_fee_sats": 0, "detail": str(e)}
+
 @app.get("/api/feepolicy")
 def get_fee_policy():
     if MOCK:

@@ -857,15 +857,46 @@ function rebalanceChannel(pubkey, alias){
     alert('Rebalancing is a Pro feature. Upgrade at satslist.shop');
     return;
   }
-  if(!confirm('Rebalance channel with ' + alias + '?')) return;
-  fetch('https://lcc.satslist.shop/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
+  // Step 1: Estimate fee first
+  fetch('https://lcc.satslist.shop/api/estimatefee?target_pubkey=' + pubkey)
     .then(r=>r.json())
-    .then(d=>{
-      const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
-      alert('✅ Rebalanced ' + alias + ' — ' + success + ' operations completed');
-      location.reload();
+    .then(est=>{
+      let msg = '⚖️ Rebalance ' + alias + '\n\n';
+      if(est.status === 'ok') {
+        msg += 'Amount: ' + est.amount.toLocaleString() + ' sats\n';
+        msg += 'Estimated fee: ' + est.estimated_fee_sats + ' sats\n';
+        msg += 'Route hops: ' + est.hops + '\n\n';
+        msg += 'Proceed?';
+      } else if(est.status === 'no_route') {
+        msg += 'Amount: ' + est.amount.toLocaleString() + ' sats\n';
+        msg += '⚠️ No route found — rebalance may fail\n\n';
+        msg += 'Try anyway?';
+      } else {
+        msg += '⚠️ Could not estimate fee\n\nTry anyway?';
+      }
+      if(!confirm(msg)) return;
+      // Step 2: Execute rebalance
+      fetch('https://lcc.satslist.shop/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
+        .then(r=>r.json())
+        .then(d=>{
+          const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
+          const totalFee = d.results ? d.results.reduce((a,r)=>a+(r.fee||0),0) : 0;
+          alert('✅ Rebalanced ' + alias + '\n' + success + ' operations completed\nTotal fee: ' + totalFee + ' sats');
+          setTimeout(()=>loadChannels(), 1000);
+        })
+        .catch(()=>alert('❌ Rebalance failed'));
     })
-    .catch(()=>alert('❌ Rebalance failed'));
+    .catch(()=>{
+      if(!confirm('⚠️ Could not estimate fee for ' + alias + '\n\nTry anyway?')) return;
+      fetch('https://lcc.satslist.shop/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
+        .then(r=>r.json())
+        .then(d=>{
+          const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
+          alert('✅ Rebalanced ' + alias + ' — ' + success + ' operations completed');
+          setTimeout(()=>loadChannels(), 1000);
+        })
+        .catch(()=>alert('❌ Rebalance failed'));
+    });
 }
 
 function closeChannelConfirm(chanPoint, alias){
