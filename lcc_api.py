@@ -129,6 +129,7 @@ def get_channels():
             "remote_pubkey": ch.get("remote_pubkey", ""),
             "chan_id": ch.get("chan_id", ""),
             "scid": str(ch.get("scid", "")),
+            "initiator": ch.get("initiator", False),
             "status": "active" if ch.get("active") else "inactive",
         })
     return {

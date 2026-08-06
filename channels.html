@@ -394,7 +394,7 @@ fetch(API).then(r=>r.json()).then(d=>{
           <div class="ch-peer">
             <div class="ch-avatar">${init}</div>
             <div>
-              <div class="ch-alias">${ch.peer_alias}</div>
+              <div class="ch-alias">${ch.peer_alias} <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;${ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);'}">${ch.initiator ? '⬆️ Outbound' : '⬇️ Inbound'}</span></div>
               <div class="ch-pubkey">Capacity: ${fmt(ch.capacity)} sats</div>
             </div>
           </div>

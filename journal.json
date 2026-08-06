@@ -1,5 +1,21 @@
 [
   {
+    "id": 1785980947211,
+    "title": "LNBiG [Hub-1] inbound bought",
+    "body": "LNBiG [Hub-1]\nCapacity: 14,095,000 sats",
+    "tag": "channel",
+    "date": "2026-08-06T01:49:07.211Z",
+    "block": "961,233"
+  },
+  {
+    "id": 1785980258389,
+    "title": "LNBiG [Hub-2] inbound liquidity bought",
+    "body": "LNBiG [Hub-2]\nCapacity: 16,777,000 sats\nactive\nLocal: 0 sats (0%)",
+    "tag": "channel",
+    "date": "2026-08-06T01:37:38.389Z",
+    "block": "961,231"
+  },
+  {
     "id": 1785951497860,
     "title": "opened inbound channel LNBIG[Hub-3]",
     "body": "LNBiG [Hub-3]\nCapacity: 10,060,479 sats.  inbound channel  only",
