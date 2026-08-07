@@ -285,7 +285,15 @@
       <button class="tab active" onclick="showTab(this,'active')">Active</button>
       <button class="tab" onclick="showTab(this,'pending')">Pending (<span id="pending-count">0</span>)</button>
       <button class="tab" onclick="showTab(this,'all')">All</button>
-      <span id="lcc-refresh-timer" style="font-size:10px;color:var(--muted);font-family:monospace;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);margin-left:auto;">Refreshing in 60s</span>
+      <select id="channel-sort" onchange="sortChannels()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:6px;font-size:11px;font-family:var(--font);cursor:pointer;margin-left:auto;margin-right:8px;">
+        <option value="capacity">Sort: Capacity</option>
+        <option value="inbound">Sort: Inbound first</option>
+        <option value="outbound">Sort: Outbound first</option>
+        <option value="local_pct">Sort: Most full</option>
+        <option value="local_pct_asc">Sort: Most empty</option>
+        <option value="fee">Sort: Fee PPM</option>
+      </select>
+      <span id="lcc-refresh-timer" style="font-size:10px;color:var(--muted);font-family:monospace;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);">Refreshing in 60s</span>
     </div>
 
     <!-- Active channels -->
@@ -383,9 +391,11 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('local-total').textContent = fmt(totalLocal);
   document.getElementById('remote-total').textContent = fmt(totalRemote);
 
-  // Active channels
-  const activeEl = document.getElementById('active-channels');
-  channels.forEach(ch => {
+  // Active channels — cache and render
+  cachedChannels = [...channels];
+  sortChannels();
+  // Skip inline forEach — sortChannels handles rendering
+  if(false) channels.forEach(ch => {
     const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const localPct = Math.round((ch.local_balance / ch.capacity) * 100);
     activeEl.innerHTML += `
@@ -764,6 +774,47 @@ function applyFees(){
       setTimeout(()=>{ closeFeeModal(); location.reload(); }, 1500);
     })
     .catch(()=>{ status.textContent = '❌ Update failed'; status.style.color = '#ef4444'; });
+}
+
+let cachedChannels = [];
+
+function sortChannels() {
+  if(!cachedChannels.length) return;
+  const activeEl = document.getElementById('active-channels');
+  activeEl.innerHTML = '';
+  const channels = [...cachedChannels];
+  const sortBy = document.getElementById('channel-sort').value;
+  if(sortBy === 'capacity') channels.sort((a,b) => b.capacity - a.capacity);
+  else if(sortBy === 'inbound') channels.sort((a,b) => (a.initiator===b.initiator)?b.capacity-a.capacity:(a.initiator?1:-1));
+  else if(sortBy === 'outbound') channels.sort((a,b) => (a.initiator===b.initiator)?b.capacity-a.capacity:(a.initiator?-1:1));
+  else if(sortBy === 'local_pct') channels.sort((a,b) => (b.local_balance/b.capacity) - (a.local_balance/a.capacity));
+  else if(sortBy === 'local_pct_asc') channels.sort((a,b) => (a.local_balance/a.capacity) - (b.local_balance/b.capacity));
+  else if(sortBy === 'fee') channels.sort((a,b) => b.fee_ppm - a.fee_ppm);
+  channels.forEach(ch => {
+    const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const localPct = Math.round((ch.local_balance / ch.capacity) * 100);
+    activeEl.innerHTML += '<div class="channel-card">' +
+      '<div class="ch-top"><div class="ch-peer">' +
+      '<div class="ch-avatar">' + init + '</div><div>' +
+      '<div class="ch-alias">' + ch.peer_alias + ' <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;' + (ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);') + '">' + (ch.initiator ? '⬆️ Outbound' : '⬇️ Inbound') + '</span></div>' +
+      '<div class="ch-pubkey">Capacity: ' + fmt(ch.capacity) + ' sats</div></div></div>' +
+      '<div class="ch-right"></div></div>' +
+      '<div class="balance-bar-wrap"><div class="balance-bar-labels">' +
+      '<span>Local: ' + fmt(ch.local_balance) + ' sats (' + localPct + '%)</span>' +
+      '<span>Remote: ' + fmt(ch.remote_balance) + ' sats (' + (100-localPct) + '%)</span></div>' +
+      '<div class="balance-bar"><div class="balance-bar-fill" style="width:' + localPct + '%"></div></div></div>' +
+      '<div class="ch-stats">' +
+      '<div class="ch-stat">Fee PPM: <span>' + ch.fee_ppm + '</span></div>' +
+      '<div class="ch-stat">Base Fee: <span>' + ch.base_fee + ' msat</span></div>' +
+      '<div class="ch-stat">Status: <span style="color:var(--green)">' + ch.status + '</span></div></div>' +
+      '<div class="ch-actions">' +
+      '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
+      '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
+      '<button class="action-btn" onclick="showPeerPolicy(\'' + ch.scid + '\',\'' + ch.peer_alias + '\')">Peer Policy</button>' +
+      '<button class="action-btn" onclick="openStrategyModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">⚡ Strategy</button>' +
+      '<button class="action-btn danger" onclick="closeChannelConfirm(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">Close Channel</button>' +
+      '</div></div>';
+  });
 }
 
 window.currentStratChanPoint = '';
