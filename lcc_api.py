@@ -40,8 +40,8 @@ def run_lncli(*args):
 
 def run_bitcoin_cli(*args):
     try:
-        rpc_user = os.getenv("RPC_USER", "luca")
-        rpc_pass = os.getenv("RPC_PASS", "bitcoinnode2026")
+        rpc_user = os.getenv("RPC_USER", "")
+        rpc_pass = os.getenv("RPC_PASS", "")
         result = subprocess.run(["/snap/bitcoin-core/current/bin/bitcoin-cli", f"-rpcuser={rpc_user}", f"-rpcpassword={rpc_pass}"] + list(args), capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"bitcoin-cli error: {result.stderr.strip()}")
