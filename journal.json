@@ -1,5 +1,13 @@
 [
   {
+    "id": 1786160034681,
+    "title": "I survived Bip110",
+    "body": "\ud83d\udcc5 August 7, 2026 \n\u26d3\ufe0f  Block ~961,370 (BIP-110 window: 961,632)\n\u26a1 21 Lightning channels closed cooperatively\n\ud83d\udcb0 17,150,687 sats (~$11,130) secured on-chain\n\ud83d\udee1\ufe0f Zero exposure entering the mandatory signaling window\n\ud83d\udc64 lioranecho \u2014 survived BIP-110",
+    "tag": "milestone",
+    "date": "2026-08-08T03:33:54.681Z",
+    "block": "961,521"
+  },
+  {
     "id": 1785980947211,
     "title": "LNBiG [Hub-1] inbound bought",
     "body": "LNBiG [Hub-1]\nCapacity: 14,095,000 sats",
