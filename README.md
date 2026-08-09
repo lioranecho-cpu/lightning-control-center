@@ -11,7 +11,10 @@ A beautiful, self-hosted Lightning node manager. Built for Bitcoin node runners.
 
 Paste this into any AI (Claude, ChatGPT, Grok) for an interactive walkthrough:
 
-> *"Read https://github.com/lioranecho-cpu/lightning-control-center and walk me through its features, installation, and usage as a Lightning node operator. Include tips on channel management, fee optimization, and rebalancing strategies."*
+> *"Read https://github.com/lioranecho-cpu/lightning-control-center and guide me step by step through installing LCC on my Linux server. I have LND and Bitcoin Core already running. Check the requirements.txt and install.sh for dependencies and help me troubleshoot any issues."*
+>
+> For a full feature walkthrough use:
+> *"Read https://github.com/lioranecho-cpu/lightning-control-center/blob/main/MANUAL.md and walk me through all LCC features and how to use them."*
 
 ---
 
