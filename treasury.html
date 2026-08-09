@@ -311,6 +311,7 @@ function toggleSidebar(){
 }
 
 fetch('/api/tier').then(r=>r.json()).then(d=>{
+  window.LCC_TIER = d.tier || 'community';
   const b = document.getElementById('tier-badge');
   if(b) b.textContent = {community:'🟠 Community',personal:'⚡ Personal',pro:'🏢 Pro'}[d.tier] || '🟠 Community';
 });
