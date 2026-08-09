@@ -110,7 +110,20 @@ Get a license at **satslist.shop** — pay with Bitcoin Lightning ⚡
 
 ## Screenshots
 
-*Coming soon*
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Channels — Inbound/Outbound Labels & Sorting
+![Channels](screenshots/channels.png)
+
+### Analytics — Fee Recommendations
+![Analytics](screenshots/analytics.png)
+
+### Routing — Forwarding History
+![Routing](screenshots/routing.png)
+
+### Nostr Login
+![Nostr Login](screenshots/nostr-login.jpg)
 
 ---
 
