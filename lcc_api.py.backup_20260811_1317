@@ -445,7 +445,7 @@ def get_system():
     
     # Services
     services = [
-        {"name": "Bitcoin Core", "desc": "Full Bitcoin node — validates blocks and transactions", "unit": "bitcoin-core-rpc"},
+        {"name": "Bitcoin Core", "desc": "Full Bitcoin node — validates blocks and transactions", "unit": "bitcoin-core"},
         {"name": "LND / litd", "desc": "Lightning Network Daemon — manages payment channels", "unit": "litd"},
         {"name": "RTL", "desc": "Ride The Lightning — web UI for LND", "unit": "rtl"},
         {"name": "LNbits", "desc": "Lightning wallet and extensions platform", "unit": "lnbits"},
@@ -457,22 +457,12 @@ def get_system():
     
     for svc in services:
         try:
-            if svc["unit"] == "bitcoin-core-rpc":
-                import requests as _req
-                _user = os.getenv("RPC_USER", "")
-                _pass = os.getenv("RPC_PASS", "")
-                _host = os.getenv("RPC_HOST", "127.0.0.1")
-                _port = os.getenv("RPC_PORT", "8332")
-                _r = _req.post(f"http://{_host}:{_port}", json={"jsonrpc":"1.0","id":"ping","method":"getblockchaininfo","params":[]}, auth=(_user, _pass), timeout=3)
-                svc["active"] = _r.status_code == 200
-                svc["status"] = "active" if _r.status_code == 200 else "stopped"
-            else:
-                result = subprocess.run(
-                    ["systemctl", "is-active", svc["unit"]],
-                    capture_output=True, text=True, timeout=3
-                )
-                svc["active"] = result.stdout.strip() == "active"
-                svc["status"] = result.stdout.strip()
+            result = subprocess.run(
+                ["systemctl", "is-active", svc["unit"]],
+                capture_output=True, text=True, timeout=3
+            )
+            svc["active"] = result.stdout.strip() == "active"
+            svc["status"] = result.stdout.strip()
         except:
             svc["active"] = False
             svc["status"] = "unknown"
