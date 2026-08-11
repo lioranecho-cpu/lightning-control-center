@@ -767,7 +767,11 @@ def get_tier():
 def set_tier(key: str):
     KEYS = {
         "LCC-PERSONAL-2025": "personal",
-        "LCC-PRO-2025": "pro"
+        "LCC-PRO-2025": "pro",
+        "LCC-BETA-001-2026": "pro",
+        "LCC-BETA-002-2026": "pro",
+        "LCC-BETA-003-2026": "pro",
+        "LCC-BETA-004-2026": "pro"
     }
     if key not in KEYS:
         raise HTTPException(status_code=403, detail="Invalid license key")
