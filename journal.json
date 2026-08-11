@@ -1,5 +1,13 @@
 [
   {
+    "id": 1786478140569,
+    "title": "created Umbrel install",
+    "body": "Block ~962,038 \u2014 August 11, 2026\nSubmitted Lightning Control Center to Umbrel App Store.\nPR: https://github.com/getumbrel/umbrel-apps/pull/5974\nAll lint checks passed. Multi-arch Docker image live on Docker Hub: sparkielabs/lightning-control-center:0.1.2\nFrom BIP-110 panic close to Umbrel submission in one weekend. \ud83e\udee1",
+    "tag": "milestone",
+    "date": "2026-08-11T19:55:40.569Z",
+    "block": "962,046"
+  },
+  {
     "id": 1786160034681,
     "title": "I survived Bip110",
     "body": "\ud83d\udcc5 August 7, 2026 \n\u26d3\ufe0f  Block ~961,370 (BIP-110 window: 961,632)\n\u26a1 21 Lightning channels closed cooperatively\n\ud83d\udcb0 17,150,687 sats (~$11,130) secured on-chain\n\ud83d\udee1\ufe0f Zero exposure entering the mandatory signaling window\n\ud83d\udc64 lioranecho \u2014 survived BIP-110",

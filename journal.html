@@ -485,13 +485,13 @@ function renderEntries(search = '') {
   list.innerHTML = filtered.map(e => {
     const date = new Date(e.date).toLocaleString();
     const bodyPreview = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
-    return `<div class="entry-card">
+    return `<div class="entry-card" onclick="openEntry(${e.id})" style="cursor:pointer;">
       <div class="entry-header">
         <div>
           <div class="entry-title">${e.title}</div>
           <div class="entry-meta">${date}</div>
         </div>
-        <button class="delete-btn" onclick="deleteEntry(${e.id})" title="Delete entry">&#128465;</button>
+        <button class="delete-btn" onclick="event.stopPropagation();deleteEntry(${e.id})" title="Delete entry">&#128465;</button>
       </div>
       ${bodyPreview ? `<div class="entry-body">${bodyPreview}</div>` : ''}
       <div class="entry-footer">
@@ -703,6 +703,34 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+
+<!-- Entry expand modal -->
+<div id="entry-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;" onclick="if(event.target===this)closeEntry()">
+  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;position:relative;">
+    <button onclick="closeEntry()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+    <div id="modal-tag" style="margin-bottom:8px;"></div>
+    <div id="modal-title" style="font-size:18px;font-weight:700;color:#f0f0f0;margin-bottom:4px;"></div>
+    <div id="modal-meta" style="font-size:12px;color:#888;margin-bottom:16px;"></div>
+    <div id="modal-body" style="font-size:14px;color:#ccc;line-height:1.7;white-space:pre-wrap;"></div>
+    <div id="modal-block" style="font-size:11px;color:#555;margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+function openEntry(id) {
+  const e = getEntries().find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('modal-title').textContent = e.title;
+  document.getElementById('modal-meta').textContent = new Date(e.date).toLocaleString();
+  document.getElementById('modal-body').textContent = e.body || '';
+  document.getElementById('modal-block').textContent = 'Block ' + e.block;
+  document.getElementById('modal-tag').innerHTML = `<span class="entry-tag ${e.tag}">${e.tag}</span>`;
+  document.getElementById('entry-modal').style.display = 'flex';
+}
+function closeEntry() {
+  document.getElementById('entry-modal').style.display = 'none';
+}
 </script>
 </body>
 </html>
