@@ -97,6 +97,42 @@
   </div>
   <div class="content">
 
+
+    <!-- P&L Card -->
+    <div class="wallet-card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="wc-label">📊 Node P&L</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="loadPnl('30d')" id="pnl-30d" style="background:var(--orange);color:#000;border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">30D</button>
+          <button onclick="loadPnl('1y')" id="pnl-1y" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">1Y</button>
+          <button onclick="loadPnl('all')" id="pnl-all" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">ALL</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">ROUTING FEES</div>
+          <div style="font-size:16px;color:#4caf50;font-weight:700;" id="pnl-routing">—</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">REBALANCE FEES</div>
+          <div style="font-size:16px;color:#f44336;font-weight:700;" id="pnl-rebalance">—</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">OPEN FEES (est.)</div>
+          <div style="font-size:16px;color:#f44336;font-weight:700;" id="pnl-open">—</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">CLOSE FEES</div>
+          <div style="font-size:16px;color:#f44336;font-weight:700;" id="pnl-close">—</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;color:var(--muted);">NET P&L</div>
+        <div style="font-size:22px;font-weight:700;" id="pnl-net">—</div>
+      </div>
+      <div style="font-size:10px;color:#555;margin-top:8px;">⚠️ Opening/closing fees are approximated from LND data. Verify exact fees via mempool.space.</div>
+    </div>
+
     <!-- Wallet Cards -->
     <div class="wallet-grid" id="wallet-grid">
       <div class="wallet-card">
@@ -329,5 +365,30 @@ setInterval(loadTreasury, 30000);
     if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
   } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
 })();</script>
+
+<script>
+async function loadPnl(period = '30d') {
+  ['30d','1y','all'].forEach(p => {
+    const btn = document.getElementById('pnl-' + p);
+    if (btn) {
+      btn.style.background = p === period ? 'var(--orange)' : 'var(--surface2)';
+      btn.style.color = p === period ? '#000' : 'var(--muted)';
+      btn.style.border = p === period ? 'none' : '1px solid var(--border)';
+    }
+  });
+  try {
+    const r = await fetch('https://lcc.satslist.shop/api/pnl?period=' + period);
+    const d = await r.json();
+    document.getElementById('pnl-routing').textContent = '+' + d.routing_fees.toLocaleString() + ' sats';
+    document.getElementById('pnl-rebalance').textContent = '-' + d.rebalance_fees.toLocaleString() + ' sats';
+    document.getElementById('pnl-open').textContent = '-' + d.open_fees.toLocaleString() + ' sats';
+    document.getElementById('pnl-close').textContent = (d.close_fees > 0 ? '-' : '') + d.close_fees.toLocaleString() + ' sats';
+    const net = document.getElementById('pnl-net');
+    net.textContent = (d.net_pnl >= 0 ? '+' : '') + d.net_pnl.toLocaleString() + ' sats';
+    net.style.color = d.net_pnl >= 0 ? '#4caf50' : '#f44336';
+  } catch(e) { console.error('P&L error:', e); }
+}
+window.addEventListener('DOMContentLoaded', () => loadPnl('30d'));
+</script>
 </body>
 </html>

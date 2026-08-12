@@ -1,3 +1,34 @@
 {
-  "connections": []
+  "connections": [
+    {
+      "id": "98b8ed303a799609",
+      "name": "Zeus",
+      "permissions": [
+        "get_balance",
+        "pay_invoice",
+        "make_invoice"
+      ],
+      "budget_sats": 0,
+      "client_pubkey": "npub1hgq2ecemqgxdt8sz2xpuc77u597ulpxklxj66m46ren752cs3epsrd2w88",
+      "created_at": 1786491442,
+      "last_used": null,
+      "active": true,
+      "nwc_uri": "nostr+walletconnect://e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd?relay=wss://relay.primal.net&secret=3510a7ac9f0bfd831afaa59de9b060148fe2d158444f4c1edb82d476357b9f81"
+    },
+    {
+      "id": "40ee6021e471d507",
+      "name": "Alby",
+      "permissions": [
+        "get_balance",
+        "pay_invoice",
+        "make_invoice"
+      ],
+      "budget_sats": 0,
+      "client_pubkey": "npub1yqt6r58l59ec6l67cytcp58nsuen26gl305uhk9yc7h424tlh92s87egg0",
+      "created_at": 1786496054,
+      "last_used": 1786496365,
+      "active": true,
+      "nwc_uri": "nostr+walletconnect://e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd?relay=wss://relay.primal.net&secret=db572b5a6f5fd36122dbb41b375ba15999b3dd817d4bf8d5f0ae00262cd22354"
+    }
+  ]
 }

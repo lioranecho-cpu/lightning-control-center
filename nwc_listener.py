@@ -13,7 +13,7 @@ import logging
 from datetime import timedelta
 from nostr_sdk import (
     Keys, SecretKey, PublicKey, Client, Filter,
-    EventBuilder, nip04_decrypt, nip04_encrypt,
+    EventBuilder, nip04_decrypt, nip04_encrypt, nip44_encrypt, nip44_decrypt,
     Kind, RelayUrl, NostrSigner, Tag
 )
 
@@ -136,14 +136,22 @@ def handle_lookup_invoice(params):
 def process_request(method, params, conn):
     perms = conn.get("permissions", [])
     if method == "get_info":
+        # Get real block info from lncli
+        try:
+            info = json.loads(subprocess.run(["lncli", "getinfo"], capture_output=True, text=True, timeout=10).stdout)
+            block_height = info.get("block_height", 0)
+            block_hash = info.get("block_hash", "")
+        except:
+            block_height = 0
+            block_hash = ""
         return {
             "alias": "prodeskltn-node",
             "color": "#f7931a",
-            "pubkey": "e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd",
+            "pubkey": "03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1",
             "network": "mainnet",
-            "block_height": 0,
-            "block_hash": "",
-            "methods": ["get_balance", "get_info", "pay_invoice", "make_invoice", "lookup_invoice"]
+            "block_height": block_height,
+            "block_hash": block_hash,
+            "methods": ["get_balance", "get_info", "pay_invoice", "make_invoice", "lookup_invoice", "list_transactions"]
         }, None
 
     elif method == "get_balance":
@@ -213,8 +221,15 @@ async def run_listener():
             await client.connect()
             log.info(f"✅ Connected to {RELAY}")
 
+            # Publish NIP-47 info event (kind 13194) — tells wallets we exist
+            capabilities = "get_info get_balance make_invoice lookup_invoice list_transactions pay_invoice"
+            info_builder = EventBuilder(Kind(13194), capabilities)
+            await client.send_event_builder(info_builder)
+            log.info(f"📢 Published NWC info event (kind 13194) with capabilities: {capabilities}")
+
             # Subscribe to NWC request events (kind 23194) addressed to us
-            f = Filter().kind(Kind(23194)).pubkey(node_pubkey)
+            from nostr_sdk import Timestamp
+            f = Filter().kind(Kind(23194)).pubkeys([node_pubkey]).since(Timestamp.now())
 
             log.info("👂 Listening for NWC requests...")
             while True:
@@ -233,11 +248,11 @@ async def run_listener():
                             continue
 
                         # Decrypt request
-                        content = nip04_decrypt(
-                            keys.secret_key(),
-                            sender_pubkey,
-                            event.content()
-                        )
+                        # Try NIP-44 first, fall back to NIP-04
+                        try:
+                            content = nip44_decrypt(keys.secret_key(), sender_pubkey, event.content())
+                        except:
+                            content = nip04_decrypt(keys.secret_key(), sender_pubkey, event.content())
                         req = json.loads(content)
                         method = req.get("method", "")
                         params = req.get("params", {})
@@ -252,18 +267,19 @@ async def run_listener():
                         if error_code:
                             response = {
                                 "result_type": method,
-                                "error": {"code": error_code, "message": error_code},
-                                "id": req_id
+                                "error": {"code": error_code, "message": error_code}
                             }
                         else:
                             response = {
                                 "result_type": method,
-                                "result": result,
-                                "id": req_id
+                                "result": result
                             }
+                        # Add id if present in request
+                        if req_id:
+                            response["id"] = req_id
 
                         # Encrypt and send response (kind 23195)
-                        encrypted = nip04_encrypt(
+                        encrypted = nip44_encrypt(
                             keys.secret_key(),
                             sender_pubkey,
                             json.dumps(response)

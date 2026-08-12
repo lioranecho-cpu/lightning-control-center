@@ -758,6 +758,55 @@ def get_lnbits_settings():
         "invoice_key": data.get("lnbits_invoice_key", "")
     }
 
+
+@app.get("/api/pnl")
+def get_pnl(period: str = "30d"):
+    # Routing fees earned
+    if period == "30d":
+        days = 30
+    elif period == "1y":
+        days = 365
+    else:
+        days = 9999
+
+    now_s = int(time.time())
+    start_s = int(time.time() - days * 86400)
+
+    history = run_lncli("fwdinghistory", f"--start_time={start_s}", f"--end_time={now_s}", "--max_events=10000")
+    events = history.get("forwarding_events", []) if isinstance(history, dict) else []
+    routing_fees = sum(int(e.get("fee", 0)) for e in events)
+
+    # Rebalancing fees from wallet transactions
+    txns = run_lncli("listpayments", "--max_payments=500")
+    payments = txns.get("payments", []) if isinstance(txns, dict) else []
+    rebalance_fees = sum(
+        int(p.get("fee_sat", 0))
+        for p in payments
+        if p.get("status") == "SUCCEEDED" and p.get("payment_request", "").startswith("lnbc")
+        and int(p.get("value_sat", 0)) > 0
+    )
+
+    # Channel opening fees (estimated from commit fees)
+    channels = run_lncli("listchannels")
+    open_fees = sum(int(c.get("commit_fee", 0)) for c in channels.get("channels", []))
+
+    # Channel closing fees
+    closed = run_lncli("closedchannels")
+    close_fees = sum(int(c.get("close_fee_sat", 0)) for c in closed.get("channels", []))
+
+    total_costs = rebalance_fees + open_fees + close_fees
+    net_pnl = routing_fees - total_costs
+
+    return {
+        "period": period,
+        "routing_fees": routing_fees,
+        "rebalance_fees": rebalance_fees,
+        "open_fees": open_fees,
+        "close_fees": close_fees,
+        "total_costs": total_costs,
+        "net_pnl": net_pnl
+    }
+
 @app.get("/api/tier")
 def get_tier():
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
