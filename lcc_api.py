@@ -772,7 +772,10 @@ def get_pnl(period: str = "30d"):
     now_s = int(time.time())
     start_s = int(time.time() - days * 86400)
 
-    history = run_lncli("fwdinghistory", f"--start_time={start_s}", f"--end_time={now_s}", "--max_events=50000")
+    if days >= 9999:
+        history = run_lncli("fwdinghistory", "--start_time=1231006505", f"--end_time={now_s}", "--max_events=50000")
+    else:
+        history = run_lncli("fwdinghistory", f"--start_time={start_s}", f"--end_time={now_s}", "--max_events=50000")
     events = history.get("forwarding_events", []) if isinstance(history, dict) else []
     routing_fees = sum(int(e.get("fee", 0)) for e in events)
 
