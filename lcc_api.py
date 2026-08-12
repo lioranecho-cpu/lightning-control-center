@@ -204,7 +204,7 @@ def get_routing(days: int = 30):
         "fees_60d_sats": total_fees_60,
         "fees_alltime_sats": total_fees_all,
         "volume_30d_btc": round(total_vol / 100_000_000, 8),
-        "forwarding_events": enrich(events[-100:]),
+        "forwarding_events": enrich(events_all),
         "daily_fees": daily_fees,
         "daily_volume": [round(v / 100_000_000, 8) for v in daily_volume],
     }
@@ -356,7 +356,7 @@ def get_transactions(limit: int = 10):
         pass
     # Get routing fees
     try:
-        fwd = run_lncli("fwdinghistory", "--max_events=20")
+        fwd = run_lncli("fwdinghistory", "--max_events=5000")
         for e in fwd.get("forwarding_events", []):
             transactions.append({
                 "type": "forwarded",
@@ -772,7 +772,7 @@ def get_pnl(period: str = "30d"):
     now_s = int(time.time())
     start_s = int(time.time() - days * 86400)
 
-    history = run_lncli("fwdinghistory", f"--start_time={start_s}", f"--end_time={now_s}", "--max_events=10000")
+    history = run_lncli("fwdinghistory", f"--start_time={start_s}", f"--end_time={now_s}", "--max_events=50000")
     events = history.get("forwarding_events", []) if isinstance(history, dict) else []
     routing_fees = sum(int(e.get("fee", 0)) for e in events)
 
