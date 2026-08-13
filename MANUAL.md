@@ -88,6 +88,8 @@ Manage your Lightning channels — open, close, update fees, rebalance.
 - **Rebalance** — manual circular rebalance
 - **Peer Policy** — view your fees vs your peer fees side by side
 - **Strategy** — set Drain and Trap automation (Pro)
+- **🌊 Draining badge** — shown when Drain & Trap is active and channel is draining at low PPM
+- **🪤 Trapped badge** — shown when fee has spiked to trap PPM because local balance hit the floor
 - **Close Channel** — cooperative close with double confirmation
 
 ---
