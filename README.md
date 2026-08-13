@@ -84,12 +84,13 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - 🔐 **Nostr login** — NIP-07 (Alby, nos2x) or nsec
 - 💰 **Treasury + NWC wallet** — connect any NWC wallet
 - 👤 **Peer Policy viewer** — see your fees vs peer fees per channel
+- 📊 **Node P&L card** — routing fees earned vs costs (rebalancing, opens, closes) with 30 Cal-Days / 1 Year / All Time view
 - 📥 **CSV export** — wallet and routing data
 
 ---
 
 ## 💎 Coming Soon
-- 🖥️ Hardware node connectivity — Umbrel, RaspiBlitz, Start9, myNode
+- 🖥️ Hardware node connectivity — Start9, RaspiBlitz, myNode (Umbrel App Store submission pending ✅)
 - 🔌 Plugin architecture — extend LCC
 - 💰 Multi-wallet Treasury — unified balance across multiple wallets
 - 📦 One-click installer

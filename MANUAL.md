@@ -156,14 +156,42 @@ Service health: Bitcoin Core, LND, Lightning Terminal, RTL, LNbits, Mining Pool,
 
 Personal timestamped notes and logs for tracking channel opens, fee changes, and routing observations.
 
+- **Add entry** — title, body, tag (milestone/issue/note/win), block number auto-captured
+- **Click any entry** — opens full text in a modal for easy reading
+- **Tags** — color-coded: milestone (purple), win (green), issue (red), note (gray)
+- **Delete** — trash icon on each entry card
+- Entries are immutable by design — the journal is a permanent log, not an editable document
+
 ---
 
+## Node P&L (Treasury Page)
+
+The P&L card at the top of the Treasury page shows your node profitability at a glance.
+
+- **Routing Fees** — total sats earned forwarding payments
+- **Rebalance Fees** — sats spent on circular rebalancing
+- **Open Fees (est.)** — estimated channel opening costs from LND commit fees
+- **Close Fees** — confirmed cooperative close fees
+- **Net P&L** — routing fees minus all costs (green = profitable, red = still recovering)
+- **Time periods** — 30 Cal-Days (rolling 30 days), 1 Year, All Time
+
+> ⚠️ Opening/closing fees are approximated from LND data. Verify exact fees via mempool.space using the channel funding txid.
+
+---
 ## Alerts
 
 Custom notification system for channel status changes and routing activity thresholds.
 
 ---
 
+## Umbrel Installation
+
+LCC is submitted to the Umbrel App Store (pending approval). For beta access, sideload manually.
+
+See **UMBREL.md** in the repo for step-by-step instructions, or paste this into Claude:
+> *"I want to sideload Lightning Control Center (LCC) on my Umbrel node. Please guide me step by step."*
+
+---
 ## Settings
 
 - **Password** — change LCC login password
