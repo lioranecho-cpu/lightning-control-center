@@ -231,6 +231,7 @@ async def run_listener():
             from nostr_sdk import Timestamp
             f = Filter().kind(Kind(23194)).pubkeys([node_pubkey]).since(Timestamp.now())
 
+            seen_events = set()
             log.info("👂 Listening for NWC requests...")
             while True:
                 try:
@@ -241,6 +242,14 @@ async def run_listener():
                             # Timeout — resubscribe
                             break
 
+                        # Skip already-processed events
+                        event_id = event.id().to_hex()
+                        if event_id in seen_events:
+                            continue
+                        seen_events.add(event_id)
+                        if len(seen_events) > 1000:
+                            seen_events.clear()
+
                         sender_pubkey = event.author()
                         conn = get_connection_by_pubkey(sender_pubkey.to_hex())
                         if not conn:
@@ -248,11 +257,14 @@ async def run_listener():
                             continue
 
                         # Decrypt request
-                        # Try NIP-44 first, fall back to NIP-04
+                        # Try NIP-44 first, fall back to NIP-04 — track which was used
+                        used_nip44 = False
                         try:
                             content = nip44_decrypt(keys.secret_key(), sender_pubkey, event.content())
+                            used_nip44 = True
                         except:
                             content = nip04_decrypt(keys.secret_key(), sender_pubkey, event.content())
+                            used_nip44 = False
                         req = json.loads(content)
                         method = req.get("method", "")
                         params = req.get("params", {})
@@ -278,12 +290,12 @@ async def run_listener():
                         if req_id:
                             response["id"] = req_id
 
-                        # Encrypt and send response (kind 23195)
-                        encrypted = nip44_encrypt(
-                            keys.secret_key(),
-                            sender_pubkey,
-                            json.dumps(response)
-                        )
+                        # Encrypt response using same method client used
+                        if used_nip44:
+                            from nostr_sdk import Nip44Version
+                            encrypted = nip44_encrypt(keys.secret_key(), sender_pubkey, json.dumps(response), Nip44Version.V2)
+                        else:
+                            encrypted = nip04_encrypt(keys.secret_key(), sender_pubkey, json.dumps(response))
                         resp_event = EventBuilder(Kind(23195), encrypted) \
                             .tags([
                                 Tag.parse(["p", sender_pubkey.to_hex()]),
