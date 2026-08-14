@@ -286,7 +286,12 @@ function getThresholds(){try{return JSON.parse(localStorage.getItem(THRESH_KEY)|
 function saveThresholds(){const t={onchain:parseInt(document.getElementById('thresh-onchain').value)||100000,skew:parseInt(document.getElementById('thresh-skew').value)||90,fee:parseInt(document.getElementById('thresh-fee').value)||50,channels:parseInt(document.getElementById('thresh-channels').value)||1};localStorage.setItem(THRESH_KEY,JSON.stringify(t));runChecks();}
 function loadThresholds(){const t=getThresholds();if(t.onchain)document.getElementById('thresh-onchain').value=t.onchain;if(t.skew)document.getElementById('thresh-skew').value=t.skew;if(t.fee)document.getElementById('thresh-fee').value=t.fee;if(t.channels)document.getElementById('thresh-channels').value=t.channels;}
 function runChecks(){
+  // Fetch system data for disk alerts
+  let systemData = null;
+  fetch('https://lcc.satslist.shop/api/system').then(r=>r.json()).then(s=>{ systemData = s; }).catch(()=>{});
+
   fetch(API).then(r=>r.json()).then(d=>{
+    d.system = systemData;
     const price=d.wallet.btc_price_usd;
     const total=d.wallet.confirmed_balance+d.wallet.channel_balance;
     document.getElementById('block-height').textContent=Number(d.node.block_height).toLocaleString();
@@ -323,6 +328,15 @@ function runChecks(){
     else{alerts.push({level:'ok',icon:'&#128101;',title:d.node.num_peers+' peers connected',desc:'Good connectivity.'});}
     if(d.mining.pool_connected){alerts.push({level:'ok',icon:'&#9935;',title:'Mining fleet active',desc:'Running at '+d.mining.total_hashrate_th+' TH/s.'});}
     else{alerts.push({level:'warning',icon:'&#9935;',title:'Mining pool offline',desc:'No pool connection detected.'});}
+    if(d.system){
+      const sysDisk=d.system.root_disk_percent||0;
+      const btcDisk=d.system.bitcoin_disk_percent||0;
+      if(sysDisk>=90){alerts.push({level:'critical',icon:'&#128190;',title:'System disk critically full: '+sysDisk+'%',desc:'Immediate action required — node may crash. Run: sudo journalctl --vacuum-size=200M'});}
+      else if(sysDisk>=80){alerts.push({level:'warning',icon:'&#128190;',title:'System disk filling up: '+sysDisk+'%',desc:'Disk at '+sysDisk+'% — clean up logs before it causes issues.'});}
+      else{alerts.push({level:'ok',icon:'&#128190;',title:'System disk healthy: '+sysDisk+'%',desc:'Plenty of space available.'});}
+      if(btcDisk>=90){alerts.push({level:'warning',icon:'&#128202;',title:'Bitcoin data disk at '+btcDisk+'%',desc:'Bitcoin data drive filling up — consider pruning.'});}
+      else{alerts.push({level:'ok',icon:'&#128202;',title:'Bitcoin disk healthy: '+btcDisk+'%',desc:d.system.bitcoin_disk_used+' used of '+d.system.bitcoin_disk_total});}
+    }
     const crit=alerts.filter(a=>a.level==='critical').length;
     const warn=alerts.filter(a=>a.level==='warning').length;
     const ok=alerts.filter(a=>a.level==='ok').length;
