@@ -491,6 +491,7 @@ function loadSettings() {
   if(s.auto_logout !== undefined) document.getElementById('auto-logout').checked = s.auto_logout;
   if(s.show_usd !== undefined) document.getElementById('show-usd').checked = s.show_usd;
   if(s.show_mining !== undefined) document.getElementById('show-mining').checked = s.show_mining;
+  if(s.alert_notif !== undefined) document.getElementById('alert-notif').checked = s.alert_notif;
   if(s.def_base_fee) document.getElementById('def-base-fee').value = s.def_base_fee;
   if(s.def_fee_rate) document.getElementById('def-fee-rate').value = s.def_fee_rate;
   if(s.def_timelock) document.getElementById('def-timelock').value = s.def_timelock;
