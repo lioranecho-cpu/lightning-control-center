@@ -383,9 +383,39 @@ async function loadPnl(period = '30d') {
     document.getElementById('pnl-rebalance').textContent = '-' + d.rebalance_fees.toLocaleString() + ' sats';
     document.getElementById('pnl-open').textContent = '-' + d.open_fees.toLocaleString() + ' sats';
     document.getElementById('pnl-close').textContent = (d.close_fees > 0 ? '-' : '') + d.close_fees.toLocaleString() + ' sats';
+    // Energy cost calculation from settings
+    const settings = JSON.parse(localStorage.getItem('lcc_settings') || '{}');
+    const energyRate = parseFloat(settings.energy_rate) || 0;
+    const energyWatts = parseInt(settings.energy_watts) || 0;
+    const days = period === '30d' ? 30 : period === '1y' ? 365 : 9999;
+    const btcPrice = 64800; // fallback
+    let energyCostSats = 0;
+    if(energyRate > 0 && energyWatts > 0 && days < 9999) {
+      const dailyCostUsd = (energyWatts / 1000) * 24 * energyRate;
+      const periodCostUsd = dailyCostUsd * days;
+      energyCostSats = Math.round((periodCostUsd / btcPrice) * 100000000);
+    }
+
+    // Show energy row
+    let energyEl = document.getElementById('pnl-energy');
+    if(!energyEl) {
+      const closeRow = document.getElementById('pnl-close').parentElement;
+      const energyDiv = document.createElement('div');
+      energyDiv.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:2px;">ENERGY COST</div><div style="font-size:16px;color:#f44336;font-weight:700;" id="pnl-energy">—</div>';
+      closeRow.parentElement.appendChild(energyDiv);
+      energyEl = document.getElementById('pnl-energy');
+    }
+    if(energyCostSats > 0) {
+      energyEl.textContent = '-' + energyCostSats.toLocaleString() + ' sats';
+      energyEl.parentElement.style.display = 'block';
+    } else {
+      energyEl.parentElement.style.display = 'none';
+    }
+
+    const totalNet = d.net_pnl - energyCostSats;
     const net = document.getElementById('pnl-net');
-    net.textContent = (d.net_pnl >= 0 ? '+' : '') + d.net_pnl.toLocaleString() + ' sats';
-    net.style.color = d.net_pnl >= 0 ? '#4caf50' : '#f44336';
+    net.textContent = (totalNet >= 0 ? '+' : '') + totalNet.toLocaleString() + ' sats';
+    net.style.color = totalNet >= 0 ? '#4caf50' : '#f44336';
   } catch(e) { console.error('P&L error:', e); }
 }
 window.addEventListener('DOMContentLoaded', () => loadPnl('30d'));
