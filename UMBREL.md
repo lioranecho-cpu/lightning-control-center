@@ -44,7 +44,7 @@ curl -O https://raw.githubusercontent.com/lioranecho-cpu/umbrel-apps/master/ligh
 
 ### 🛍️ App Store (Coming Soon)
 
-Pending approval — PR #5974 at github.com/getumbrel/umbrel-apps
+Pending approval — PR #5983 at github.com/getumbrel/umbrel-apps
 
 Once approved — one click install from your Umbrel dashboard.
 
