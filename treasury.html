@@ -385,7 +385,7 @@ async function loadPnl(period = '30d') {
     document.getElementById('pnl-close').textContent = (d.close_fees > 0 ? '-' : '') + d.close_fees.toLocaleString() + ' sats';
     // Energy cost calculation from settings
     const settings = JSON.parse(localStorage.getItem('lcc_settings') || '{}');
-    const energyRate = parseFloat(settings.energy_rate) || 0;
+    const energyRate = (parseFloat(settings.energy_rate) || 0) / 100; // convert cents to dollars
     const energyWatts = parseInt(settings.energy_watts) || 0;
     const days = period === '30d' ? 30 : period === '1y' ? 365 : 9999;
     // Get BTC price from dashboard API
