@@ -388,7 +388,13 @@ async function loadPnl(period = '30d') {
     const energyRate = parseFloat(settings.energy_rate) || 0;
     const energyWatts = parseInt(settings.energy_watts) || 0;
     const days = period === '30d' ? 30 : period === '1y' ? 365 : 9999;
-    const btcPrice = parseFloat(document.getElementById('btc-price')?.textContent?.replace('$','').replace(',','')) || 64800;
+    // Get BTC price from node API
+    let btcPrice = 62831;
+    try {
+      const priceResp = await fetch('https://lcc.satslist.shop/api/node');
+      const priceData = await priceResp.json();
+      if(priceData.btc_price_usd) btcPrice = priceData.btc_price_usd;
+    } catch(e) {}
     let energyCostSats = 0;
     if(energyRate > 0 && energyWatts > 0 && days < 9999) {
       const dailyCostUsd = (energyWatts / 1000) * 24 * energyRate;
