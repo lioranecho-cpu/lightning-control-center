@@ -184,6 +184,11 @@ The P&L card at the top of the Treasury page shows your node profitability at a 
 
 Custom notification system for channel status changes and routing activity thresholds.
 
+- **Disk warnings** — system disk alerts at 80% (warning) and 90% (critical) before node crashes
+- **Bitcoin disk** — separate alert for blockchain data drive
+- **Browser notifications** — enable in Settings to get push notifications for critical alerts even when LCC is in background tab
+- Checks run every 60 seconds automatically
+
 ---
 
 ## Umbrel Installation
@@ -197,6 +202,8 @@ See **UMBREL.md** in the repo for step-by-step instructions, or paste this into 
 ## Settings
 
 - **Password** — change LCC login password
+- **Energy Calculator** — enter electricity rate (cents/kWh), server wattage (W), and current BTC price (USD) to calculate energy cost in the P&L card
+- **Alert notifications** — enable browser push notifications for critical alerts
 - **Auto-Rebalance Schedule (Pro)** — Off/Manual, Every 6/12/24/48 hours
 - **Rebalance Amount** — 10k, 30k, 50k, or 100k sats per operation
 
