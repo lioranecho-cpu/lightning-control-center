@@ -426,6 +426,34 @@
           </div>
         </div>
 
+        <!-- Energy Calculator -->
+        <div class="panel">
+          <div class="panel-header"><h3>⚡ Energy Calculator</h3></div>
+          <div class="panel-body">
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Electricity Rate</div>
+                <div class="toggle-sub">Your local rate in $/kWh (e.g. 0.12)</div>
+              </div>
+              <input type="number" id="energy-rate" step="0.01" min="0" placeholder="0.12"
+                style="width:80px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;text-align:right;"
+                onchange="saveSetting('energy_rate', parseFloat(this.value))">
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Server Wattage</div>
+                <div class="toggle-sub">Total power draw in watts from outlet monitor</div>
+              </div>
+              <input type="number" id="energy-watts" step="1" min="0" placeholder="45"
+                style="width:80px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;text-align:right;"
+                onchange="saveSetting('energy_watts', parseInt(this.value))">
+            </div>
+            <div style="font-size:11px;color:var(--muted);padding:8px 0;">
+              💡 Energy cost will appear in the Treasury P&L card automatically.
+            </div>
+          </div>
+        </div>
+
         <!-- Version -->
         <div class="panel">
           <div class="panel-header"><h3>&#128196; About LCC</h3></div>
@@ -492,6 +520,8 @@ function loadSettings() {
   if(s.show_usd !== undefined) document.getElementById('show-usd').checked = s.show_usd;
   if(s.show_mining !== undefined) document.getElementById('show-mining').checked = s.show_mining;
   if(s.alert_notif !== undefined) document.getElementById('alert-notif').checked = s.alert_notif;
+  if(s.energy_rate) document.getElementById('energy-rate').value = s.energy_rate;
+  if(s.energy_watts) document.getElementById('energy-watts').value = s.energy_watts;
   if(s.def_base_fee) document.getElementById('def-base-fee').value = s.def_base_fee;
   if(s.def_fee_rate) document.getElementById('def-fee-rate').value = s.def_fee_rate;
   if(s.def_timelock) document.getElementById('def-timelock').value = s.def_timelock;
