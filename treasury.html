@@ -388,7 +388,7 @@ async function loadPnl(period = '30d') {
     const energyRate = parseFloat(settings.energy_rate) || 0;
     const energyWatts = parseInt(settings.energy_watts) || 0;
     const days = period === '30d' ? 30 : period === '1y' ? 365 : 9999;
-    const btcPrice = 64800; // fallback
+    const btcPrice = parseFloat(document.getElementById('btc-price')?.textContent?.replace('$','').replace(',','')) || 64800;
     let energyCostSats = 0;
     if(energyRate > 0 && energyWatts > 0 && days < 9999) {
       const dailyCostUsd = (energyWatts / 1000) * 24 * energyRate;
