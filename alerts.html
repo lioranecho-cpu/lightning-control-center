@@ -286,11 +286,10 @@ function getThresholds(){try{return JSON.parse(localStorage.getItem(THRESH_KEY)|
 function saveThresholds(){const t={onchain:parseInt(document.getElementById('thresh-onchain').value)||100000,skew:parseInt(document.getElementById('thresh-skew').value)||90,fee:parseInt(document.getElementById('thresh-fee').value)||50,channels:parseInt(document.getElementById('thresh-channels').value)||1};localStorage.setItem(THRESH_KEY,JSON.stringify(t));runChecks();}
 function loadThresholds(){const t=getThresholds();if(t.onchain)document.getElementById('thresh-onchain').value=t.onchain;if(t.skew)document.getElementById('thresh-skew').value=t.skew;if(t.fee)document.getElementById('thresh-fee').value=t.fee;if(t.channels)document.getElementById('thresh-channels').value=t.channels;}
 function runChecks(){
-  // Fetch system data for disk alerts
-  let systemData = null;
-  fetch('https://lcc.satslist.shop/api/system').then(r=>r.json()).then(s=>{ systemData = s; }).catch(()=>{});
-
-  fetch(API).then(r=>r.json()).then(d=>{
+  Promise.all([
+    fetch(API).then(r=>r.json()),
+    fetch('https://lcc.satslist.shop/api/system').then(r=>r.json()).catch(()=>null)
+  ]).then(([d, systemData])=>{
     d.system = systemData;
     const price=d.wallet.btc_price_usd;
     const total=d.wallet.confirmed_balance+d.wallet.channel_balance;
