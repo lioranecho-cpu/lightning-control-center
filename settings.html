@@ -448,6 +448,15 @@
                 style="width:80px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;text-align:right;"
                 onchange="saveSetting('energy_watts', parseInt(this.value))">
             </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Bitcoin Price (USD)</div>
+                <div class="toggle-sub">Enter current BTC price for accurate energy cost in sats</div>
+              </div>
+              <input type="number" id="btc-price-manual" step="1" min="0" placeholder="62831"
+                style="width:90px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;text-align:right;"
+                onchange="saveSetting('btc_price_manual', parseInt(this.value))">
+            </div>
             <div style="font-size:11px;color:var(--muted);padding:8px 0;">
               💡 Energy cost will appear in the Treasury P&L card automatically.
             </div>
@@ -522,6 +531,7 @@ function loadSettings() {
   if(s.alert_notif !== undefined) document.getElementById('alert-notif').checked = s.alert_notif;
   if(s.energy_rate) document.getElementById('energy-rate').value = s.energy_rate;
   if(s.energy_watts) document.getElementById('energy-watts').value = s.energy_watts;
+  if(s.btc_price_manual) document.getElementById('btc-price-manual').value = s.btc_price_manual;
   if(s.def_base_fee) document.getElementById('def-base-fee').value = s.def_base_fee;
   if(s.def_fee_rate) document.getElementById('def-fee-rate').value = s.def_fee_rate;
   if(s.def_timelock) document.getElementById('def-timelock').value = s.def_timelock;
