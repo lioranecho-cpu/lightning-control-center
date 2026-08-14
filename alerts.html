@@ -340,6 +340,16 @@ function runChecks(){
     const warn=alerts.filter(a=>a.level==='warning').length;
     const ok=alerts.filter(a=>a.level==='ok').length;
     const info=alerts.filter(a=>a.level==='info').length;
+    // Fire browser notification for critical alerts
+    if(crit > 0 && localStorage.getItem('alert_notif') === 'true' && Notification.permission === 'granted') {
+      const critAlerts = alerts.filter(a=>a.level==='critical');
+      critAlerts.forEach(a => {
+        new Notification('⚡ LCC Critical Alert', {
+          body: a.title + ' — ' + a.desc,
+          icon: '/static/icon.png'
+        });
+      });
+    }
     document.getElementById('count-critical').textContent=crit;
     document.getElementById('count-warning').textContent=warn;
     document.getElementById('count-ok').textContent=ok;
