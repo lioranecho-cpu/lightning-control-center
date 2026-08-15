@@ -191,7 +191,7 @@
   .tip-right::after{left:auto;right:0;transform:none;}
   .tip-left::after{left:0;transform:none;}
 </style>
-  <script src="/static/lcc-theme.js?v=3"></script>
+  <script src="/static/lcc-theme.js?v=9"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -242,7 +242,7 @@
       <h2>&#9935; Mining Fleet</h2>
       <p>ASIC miner status, hashrate and pool connectivity.</p>
     </div>
-    <div class="summary-grid">
+    <div class="summary-grid" id="mining-summary-grid">
       <div class="summary-card orange">
         <div class="sc-label">Total Hashrate</div>
         <div class="sc-value orange">10.4 TH/s</div>
@@ -367,7 +367,7 @@
       </div>
     </div>
     <div class="two-col">
-      <div class="panel">
+      <div class="panel" id="pool-status-panel">
         <div class="panel-header">
           <h3>&#127754; Pool Status</h3>
           <span style="font-size:12px;color:var(--green)">&#9679; Connected</span>
@@ -380,7 +380,7 @@
         <div class="pool-item"><span class="pool-label">Pool Fee</span><span class="pool-val green">0% both pools</span></div>
         <div class="pool-item"><span class="pool-label">Block Reward</span><span class="pool-val orange">3.125 BTC</span></div>
       </div>
-      <div class="panel">
+      <div class="panel" id="fleet-efficiency-panel">
         <div class="panel-header"><h3>&#9889; Fleet Efficiency</h3></div>
         <table class="eff-table">
           <thead>
