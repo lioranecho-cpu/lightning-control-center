@@ -13,11 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Lightning Control Center API", version="0.1.0")
+app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://lcc.satslist.shop", "http://localhost:8765", "http://192.168.4.76:8765"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -503,7 +510,8 @@ def dashboard():
     return FileResponse("index.html")
 
 @app.post("/api/openchannel")
-def open_channel(peer_address: str, local_amt: int, private: bool = False):
+@limiter.limit("3/minute")
+def open_channel(request: Request, peer_address: str, local_amt: int, private: bool = False):
     if MOCK:
         return {"status": "mock"}
     try:
@@ -523,7 +531,8 @@ def open_channel(peer_address: str, local_amt: int, private: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/closechannel")
-def close_channel(chan_point: str, force: bool = False):
+@limiter.limit("3/minute")
+def close_channel(request: Request, chan_point: str, force: bool = False):
     if MOCK:
         return {"status": "mock"}
     try:
@@ -544,7 +553,8 @@ def get_chaninfo(scid: str = ""):
     return result
 
 @app.post("/api/sendpayment")
-def send_payment(body: dict = Body(...)):
+@limiter.limit("5/minute")
+def send_payment(request: Request, body: dict = Body(...)):
     dest = body.get("dest", "")
     amount = body.get("amount", 0)
     if not dest:
