@@ -828,12 +828,15 @@ def get_tier():
 @app.post("/api/tier/{key}")
 def set_tier(key: str):
     KEYS = {
-        "LCC-PERSONAL-2025": "personal",
-        "LCC-PRO-2025": "pro",
-        "LCC-BETA-001-2026": "pro",
-        "LCC-BETA-002-2026": "pro",
-        "LCC-BETA-003-2026": "pro",
-        "LCC-BETA-004-2026": "pro"
+        # Keys loaded from .env file — not hardcoded in source
+    }
+    env_keys = os.getenv("LCC_LICENSE_KEYS", "")
+    for pair in env_keys.split(","):
+        if ":" in pair:
+            k, v = pair.strip().split(":", 1)
+            valid_keys[k.strip()] = v.strip()
+    if not valid_keys:
+        valid_keys = {"DEMO": "community"
     }
     if key not in KEYS:
         raise HTTPException(status_code=403, detail="Invalid license key")
