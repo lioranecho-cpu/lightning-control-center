@@ -361,6 +361,29 @@ Press Ctrl+Space from any page. Type to search pages and commands. Quick actions
 
 ---
 
+## Remote Access Options
+
+### Option 1 — LAN Only (Home Network)
+Access LCC at `http://your-server-ip:8765` — works only when you're on the same network.
+
+### Option 2 — Tailscale (Recommended — Private)
+Encrypted access from anywhere with no third party seeing your traffic.
+
+1. Install Tailscale on your node: `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
+2. Install Tailscale on your phone/laptop (App Store or tailscale.com)
+3. Log in with the same account on both devices
+4. Access LCC at `http://[tailscale-ip]:8765` from anywhere
+
+Free for personal use. End-to-end encrypted. No ports exposed.
+
+### Option 3 — Cloudflare Tunnel (Easy but Less Private)
+Cloudflare sits between you and your node — convenient but they can see your traffic. Follow the Cloudflare Tunnel setup guide to expose LCC at a custom domain.
+
+### Option 4 — Tor (Maximum Privacy)
+Coming soon — access LCC via .onion address for maximum privacy.
+
+---
+
 ## Security Notes
 
 - Keep LCC LAN-only or behind Cloudflare Tunnel
