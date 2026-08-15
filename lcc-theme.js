@@ -135,7 +135,7 @@ function injectMobileCSS() {
         box-shadow: 4px 0 20px rgba(0,0,0,.5);
       }
       /* Main content fills full width */
-      .main { 
+      .main, .main-content { 
         margin-left: 0 !important; 
         padding: 10px !important; 
         width: 100vw !important;
@@ -213,8 +213,9 @@ function injectMobileCSS() {
       .routing-grid { grid-template-columns: 1fr !important; }
       /* Wallet cards stack */
       .wallet-row { flex-direction: column !important; }
-      /* Theme picker compact */
-      .theme-picker { flex-wrap: wrap !important; }
+      /* Hide theme picker on mobile — save sidebar space */
+      .theme-picker, .sidebar-footer .theme-btn, #theme-picker-container { display: none !important; }
+      .sidebar-footer { padding: 8px 14px !important; }
     }
   `;
   document.head.appendChild(style);
@@ -227,11 +228,11 @@ document.addEventListener('DOMContentLoaded', () => {
   injectMobileCSS();
   injectMobileNav();
   // Show landscape hint on mobile portrait
-  if(window.innerWidth <= 768 && window.innerHeight > window.innerWidth && !localStorage.getItem('lcc_landscape_hint')) {
+  if(window.innerWidth <= 768 && window.innerHeight > window.innerWidth && !sessionStorage.getItem('lcc_landscape_hint')) {
     const hint = document.createElement('div');
     hint.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:1002;background:var(--orange);color:#000;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;font-family:system-ui;box-shadow:0 4px 16px rgba(0,0,0,.3);text-align:center;max-width:90%;';
     hint.innerHTML = '📱 Rotate your device for the best LCC experience <div style="font-size:11px;margin-top:6px;opacity:.7;">Tap to dismiss</div>';
-    hint.onclick = () => { hint.remove(); localStorage.setItem('lcc_landscape_hint', '1'); };
+    hint.onclick = () => { hint.remove(); sessionStorage.setItem('lcc_landscape_hint', '1'); };
     document.body.appendChild(hint);
     setTimeout(() => hint.remove(), 8000);
   }
