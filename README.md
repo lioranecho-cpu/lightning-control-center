@@ -1,7 +1,7 @@
 # ⚡ Lightning Control Center (LCC)
 **The dashboard for the Bitcoin sovereign stack.**
 
-A beautiful, self-hosted Lightning node manager. Built for Bitcoin and Lightning node runners.
+A beautiful, practical easy to use self-hosted Lightning node manager. Built for Bitcoin and Lightning node runners.
 
 **Live demo:** https://lcc.satslist.shop/dashboard
 
