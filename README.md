@@ -3,7 +3,7 @@
 
 A beautiful, practical easy to use self-hosted Lightning node manager. Built for Bitcoin and Lightning node runners.
 
-**Live demo:** https://lcc.satslist.shop/dashboard
+**Live demo:** [https://lcc.satslist.shop/dashboard](https://lioranecho-cpu.github.io/lcc-demo/index.html)
 
 ---
 
