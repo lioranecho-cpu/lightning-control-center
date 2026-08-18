@@ -584,6 +584,65 @@ def send_payment(request: Request, body: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/accounting")
+def get_accounting(days: int = 365):
+    import time, csv, io
+    start_s = int(time.time()) - (days * 86400) if days < 9999 else 1231006505
+    rows = []
+    try:
+        fwd = run_lncli("fwdinghistory", f"--start_time={start_s}", "--max_events=50000")
+        for e in fwd.get("forwarding_events", []):
+            ts = int(e.get("timestamp", 0))
+            rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), "type": "routing_income", "amount_sats": int(e.get("fee_msat", 0)) // 1000, "fee_sats": 0, "description": f"Routed {e.get('amt_in', 0)} sats", "txid": ""})
+    except Exception as ex:
+        print(f"[ACCT] fwd error: {ex}")
+    try:
+        payments = run_lncli("listpayments", "--max_payments=1000")
+        for p in payments.get("payments", []):
+            ts = int(p.get("creation_date", 0))
+            if ts < start_s: continue
+            fee = int(p.get("fee_sat", 0))
+            amt = int(p.get("value_sat", 0))
+            rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), "type": "payment_sent", "amount_sats": -amt, "fee_sats": -fee, "description": "Lightning payment", "txid": p.get("payment_hash", "")[:16]})
+    except Exception as ex:
+        print(f"[ACCT] pay error: {ex}")
+    try:
+        txns = run_lncli("listchaintxns")
+        for t in txns.get("transactions", []):
+            ts = int(t.get("time_stamp", 0))
+            if ts < start_s: continue
+            amt = int(t.get("amount", 0))
+            fee = int(t.get("total_fees", 0))
+            tx_type = "channel_open" if amt < 0 else "channel_close" if amt > 0 else "onchain"
+            rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), "type": tx_type, "amount_sats": amt, "fee_sats": -fee, "description": t.get("label", tx_type), "txid": t.get("tx_hash", "")[:16]})
+    except Exception as ex:
+        print(f"[ACCT] chain error: {ex}")
+    try:
+        data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        rate_cents = float(data.get("energy_rate", 0))
+        watts = float(data.get("energy_watts", 0))
+        btc_price = float(data.get("energy_btc_price", 0))
+        if rate_cents and watts and btc_price:
+            energy_usd = (watts / 1000) * 24 * min(days, 365) * (rate_cents / 100)
+            energy_sats = int(energy_usd / btc_price * 100000000)
+        else:
+            energy_usd = 0
+            energy_sats = 0
+    except:
+        energy_usd = 0
+        energy_sats = 0
+    if energy_sats > 0:
+        rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())), "type": "energy_cost", "amount_sats": -energy_sats, "fee_sats": 0, "description": f"Electricity ({days}d)", "txid": ""})
+    rows.sort(key=lambda r: r["date"])
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["date", "type", "amount_sats", "fee_sats", "description", "txid"])
+    writer.writeheader()
+    writer.writerows(rows)
+    routing_income = sum(r["amount_sats"] for r in rows if r["type"] == "routing_income")
+    total_fees = sum(r["fee_sats"] for r in rows)
+    return {"csv": output.getvalue(), "summary": {"routing_income": routing_income, "total_fees_paid": total_fees, "energy_cost_sats": -energy_sats, "energy_cost_usd": round(energy_usd, 2), "net": routing_income + total_fees - energy_sats, "total_events": len(rows)}}
+
 @app.get("/api/estimatefee")
 def estimate_rebalance_fee(target_pubkey: str = "", amount: int = 0):
     if not target_pubkey:
