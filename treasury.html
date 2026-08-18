@@ -106,6 +106,7 @@
           <button onclick="loadPnl('30d')" id="pnl-30d" style="background:var(--orange);color:#000;border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">30 Cal-Days</button>
           <button onclick="loadPnl('1y')" id="pnl-1y" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">1 Year</button>
           <button onclick="loadPnl('all')" id="pnl-all" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">All Time</button>
+          <button onclick="downloadAccounting()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">📥 Tax CSV</button>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -351,6 +352,26 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
   const b = document.getElementById('tier-badge');
   if(b) b.textContent = {community:'🟠 Community',personal:'⚡ Personal',pro:'🏢 Pro'}[d.tier] || '🟠 Community';
 });
+
+function downloadAccounting() {
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){
+    alert('Accounting export is a Pro feature. Upgrade at satslist.shop');
+    return;
+  }
+  fetch('https://lcc.satslist.shop/api/accounting?days=9999')
+    .then(r=>r.json())
+    .then(d=>{
+      if(!d.csv){ alert('No accounting data'); return; }
+      const blob = new Blob([d.csv], {type:'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'lcc_accounting_' + new Date().toISOString().slice(0,10) + '.csv';
+      a.click();
+      alert('📥 Downloaded!\n\nSummary:\nRouting income: +' + d.summary.routing_income + ' sats\nFees paid: ' + d.summary.total_fees_paid + ' sats\nEnergy cost: -' + d.summary.energy_cost_sats + ' sats ($' + d.summary.energy_cost_usd + ')\nNet: ' + d.summary.net + ' sats');
+    })
+    .catch(()=>alert('Export failed'));
+}
 
 loadTreasury();
 setInterval(loadTreasury, 30000);
