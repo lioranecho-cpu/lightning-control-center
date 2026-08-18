@@ -86,6 +86,8 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - 👤 **Peer Policy viewer** — see your fees vs peer fees per channel
 - 📊 **Node P&L card** — routing fees earned vs costs (rebalancing, opens, closes) with 30 Cal-Days / 1 Year / All Time view
 - 📥 **CSV export** — wallet and routing data
+- 🔌 **Auto-reconnect** — automatically reconnects dropped peers every 30 minutes
+- 📊 **Tax Accounting CSV** — full export with routing income, rebalance fees, channel open/close costs, and energy expenses
 
 ---
 

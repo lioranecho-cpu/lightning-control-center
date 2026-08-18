@@ -347,6 +347,35 @@ Press Ctrl+Space from any page. Type to search pages and commands. Quick actions
 
 ---
 
+## Auto-Reconnect (Background Worker)
+
+LCC automatically reconnects dropped channel peers every 30 minutes. No configuration needed — runs as a background worker alongside Drain & Trap and the auto-rebalancer.
+
+How it works:
+- Compares connected peers vs channel peers every 30 minutes
+- If a channel peer is disconnected, looks up their address and reconnects
+- Logs reconnections to console
+- Keeps your channels active without manual intervention
+
+---
+
+## Tax Accounting Export (Pro)
+
+Download a tax-ready CSV of all node activity from the Treasury page.
+
+Click the green **📥 Tax CSV** button on the P&L card to download. The CSV includes:
+- **routing_income** — sats earned from forwarding payments
+- **payment_sent** — Lightning payments with fees
+- **channel_open** — on-chain fees for opening channels
+- **channel_close** — funds returned from closed channels
+- **energy_cost** — estimated electricity cost (from Settings energy calculator)
+
+Each row includes: date, type, amount (sats), fee (sats), description, and transaction ID.
+
+After download, a summary popup shows total routing income, fees paid, energy costs, and net P&L.
+
+---
+
 ## Troubleshooting
 
 **LCC shows no data:** Check lncli getinfo, restart LCC, check logs
