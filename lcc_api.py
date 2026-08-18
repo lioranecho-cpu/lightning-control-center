@@ -22,9 +22,12 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Lightning Control Center API", version="0.1.0")
 app.state.limiter = limiter
 
+from slowapi.middleware import SlowAPIMiddleware
+app.add_middleware(SlowAPIMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://lcc.satslist.shop", "http://localhost:8765", "http://192.168.4.76:8765"],
+    allow_origins=os.getenv("LCC_CORS_ORIGINS", "https://lcc.satslist.shop,http://localhost:8765").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -827,17 +830,14 @@ def get_tier():
 
 @app.post("/api/tier/{key}")
 def set_tier(key: str):
-    KEYS = {
-        # Keys loaded from .env file — not hardcoded in source
-    }
+    KEYS = {}
     env_keys = os.getenv("LCC_LICENSE_KEYS", "")
     for pair in env_keys.split(","):
         if ":" in pair:
             k, v = pair.strip().split(":", 1)
-            valid_keys[k.strip()] = v.strip()
-    if not valid_keys:
-        valid_keys = {"DEMO": "community"
-    }
+            KEYS[k.strip()] = v.strip()
+    if not KEYS:
+        KEYS = {"DEMO": "community"}
     if key not in KEYS:
         raise HTTPException(status_code=403, detail="Invalid license key")
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
