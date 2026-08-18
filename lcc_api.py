@@ -1039,3 +1039,31 @@ drain_trap_thread.start()
 
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
+
+def auto_reconnect_worker():
+    """Reconnect disconnected channel peers every 30 minutes"""
+    import time
+    while True:
+        try:
+            threading.Event().wait(1800)  # Wait 30 minutes
+            channels = run_lncli("listchannels")
+            peers = run_lncli("listpeers")
+            connected_pubkeys = set(p.get("pub_key", "") for p in peers.get("peers", []))
+            for ch in channels.get("channels", []):
+                pubkey = ch.get("remote_pubkey", "")
+                if pubkey and pubkey not in connected_pubkeys:
+                    # Get peer address from node info
+                    try:
+                        node_info = run_lncli("getnodeinfo", f"--pub_key={pubkey}")
+                        addresses = node_info.get("node", {}).get("addresses", [])
+                        if addresses:
+                            addr = f"{pubkey}@{addresses[0].get('addr', '')}"
+                            run_lncli("connect", addr)
+                            print(f"[RECONNECT] Reconnected to {ch.get('peer_alias', pubkey[:16])}")
+                    except:
+                        pass
+        except Exception as e:
+            print(f"[RECONNECT] Error: {e}")
+
+reconnect_thread = threading.Thread(target=auto_reconnect_worker, daemon=True)
+reconnect_thread.start()
