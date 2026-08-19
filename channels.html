@@ -961,6 +961,7 @@ function closeChannelConfirm(chanPoint, alias){
       <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Fee Rate (sat/vB)</label>
       <input id="oc-feerate" type="number" value="1" min="1" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;" oninput="updateFeeEstimate()"/>
       <div id="oc-fee-estimate" style="font-size:11px;color:var(--orange);margin-top:6px;">Estimated fee: ~168 sats</div>
+      <div style="font-size:10px;color:#555;margin-top:3px;">On-chain tx fee only — excludes channel reserve and commit fees</div>
     </div>
     <div style="margin-bottom:20px;display:flex;align-items:center;gap:8px;">
       <input id="oc-private" type="checkbox" style="width:16px;height:16px;cursor:pointer;"/>
