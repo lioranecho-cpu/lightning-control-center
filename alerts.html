@@ -176,41 +176,37 @@
   .tip-left::after{left:0;transform:none;}
 </style>
   <script src="/static/lcc-theme.js?v=12"></script>
+
+<style>
+.nav-icon { width: 26px; height: 26px; object-fit: contain; display: inline-block; }
+.nav-icon-emoji { display: none; }
+@media (max-width: 768px) {
+  .nav-icon { display: none; }
+  .nav-icon-emoji { display: inline; }
+}
+</style>
 </head>
 <body>
-<aside class="sidebar">
-  <div class="sidebar-logo"><span class="bolt">&#9889;</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
-  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#9776;</button></div>
-  <nav class="nav">
-        <div class="nav-section">Node</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'"><span class="icon">&#127968;</span><span class="nav-label"> Dashboard</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'"><span class="icon">&#9889;</span><span class="nav-label"> Channels</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'"><span class="icon">&#128101;</span><span class="nav-label"> Peers</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'"><span class="icon">&#128256;</span><span class="nav-label"> Routing</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'"><span class="icon">&#128091;</span><span class="nav-label"> Wallet</span></div>
-    <div class="nav-section">Tools</div>
-    <div class="nav-item" onclick="openCmd()"><span class="icon">&#9211;</span><span class="nav-label"> Palette </span><span style="font-size:10px;color:#555;margin-left:auto;">Ctrl+Space</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'"><span class="icon">&#128202;</span><span class="nav-label"> Analytics</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'"><span class="icon">&#128221;</span><span class="nav-label"> Node Journal</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon">&#128276;</span><span class="nav-label"> Alerts</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/treasury.html'"><span class="icon">&#128176;</span><span class="nav-label"> Treasury</span></div>
-    <div class="nav-item" onclick="window.open('http://192.168.4.76:8001','LiveStream','width=1000,height=650,menubar=no,toolbar=no,location=no')" style="color:var(--green);"><span class="icon">📡</span><span class="nav-label"> Live Stream</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'"><span class="icon">⚡</span><span class="nav-label"> NWC <span style='font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></span></div>
-    <div class="nav-section">System</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon">&#9935;</span><span class="nav-label"> Mining</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'"><span class="icon">&#128421;</span><span class="nav-label"> System</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'"><span class="icon">&#128279;</span><span class="nav-label"> Integrations</span></div>
-    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon">&#128279;</span><span class="nav-label"> SatsList</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'"><span class="icon">&#9881;</span><span class="nav-label"> Settings</span></div>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="version-badge">LCC v0.1.2</div>
-    <div class="community-badge">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
-    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-    <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
-<button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
-  </div>
-</aside>
+<aside class="sidebar" id="sidebar-container"></aside>
+<script>
+fetch('https://lcc.satslist.shop/static/sidebar.html')
+  .then(r=>r.text())
+  .then(html=>{
+    document.getElementById('sidebar-container').outerHTML = html;
+    // Re-init sidebar toggle after injection
+    const s = localStorage.getItem('sidebar_collapsed');
+    if(s === 'true') document.querySelector('.sidebar')?.classList.add('collapsed');
+    if(typeof initTheme === 'function') setTimeout(initTheme, 50);
+    // Highlight active nav item based on current URL
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.nav-item').forEach(item => {
+      const href = item.getAttribute('onclick') || '';
+      if(href.includes(currentPage) || (currentPage === '' && href.includes('dashboard'))) {
+        item.classList.add('active');
+      }
+    });
+  });
+</script>
 <div class="main">
   <header class="topbar">
     <div class="topbar-left"><h1>Lightning Control Center</h1><p>Manage your Bitcoin &amp; Lightning node.</p></div>
