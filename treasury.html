@@ -53,42 +53,41 @@
   </style>
 <script src="https://cdn.jsdelivr.net/npm/@getalby/sdk@8.0.3/dist/alby-sdk.umd.js"></script>
   <script src="/static/lcc-theme.js?v=12"></script>
+
+<style>
+.nav-icon { width: 26px; height: 26px; object-fit: contain; display: inline-block; }
+.nav-icon-emoji { display: none; }
+@media (max-width: 768px) {
+  .nav-icon { display: none; }
+  .nav-icon-emoji { display: inline; }
+}
+</style>
 </head>
 <body>
-<aside class="sidebar">
-  <div class="sidebar-logo"><span class="bolt">⚡</span><div class="logo-text"><span>Lightning Control</span><span>Center</span></div></div>
-  <div style="text-align:center;padding:6px 0;border-bottom:1px solid var(--border);"><button onclick="toggleSidebar()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">☰</button></div>
-  <nav class="nav">
-    <div class="nav-section">Node</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/dashboard'">🏠 Dashboard</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/channels.html'">⚡ Channels</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/peers.html'">👥 Peers</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/routing.html'">🔀 Routing</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/wallet.html'">👛 Wallet</div>
-    <div class="nav-section">Tools</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/analytics.html'">📊 Analytics</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/journal.html'">📓 Node Journal</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'">🔔 Alerts</div>
-    <div class="nav-item active">💰 Treasury</div>
-    <div class="nav-item" onclick="window.open('http://192.168.4.76:8001','LiveStream','width=1000,height=650,menubar=no,toolbar=no,location=no')" style="color:var(--green);"><span class="icon">📡</span><span class="nav-label"> Live Stream</span></div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'">⚡ NWC <span style="font-size:9px;background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.3);color:#f7931a;padding:1px 5px;border-radius:10px;margin-left:4px;">PRO</span></div>
-    <div class="nav-section">System</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'">⛏️ Mining</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/system.html'">💻 System</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/integrations.html'">🔗 Integrations</div>
-    <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')">🛒 SatsList</div>
-    <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/settings.html'">⚙️ Settings</div>
-  </nav>
-  <div class="sidebar-footer">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">LCC v0.1.2</div>
-    <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-        <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
-<button class="donate-btn">⚡ Donate via Lightning</button>
-  </div>
-</aside>
+<aside class="sidebar" id="sidebar-container"></aside>
+<script>
+fetch('https://lcc.satslist.shop/static/sidebar.html')
+  .then(r=>r.text())
+  .then(html=>{
+    document.getElementById('sidebar-container').outerHTML = html;
+    // Re-init sidebar toggle after injection
+    const s = localStorage.getItem('sidebar_collapsed');
+    if(s === 'true') document.querySelector('.sidebar')?.classList.add('collapsed');
+    if(typeof initTheme === 'function') setTimeout(initTheme, 50);
+    // Highlight active nav item based on current URL
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.nav-item').forEach(item => {
+      const href = item.getAttribute('onclick') || '';
+      if(href.includes(currentPage) || (currentPage === '' && href.includes('dashboard'))) {
+        item.classList.add('active');
+      }
+    });
+  });
+</script>
 
 <div class="main-content">
   <div class="topbar">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()" style="display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 8px;">&#9776;</button>
     <div>
       <h1>💰 Lightning Treasury</h1>
       <p>Real-time payment monitoring across your Lightning wallets</p>

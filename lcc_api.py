@@ -507,6 +507,7 @@ def get_system():
     }
 
 app.mount("/static", StaticFiles(directory="."), name="static")
+app.mount("/icons", StaticFiles(directory="icons"), name="icons")
 
 @app.get("/dashboard")
 def dashboard():

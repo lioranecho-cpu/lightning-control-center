@@ -74,6 +74,15 @@
     .spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;display:none;}
     .spinner.show{display:block;}
   </style>
+
+<style>
+.nav-icon { width: 26px; height: 26px; object-fit: contain; display: inline-block; }
+.nav-icon-emoji { display: none; }
+@media (max-width: 768px) {
+  .nav-icon { display: none; }
+  .nav-icon-emoji { display: inline; }
+}
+</style>
 </head>
 <body>
 <div class="login-wrap">
