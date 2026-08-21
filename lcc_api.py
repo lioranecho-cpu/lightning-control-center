@@ -595,7 +595,7 @@ def get_accounting(days: int = 365):
         fwd = run_lncli("fwdinghistory", f"--start_time={start_s}", "--max_events=50000")
         for e in fwd.get("forwarding_events", []):
             ts = int(e.get("timestamp", 0))
-            rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), "type": "routing_income", "amount_sats": int(e.get("fee_msat", 0)) // 1000, "fee_sats": 0, "description": f"Routed {e.get('amt_in', 0)} sats", "txid": ""})
+            rows.append({"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), "type": "routing_income", "amount_sats": int(e.get("fee_msat", 0)) // 1000, "fee_sats": 0, "description": f"{e.get('peer_alias_in', e.get('chan_id_in',''))} -> {e.get('peer_alias_out', e.get('chan_id_out',''))} ({e.get('amt_in', 0)} sats)", "txid": e.get("timestamp_ns", "")})
     except Exception as ex:
         print(f"[ACCT] fwd error: {ex}")
     try:
