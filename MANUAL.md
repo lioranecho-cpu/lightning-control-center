@@ -291,6 +291,78 @@ Data-driven PPM suggestions in Analytics page.
 Press Ctrl+Space from any page. Type to search pages and commands. Quick actions: Copy Pubkey, Open SatsList, Launch Live Stream.
 
 ---
+Yes! Way simpler. Here's the tutorial text — copy and paste it into MANUAL.md on GitHub, right before the "## Channel Management Tips" section:
+
+---
+
+## How Lightning Routing Works (Tutorial)
+
+Understanding how payments route through your node is the most important concept for a node operator.
+
+### Your Node is a Hallway
+
+Think of your node as a hallway with doors on each side. Each door is a channel to another node. A payment enters through one channel and leaves through another. You collect a fee for letting it pass through.
+
+### Channel Labels vs Routing Direction
+
+These are two DIFFERENT things that confuse most new node runners:
+
+**Channel label (You opened / Peer opened):**
+- This tells you WHO created the channel - it never changes
+- "You opened" = you funded it with your sats
+- "Peer opened" = they funded it with their sats
+- Traffic flows BOTH directions regardless of who opened it
+
+**Routing direction (Unwetter → LNBiG):**
+- This tells you which way a specific payment traveled
+- The first name is where the payment came FROM
+- The second name is where the payment went TO
+- This changes with every payment
+
+**Example:** "Routed Unwetter → LNBiG Hub-3" means:
+1. A payment arrived at your node FROM Unwetter
+2. Your node forwarded it OUT through LNBiG Hub-3
+3. You earned a fee for the forwarding
+
+### How Liquidity Moves
+
+Every time a payment routes through your node, liquidity shifts. The incoming channel GAINS local balance (sats move to your side). The outgoing channel LOSES local balance (sats leave your side).
+
+### Why Channels Get Stuck
+
+A channel gets stuck when all the liquidity is on one side (98% local). Payments can only flow OUT through this channel. There is almost no room for payments to flow IN. If ALL your channels are stuck like this, payments cannot route through your node.
+
+### What Rebalancing Does
+
+Rebalancing moves sats from a full channel to an empty one using a circular payment through the Lightning Network. After rebalancing, BOTH channels can route payments in both directions.
+
+### When to Rebalance
+
+Rebalance WHEN:
+- A profitable routing channel is stuck above 90% local
+- The rebalance fee is less than what you will earn from routing
+- Traffic was flowing before the channel got stuck
+
+Do NOT rebalance when:
+- Fees are at 0 PPM — you earn nothing back
+- The channel never routes anyway — wasted money
+- You are rebalancing just to make the bar look even
+
+### The Fee and Liquidity Relationship
+
+Your fees control which direction liquidity flows:
+- LOW fees (50 PPM) = attracts lots of traffic, channel drains fast
+- HIGH fees (500 PPM) = less traffic, channel drains slowly
+- VERY HIGH fees (1200 PPM) = almost no traffic, channel preserves balance
+
+This is exactly what Drain and Trap automates:
+1. Drain at 50 PPM — channel empties through routing
+2. Trap at 1200 PPM — channel stops draining, slowly refills
+3. Repeat automatically
+
+---
+
+Paste that right above "## Channel Management Tips" in your MANUAL.md on GitHub! Then `git pull` on the ProDesk to sync. 🟠
 
 ## Channel Management Tips
 
