@@ -30,11 +30,13 @@
 18. [Fee Recommendations (Pro)](#fee-recommendations-pro)
 19. [Themes](#themes)
 20. [Command Palette (Personal+)](#command-palette-personal)
-21. [Channel Management Tips](#channel-management-tips)
-22. [Fee Optimization Guide](#fee-optimization-guide)
-23. [Rebalancing Guide](#rebalancing-guide)
-24. [Troubleshooting](#troubleshooting)
-
+21. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
+22. [Channel Management Tips](#channel-management-tips)
+23. [Fee Optimization Guide](#fee-optimization-guide)
+24. [Rebalancing Guide](#rebalancing-guide)
+25. [Auto-Reconnect](#auto-reconnect-background-worker)
+26. [Tax Accounting Export](#tax-accounting-export-pro)
+27. [Troubleshooting](#troubleshooting)
 ---
 
 ## Getting Started
