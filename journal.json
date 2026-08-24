@@ -1,5 +1,13 @@
 [
   {
+    "id": 1787418306029,
+    "title": "50k rebalance",
+    "body": "re balanced all large channels 50K after days of 0 routing fees 1:04pm",
+    "tag": "note",
+    "date": "2026-08-22T17:05:06.029Z",
+    "block": "963,608"
+  },
+  {
     "id": 1786478140569,
     "title": "created Umbrel install",
     "body": "Block ~962,038 \u2014 August 11, 2026\nSubmitted Lightning Control Center to Umbrel App Store.\nPR: https://github.com/getumbrel/umbrel-apps/pull/5974\nAll lint checks passed. Multi-arch Docker image live on Docker Hub: sparkielabs/lightning-control-center:0.1.2\nFrom BIP-110 panic close to Umbrel submission in one weekend. \ud83e\udee1",

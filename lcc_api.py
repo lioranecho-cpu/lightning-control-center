@@ -79,7 +79,7 @@ def get_node_info():
         "synced_to_graph": info.get("synced_to_graph"),
         "block_height": info.get("block_height"),
         "num_peers": info.get("num_peers"),
-        "uptime_seconds": 0,
+        "uptime_seconds": int(__import__("time").time() - __import__("psutil").boot_time()),
         "auto_rebalance_hours": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("auto_rebalance_hours", 24),
         "rebalance_amount": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("rebalance_amount", 50000),
     }
@@ -524,8 +524,8 @@ def open_channel(request: Request, peer_address: str, local_amt: int, private: b
         # Connect to peer first (ignore if already connected)
         try:
             run_lncli("connect", peer_address)
-        except:
-            pass  # Already connected is fine
+        except Exception as e:
+            print(f"[strategy] getchaninfo failed: {e}")  # Already connected is fine
         args = ["openchannel", f"--node_key={pubkey}", f"--local_amt={local_amt}"]
         if private:
             args.append("--private")
@@ -585,6 +585,74 @@ def send_payment(request: Request, body: dict = Body(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+@app.get("/api/strategy")
+def get_strategy():
+    channels = run_lncli("listchannels")
+    results = []
+    for ch in channels.get("channels", []):
+        cap = int(ch.get("capacity", 0))
+        local = int(ch.get("local_balance", 0))
+        local_pct = round(local / cap * 100) if cap > 0 else 0
+        alias = ch.get("peer_alias", "Unknown")
+        my_fee = 0
+        peer_fee = 0
+        try:
+            scid = str(ch.get("scid") or ch.get("chan_id", ""))
+            info = run_lncli("getchaninfo", f"--chan_id={scid}")
+            my_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
+            if info.get("node1_pub") == my_pubkey:
+                my_fee = int(info.get("node1_policy", {}).get("fee_rate_milli_msat", 0))
+                peer_fee = int(info.get("node2_policy", {}).get("fee_rate_milli_msat", 0))
+            else:
+                my_fee = int(info.get("node2_policy", {}).get("fee_rate_milli_msat", 0))
+                peer_fee = int(info.get("node1_policy", {}).get("fee_rate_milli_msat", 0))
+        except Exception as e:
+            print(f"[strategy] getchaninfo failed: {e}")
+        initiator = ch.get("initiator", False)
+        if not initiator:
+            assessment = "Inbound lifeline"
+            action = "Keep as-is"
+            color = "blue"
+        elif peer_fee > 500:
+            assessment = "Peer fee too high"
+            action = "CLOSE / Loop Out"
+            color = "red"
+        elif peer_fee > 300:
+            assessment = "High peer fee"
+            action = "Monitor"
+            color = "orange"
+        elif local_pct > 90 and peer_fee < 100:
+            assessment = "Low peer fee"
+            action = f"Drain {peer_fee + 10}-{peer_fee + 25} ppm"
+            color = "green"
+        elif local_pct > 90:
+            assessment = "Moderate drain"
+            action = f"{max(25, peer_fee // 4)}-{max(50, peer_fee // 2)} ppm"
+            color = "green"
+        elif local_pct < 20:
+            assessment = "Trapped + high fee" if my_fee > 300 else "Nearly empty"
+            action = "CLOSE" if my_fee > 300 and peer_fee > 300 else "Monitor"
+            color = "red" if my_fee > 300 and peer_fee > 300 else "orange"
+        else:
+            assessment = "Balanced"
+            action = f"Monitor / {max(25, peer_fee // 4)} ppm"
+            color = "orange"
+        results.append({
+            "alias": alias,
+            "capacity": cap,
+            "local_pct": local_pct,
+            "my_fee": my_fee,
+            "peer_fee": peer_fee,
+            "initiator": initiator,
+            "assessment": assessment,
+            "action": action,
+            "color": color,
+            "channel_point": ch.get("channel_point", "")
+        })
+    results.sort(key=lambda x: {"blue": 0, "green": 1, "orange": 2, "red": 3}.get(x["color"], 4))
+    return {"channels": results}
 
 @app.get("/api/accounting")
 def get_accounting(days: int = 365):

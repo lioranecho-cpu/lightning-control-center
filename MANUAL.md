@@ -28,15 +28,16 @@
 16. [Drain and Trap Strategy (Pro)](#drain-and-trap-strategy-pro)
 17. [Live HTLC Stream (Pro)](#live-htlc-stream-pro)
 18. [Fee Recommendations (Pro)](#fee-recommendations-pro)
-19. [Themes](#themes)
-20. [Command Palette (Personal+)](#command-palette-personal)
-21. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
-22. [Channel Management Tips](#channel-management-tips)
-23. [Fee Optimization Guide](#fee-optimization-guide)
-24. [Rebalancing Guide](#rebalancing-guide)
-25. [Auto-Reconnect](#auto-reconnect-background-worker)
-26. [Tax Accounting Export](#tax-accounting-export-pro)
-27. [Troubleshooting](#troubleshooting)
+19. [Channel Strategy (Pro)](#channel-strategy-pro)
+21. [Themes](#themes)
+21. [Command Palette (Personal+)](#command-palette-personal)
+22. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
+23. [Channel Management Tips](#channel-management-tips)
+24. [Fee Optimization Guide](#fee-optimization-guide)
+25. [Rebalancing Guide](#rebalancing-guide)
+26. [Auto-Reconnect](#auto-reconnect-background-worker)
+27. [Tax Accounting Export](#tax-accounting-export-pro)
+28. [Troubleshooting](#troubleshooting)
 ---
 
 ## Getting Started
@@ -447,6 +448,111 @@ Click the green **📥 Tax CSV** button on the P&L card to download. The CSV inc
 Each row includes: date, type, amount (sats), fee (sats), description, and transaction ID.
 
 After download, a summary popup shows total routing income, fees paid, energy costs, and net P&L.
+
+---
+
+## Channel Strategy (Pro)
+
+The Channel Strategy page gives you a bird's-eye view of every channel's health — automatically scored by combining your local balance, your fee rate, and your peer's fee rate into a color-coded action plan.
+
+**Opening the page:** Click **Strategy** in the sidebar — it opens as a clean floating window so you can keep using the rest of LCC alongside it.
+
+**Auto-refreshes every 60 seconds** — no manual refresh needed.
+
+---
+
+### Summary Cards
+
+| Card | What it means |
+|------|--------------|
+| Total Channels | All active channels |
+| Keep (Inbound) | Peer-opened channels providing inbound liquidity — don't touch |
+| Drain | Your channels that are too full — push sats out |
+| Monitor | Watch these — borderline fee situation |
+| Close Candidates | Dead weight — peer fee too high, consider exiting |
+
+---
+
+### Color Code
+
+| Color | Assessment | Action |
+|-------|-----------|--------|
+| 🔵 Blue | Inbound lifeline | Keep as-is — this is free inbound liquidity |
+| 🟢 Green | Low peer fee | Drain aggressively at 10-25 ppm |
+| 🟠 Orange | Moderate / Monitor | Adjust fees, watch routing flow |
+| 🔴 Red | Close candidate | CLOSE or Loop Out — peer fee too high to be useful |
+
+---
+
+### Columns Explained
+
+- **Channel** — peer alias + who opened the channel (You opened / Peer opened)
+- **Capacity** — total channel size in sats
+- **Local %** — how much of the channel balance is on your side
+- **Your Fee** — your current fee rate in PPM (milli-msat per sat routed)
+- **Peer Fee** — your peer's fee rate in PPM
+- **Assessment** — LCC's diagnosis of the channel health
+- **Action / Target Fee** — recommended next step
+
+---
+
+### What is Loop Out?
+
+When LCC recommends **CLOSE / Loop Out** it means the peer fee is too high (>500 PPM) and the channel isn't earning. Loop Out is an alternative to closing:
+
+- Sends your sats **out via Lightning** to a swap service (Boltz, Lightning Loop)
+- Swap service sends the equivalent **back to your on-chain wallet**
+- Channel stays open with fresh inbound space
+- Fee: ~0.5% + on-chain mining fee
+
+**Easiest option:** [boltz.exchange](https://boltz.exchange) — no account, no KYC.
+
+> 💡 Try rebalancing first — it's cheaper. Use Loop Out only when all channels are too full and there's nowhere to rebalance into.
+
+---
+
+## Channel Strategy (Pro)
+
+Opens as a clean floating window — keep it running alongside the rest of the app. Auto-refreshes every 60 seconds.
+
+**Open it:** Click **Strategy** in the sidebar.
+
+### Summary Cards
+
+| Card | Meaning |
+|------|---------|
+| Total Channels | All active channels |
+| Keep (Inbound) | Peer-opened channels — free inbound liquidity, don't touch |
+| Drain | Your channels that are too full — push sats out |
+| Monitor | Borderline situation — watch closely |
+| Close Candidates | Dead weight — peer fee too high, consider exiting |
+
+### Color Code
+
+| Color | Assessment | Action |
+|-------|-----------|--------|
+| 🔵 Blue | Inbound lifeline | Keep as-is |
+| 🟢 Green | Low peer fee | Drain aggressively at 10-25 ppm |
+| 🟠 Orange | Moderate | Adjust fees, monitor routing |
+| 🔴 Red | Close candidate | CLOSE or Loop Out |
+
+### Columns
+
+- **Local %** — how much balance is on your side
+- **Your Fee** — your current PPM
+- **Peer Fee** — your peer's PPM (drives the recommendation)
+- **Assessment** — LCC's diagnosis
+- **Action** — recommended next step
+
+### What is Loop Out?
+
+When LCC recommends **CLOSE / Loop Out** the peer fee is too high (>500 PPM) and the channel isn't earning.
+
+Loop Out is an alternative to closing — sends sats out via Lightning to a swap service (Boltz), which sends the equivalent back to your on-chain wallet. Channel stays open with fresh inbound space. Fee: ~0.5% + mining fee.
+
+> 💡 Try rebalancing first — it's cheaper. Use Loop Out only when all channels are too full and there's nowhere to rebalance into.
+
+**Easiest option:** [boltz.exchange](https://boltz.exchange) — no account, no KYC.
 
 ---
 

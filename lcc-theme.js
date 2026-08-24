@@ -61,7 +61,7 @@ function initTheme() {
 
 function buildThemePicker() {
   const wrap = document.getElementById('lcc-theme-picker');
-  if (!wrap) return;
+  if (!wrap) { setTimeout(buildThemePicker, 150); return; }
   wrap.innerHTML = Object.entries(LCC_THEMES).map(([key, t]) => `
     <button class="theme-btn" data-theme="${key}" onclick="applyTheme('${key}')"
       style="flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);

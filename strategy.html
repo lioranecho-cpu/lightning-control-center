@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCC — Channel Strategy</title>
+<style>
+  :root{--bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;--text:#e2e8f0;--muted:#4a5568;--orange:#f7931a;--orange-dim:rgba(247,147,26,.3);--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--yellow:#eab308;--font:'Inter','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;--radius:10px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding:20px;}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .header-left{display:flex;align-items:center;gap:10px;}
+  .header h1{font-size:18px;font-weight:700;}
+  .header .subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+  .refresh-btn{padding:6px 14px;background:rgba(247,147,26,.1);border:1px solid var(--orange-dim);color:var(--orange);border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);font-weight:600;}
+  .refresh-btn:hover{background:rgba(247,147,26,.2);}
+  .last-updated{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;}
+  .summary-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+  .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;flex:1;min-width:120px;}
+  .summary-card .label{font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .summary-card .value{font-size:20px;font-weight:700;font-family:var(--mono);}
+  .summary-card .value.green{color:var(--green);}
+  .summary-card .value.orange{color:var(--orange);}
+  .summary-card .value.red{color:var(--red);}
+  .summary-card .value.blue{color:var(--blue);}
+  .strategy-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .strategy-table th{text-align:left;padding:10px 12px;background:var(--surface2);color:var(--orange);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);}
+  .strategy-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .strategy-table tr:hover td{background:var(--surface2);}
+  .color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;}
+  .color-dot.blue{background:var(--blue);}
+  .color-dot.green{background:var(--green);}
+  .color-dot.orange{background:var(--orange);}
+  .color-dot.red{background:var(--red);}
+  .action-text{font-weight:700;}
+  .action-text.blue{color:var(--blue);}
+  .action-text.green{color:var(--green);}
+  .action-text.orange{color:var(--orange);}
+  .action-text.red{color:var(--red);}
+  .legend{display:flex;gap:20px;margin-top:20px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:11px;flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .strategy-note{color:var(--muted);font-size:11px;margin-top:10px;font-style:italic;}
+  .error{text-align:center;color:var(--muted);padding:40px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span style="font-size:22px;">📋</span>
+    <div>
+      <h1>Channel Strategy</h1>
+      <div class="subtitle">Auto-assessed channel health — refreshes every 60s</div>
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <button class="refresh-btn" onclick="loadStrategy()">⟳ Refresh</button>
+    <div class="last-updated" id="last-updated">—</div>
+  </div>
+</div>
+
+<div class="summary-row" id="summary-row"></div>
+
+<div style="overflow-x:auto;">
+  <table class="strategy-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Channel</th>
+        <th>Capacity</th>
+        <th>Local</th>
+        <th>Your Fee</th>
+        <th>Peer Fee</th>
+        <th>Assessment</th>
+        <th>Action / Target Fee</th>
+      </tr>
+    </thead>
+    <tbody id="strategy-body"></tbody>
+  </table>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="color-dot green"></span> Drain Aggressively (10-25 ppm)</div>
+  <div class="legend-item"><span class="color-dot orange"></span> Moderate / Monitor (25-100 ppm)</div>
+  <div class="legend-item"><span class="color-dot red"></span> Close / Loop Out</div>
+  <div class="legend-item"><span class="color-dot blue"></span> Keep as-is (inbound lifeline)</div>
+</div>
+<div class="strategy-note">Strategy: Drain channels with peer fees &lt; 100 ppm aggressively. Close channels with peer fees &gt; 500 ppm. Monitor unknowns via LCC Peer Policy tab.</div>
+
+<script>
+function fmt(n){return Number(n).toLocaleString();}
+
+async function loadStrategy(){
+  try {
+    const [strat, dash] = await Promise.all([
+      fetch('https://lcc.satslist.shop/api/strategy').then(r=>r.json()),
+      fetch('https://lcc.satslist.shop/api/dashboard').then(r=>r.json())
+    ]);
+
+    const channels = strat.channels;
+    const counts = {blue:0, green:0, orange:0, red:0};
+    channels.forEach(c => counts[c.color] = (counts[c.color]||0) + 1);
+
+    document.getElementById('summary-row').innerHTML =
+      '<div class="summary-card"><div class="label">Total Channels</div><div class="value">' + channels.length + '</div></div>' +
+      '<div class="summary-card"><div class="label">Keep (Inbound)</div><div class="value blue">' + counts.blue + '</div></div>' +
+      '<div class="summary-card"><div class="label">Drain</div><div class="value green">' + counts.green + '</div></div>' +
+      '<div class="summary-card"><div class="label">Monitor</div><div class="value orange">' + counts.orange + '</div></div>' +
+      '<div class="summary-card"><div class="label">Close Candidates</div><div class="value red">' + counts.red + '</div></div>';
+
+    const tbody = document.getElementById('strategy-body');
+    tbody.innerHTML = '';
+    channels.forEach(c => {
+      tbody.innerHTML += '<tr>' +
+        '<td><span class="color-dot ' + c.color + '"></span></td>' +
+        '<td><strong>' + c.alias + '</strong><div style="font-size:10px;color:var(--muted)">' + (c.initiator ? 'You opened' : 'Peer opened') + '</div></td>' +
+        '<td>' + fmt(c.capacity) + '</td>' +
+        '<td>' + c.local_pct + '%</td>' +
+        '<td>' + c.my_fee + '</td>' +
+        '<td>' + c.peer_fee + '</td>' +
+        '<td>' + c.assessment + '</td>' +
+        '<td><span class="action-text ' + c.color + '">' + c.action + '</span></td>' +
+      '</tr>';
+    });
+
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('strategy-body').innerHTML = '<tr><td colspan="8" class="error">Could not load strategy data</td></tr>';
+  }
+}
+
+loadStrategy();
+setInterval(loadStrategy, 60000);
+</script>
+</body>
+</html>
