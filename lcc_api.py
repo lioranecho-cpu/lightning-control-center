@@ -290,6 +290,8 @@ def get_transactions(limit: int = 10):
     try:
         payments = run_lncli("listpayments", f"--max_payments={max(limit*10, 200) if limit > 0 else 2000}")
         NODE_PUBKEY = "03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1"
+        # Build pubkey to alias map
+        alias_map = {ch.get("remote_pubkey",""): ch.get("peer_alias","") for ch in run_lncli("listchannels").get("channels", [])}
         for p in payments.get("payments", []):
             if p.get("status") == "SUCCEEDED":
                 # Detect circular rebalance — last hop is our own node
@@ -304,7 +306,7 @@ def get_transactions(limit: int = 10):
                     "type": "forwarded" if is_rebalance else "sent",
                     "amount": int(p.get("value_sat", 0)),
                     "fee": int(p.get("fee_sat", 0)),
-                    "desc": "🔀 Channel rebalance (circular)" if is_rebalance else "Lightning payment sent",
+                    "desc": ("🔀 Rebalance: " + alias_map.get(hops[0].get("pub_key",""), hops[0].get("pub_key","")[:12]) + " → " + alias_map.get(hops[-2].get("pub_key",""), hops[-2].get("pub_key","")[:12]) if len(hops) >= 2 else "🔀 Channel rebalance (circular)") if is_rebalance else "Lightning payment sent",
                     "status": "confirmed",
                     "time": int(p.get("creation_date", 0))
                 })
@@ -672,7 +674,7 @@ def rebalance_targeted(body: dict = Body(...)):
         if not out_ch or not in_ch:
             return {"status": "error", "detail": "Channel not found"}
         out_chan_id = str(out_ch[0].get("scid", out_ch[0].get("chan_id", "")))
-        invoice = run_lncli("addinvoice", "--amt=" + str(amount), "--memo=LCC Targeted Rebalance")
+        invoice = run_lncli("addinvoice", "--amt=" + str(amount), "--memo=Rebalance: " + out_ch[0].get("peer_alias", "?")[:20] + " -> " + in_ch[0].get("peer_alias", "?")[:20])
         payment_request = invoice.get("payment_request")
         pay_args = [
             "sendpayment",
@@ -710,6 +712,8 @@ def get_accounting(days: int = 365):
         print(f"[ACCT] fwd error: {ex}")
     try:
         payments = run_lncli("listpayments", "--max_payments=1000")
+        # Build pubkey to alias map
+        alias_map = {ch.get("remote_pubkey",""): ch.get("peer_alias","") for ch in run_lncli("listchannels").get("channels", [])}
         for p in payments.get("payments", []):
             ts = int(p.get("creation_date", 0))
             if ts < start_s: continue

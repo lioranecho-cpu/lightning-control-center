@@ -423,6 +423,40 @@ Paste that right above "## Channel Management Tips" in your MANUAL.md on GitHub!
 
 ---
 
+## Channel Strategy Page (Pro)
+
+Auto-assessed channel health and recommended actions. Access from the sidebar under Tools.
+
+Each channel is color-coded based on local balance, your fees, and peer fees:
+- Blue (Keep as-is) — peer opened channels, inbound lifeline
+- Green (Drain aggressively) — peer fee under 100 PPM, local above 80 percent
+- Orange (Monitor) — peer fee 100-300 PPM or balanced
+- Red (Close candidate) — peer fee above 500 PPM, no routing activity
+
+Summary cards show total channels in each category. The table shows channel name, capacity, local percent, your fee, peer fee, assessment, and recommended action.
+
+---
+
+## Targeted Rebalance (Pro)
+
+Pick exactly which channels to rebalance between — source AND destination.
+
+1. Click the green "Targeted Rebalance" button on the Channels page
+2. Type the number next to the SOURCE channel (sats leave from here)
+3. Type the number next to the DESTINATION channel (sats arrive here)
+4. Enter amount in sats and maximum fee
+5. Confirm and execute
+
+The rebalance shows in wallet transactions with named pairs: "Rebalance: block-iad-1 to LNBiG [Hub-3]" so you always know which channels were rebalanced.
+
+Tips:
+- Source should be a channel with high local balance (90 percent or more)
+- Destination should be a channel with low local balance
+- Set max fee based on peer fees along the route
+- Start with small amounts (10-50k sats) to test
+
+---
+
 ## Auto-Reconnect (Background Worker)
 
 LCC automatically reconnects dropped channel peers every 30 minutes. No configuration needed — runs as a background worker alongside Drain & Trap and the auto-rebalancer.
