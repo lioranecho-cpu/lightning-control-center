@@ -34,10 +34,10 @@
 22. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
 23. [Channel Management Tips](#channel-management-tips)
 24. [Fee Optimization Guide](#fee-optimization-guide)
-25. [Rebalancing Guide](#rebalancing-guide)
-26. [Auto-Reconnect](#auto-reconnect-background-worker)
-27. [Tax Accounting Export](#tax-accounting-export-pro)
-28. [Channel Strategy (Pro)](#channel-strategy-pro)
+25. [Channel Strategy Page](#channel-strategy-page-pro)
+26. [Targeted Rebalance](#targeted-rebalance-pro)
+27. [Auto-Reconnect](#auto-reconnect-background-worker)
+28. [Tax Accounting Export](#tax-accounting-export-pro)
 29. [Troubleshooting](#troubleshooting)
 ---
 
