@@ -511,51 +511,6 @@ When LCC recommends **CLOSE / Loop Out** it means the peer fee is too high (>500
 
 ---
 
-## Channel Strategy (Pro)
-
-Opens as a clean floating window — keep it running alongside the rest of the app. Auto-refreshes every 60 seconds.
-
-**Open it:** Click **Strategy** in the sidebar.
-
-### Summary Cards
-
-| Card | Meaning |
-|------|---------|
-| Total Channels | All active channels |
-| Keep (Inbound) | Peer-opened channels — free inbound liquidity, don't touch |
-| Drain | Your channels that are too full — push sats out |
-| Monitor | Borderline situation — watch closely |
-| Close Candidates | Dead weight — peer fee too high, consider exiting |
-
-### Color Code
-
-| Color | Assessment | Action |
-|-------|-----------|--------|
-| 🔵 Blue | Inbound lifeline | Keep as-is |
-| 🟢 Green | Low peer fee | Drain aggressively at 10-25 ppm |
-| 🟠 Orange | Moderate | Adjust fees, monitor routing |
-| 🔴 Red | Close candidate | CLOSE or Loop Out |
-
-### Columns
-
-- **Local %** — how much balance is on your side
-- **Your Fee** — your current PPM
-- **Peer Fee** — your peer's PPM (drives the recommendation)
-- **Assessment** — LCC's diagnosis
-- **Action** — recommended next step
-
-### What is Loop Out?
-
-When LCC recommends **CLOSE / Loop Out** the peer fee is too high (>500 PPM) and the channel isn't earning.
-
-Loop Out is an alternative to closing — sends sats out via Lightning to a swap service (Boltz), which sends the equivalent back to your on-chain wallet. Channel stays open with fresh inbound space. Fee: ~0.5% + mining fee.
-
-> 💡 Try rebalancing first — it's cheaper. Use Loop Out only when all channels are too full and there's nowhere to rebalance into.
-
-**Easiest option:** [boltz.exchange](https://boltz.exchange) — no account, no KYC.
-
----
-
 ## Troubleshooting
 
 **LCC shows no data:** Check lncli getinfo, restart LCC, check logs
