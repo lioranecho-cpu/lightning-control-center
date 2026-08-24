@@ -37,7 +37,8 @@
 25. [Rebalancing Guide](#rebalancing-guide)
 26. [Auto-Reconnect](#auto-reconnect-background-worker)
 27. [Tax Accounting Export](#tax-accounting-export-pro)
-28. [Troubleshooting](#troubleshooting)
+28. [Channel Strategy (Pro)](#channel-strategy-pro)
+29. [Troubleshooting](#troubleshooting)
 ---
 
 ## Getting Started
