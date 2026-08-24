@@ -401,7 +401,7 @@ fetch(API).then(r=>r.json()).then(d=>{
           <div class="ch-peer">
             <div class="ch-avatar">${init}</div>
             <div>
-              <div class="ch-alias">${ch.peer_alias} <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;${ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);'}">${ch.initiator ? '🔓 You opened' : '🔑 Peer opened'}</span>${(()=>{const s=window._strategies&&window._strategies[ch.channel_point];if(!s||s.strategy==='none')return '';const trapped=ch.fee_ppm>=s.trap_ppm;return trapped?'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#ef4444;">🪤 Trapped</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">🌊 Draining</span>';})()}</div>
+              <div class="ch-alias">${ch.peer_alias} <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;${ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);'}">${ch.initiator ? '🔓 You opened (outbound)' : '🔑 Peer opened (inbound)'}</span>${(()=>{const s=window._strategies&&window._strategies[ch.channel_point];if(!s||s.strategy==='none')return '';const trapped=ch.fee_ppm>=s.trap_ppm;return trapped?'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#ef4444;">🪤 Trapped</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">🌊 Draining</span>';})()}</div>
               <div class="ch-pubkey">Capacity: ${fmt(ch.capacity)} sats</div>
             </div>
           </div>
@@ -793,7 +793,7 @@ function sortChannels() {
     activeEl.innerHTML += '<div class="channel-card">' +
       '<div class="ch-top"><div class="ch-peer">' +
       '<div class="ch-avatar">' + init + '</div><div>' +
-      '<div class="ch-alias">' + ch.peer_alias + ' <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;' + (ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);') + '">' + (ch.initiator ? '🔓 You opened' : '🔑 Peer opened') + '</span>' + (()=>{const s=window._strategies&&window._strategies[ch.channel_point];if(!s||s.strategy==='none')return '';const trapped=ch.fee_ppm>=s.trap_ppm;return trapped?'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#ef4444;">🪤 Trapped</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">🌊 Draining</span>';})() + '</div>' +
+      '<div class="ch-alias">' + ch.peer_alias + ' <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;' + (ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);') + '">' + (ch.initiator ? '🔓 You opened (outbound)' : '🔑 Peer opened (inbound)') + '</span>' + (()=>{const s=window._strategies&&window._strategies[ch.channel_point];if(!s||s.strategy==='none')return '';const trapped=ch.fee_ppm>=s.trap_ppm;return trapped?'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#ef4444;">🪤 Trapped</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">🌊 Draining</span>';})() + '</div>' +
       '<div class="ch-pubkey">Capacity: ' + fmt(ch.capacity) + ' sats</div></div></div>' +
       '<div class="ch-right"></div></div>' +
       '<div class="balance-bar-wrap"><div class="balance-bar-labels">' +
@@ -1049,11 +1049,11 @@ function openTargetedRebalance() {
   if(tier === 'community'){ alert('Targeted Rebalance is a Pro feature.'); return; }
   if(!cachedChannels.length){ alert('No channels loaded'); return; }
   var list = cachedChannels.map(function(c,i){ return (i+1) + '. ' + c.peer_alias + ' (' + Math.round(c.local_balance/c.capacity*100) + '%% local)'; }).join('\n');
-  var outNum = prompt('Targeted Rebalance\n\nSelect SOURCE (sats leave FROM here):\n\n' + list + '\n\nEnter number:');
+  var outNum = prompt('Targeted Rebalance\n\nSelect SOURCE channel (sats will leave FROM this channel).\nType the number next to the channel name and click OK.\n\n' + list + '\n\nEnter number:');
   if(!outNum) return;
   var outIdx = parseInt(outNum) - 1;
   if(isNaN(outIdx) || outIdx < 0 || outIdx >= cachedChannels.length){ alert('Invalid'); return; }
-  var inNum = prompt('Select DESTINATION (sats arrive HERE):\n\n' + list + '\n\nEnter number:');
+  var inNum = prompt('Select DESTINATION channel (sats will arrive INTO this channel).\nType the number next to the channel name and click OK.\n\n' + list + '\n\nEnter number:');
   if(!inNum) return;
   var inIdx = parseInt(inNum) - 1;
   if(isNaN(inIdx) || inIdx < 0 || inIdx >= cachedChannels.length){ alert('Invalid'); return; }

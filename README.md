@@ -88,6 +88,9 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - 📥 **CSV export** — wallet and routing data
 - 🔌 **Auto-reconnect** — automatically reconnects dropped peers every 30 minutes
 - 📊 **Tax Accounting CSV** — full export with routing income, rebalance fees, channel open/close costs, and energy expenses
+- 🎯 **Targeted Rebalance** — pick source AND destination channels, set amount and max fee
+- 📋 **Channel Strategy page** — auto-assessed health with color-coded actions (Keep/Drain/Monitor/Close)
+- 🔀 **Named rebalance pairs** — wallet shows "Rebalance: Unwetter to LNBiG [Hub-3]" instead of generic text
 
 ---
 
