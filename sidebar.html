@@ -14,6 +14,7 @@
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/alerts.html'"><span class="icon"><img src="https://lcc.satslist.shop/icons/alerts.png" class="nav-icon" alt="alerts"><span class="nav-icon-emoji">&#128276;</span></span><span class="nav-label"> Alerts</span></div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/treasury.html'"><span class="icon"><img src="https://lcc.satslist.shop/icons/treasury.png" class="nav-icon" alt="treasury"><span class="nav-icon-emoji">&#128176;</span></span><span class="nav-label"> Treasury</span></div>
     <div class="nav-item" onclick="window.open('http://192.168.4.76:8001','LiveStream','width=1000,height=650,menubar=no,toolbar=no,location=no')" style="color:var(--green);"><span class="icon"><img src="https://lcc.satslist.shop/icons/livestream.png" class="nav-icon" alt="livestream"><span class="nav-icon-emoji">📡</span></span><span class="nav-label"> Live Stream</span></div>
+    <div class="nav-item" onclick="window.open('https://lcc.satslist.shop/static/strategy.html','lcc-strategy','width=900,height=650,resizable=yes')"><span class="icon"><span class="nav-icon-emoji">📋</span></span><span class="nav-label"> Strategy</span></div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/nwc.html'"><span class="icon"><img src="https://lcc.satslist.shop/icons/nwc.png" class="nav-icon" alt="nwc"><span class="nav-icon-emoji">&#128279;</span></span><span class="nav-label"> NWC <span style='font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></span></div>
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="location.href='https://lcc.satslist.shop/static/mining.html'"><span class="icon"><img src="https://lcc.satslist.shop/icons/mining.png" class="nav-icon" alt="mining"><span class="nav-icon-emoji">&#9935;</span></span><span class="nav-label"> Mining</span></div>
@@ -26,7 +27,12 @@
     <div class="version-badge" style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:4px;">LCC v0.1.2</div>
     <div class="community-badge" style="font-size:10px;color:var(--muted);text-align:center;line-height:1.6;">Made with &#9889; and &#8383;<br>for the Bitcoin community</div>
     <div id="tier-badge" style="text-align:center;margin-bottom:10px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(247,147,26,.08);border:1px solid var(--orange-dim);color:var(--orange);">🟠 Community</div>
-    <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+    <div id="lcc-theme-picker" style="display:flex;gap:4px;flex-wrap:nowrap;margin-bottom:8px;">
+  <button class="theme-btn" data-theme="midnight" onclick="applyTheme('midnight')" style="flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:10px;font-family:inherit;transition:all .15s;">🌊 Midnight</button>
+  <button class="theme-btn" data-theme="obsidian" onclick="applyTheme('obsidian')" style="flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:10px;font-family:inherit;transition:all .15s;">🌑 Obsidian</button>
+  <button class="theme-btn" data-theme="amber" onclick="applyTheme('amber')" style="flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:10px;font-family:inherit;transition:all .15s;">🟠 Amber</button>
+  <button class="theme-btn" data-theme="forest" onclick="applyTheme('forest')" style="flex:1;padding:5px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:10px;font-family:inherit;transition:all .15s;">🌲 Forest</button>
+</div>
 <button class="donate-btn" onclick="openDonateModal()">&#9889; Donate via Lightning</button>
   </div>
 </aside>
