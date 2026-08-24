@@ -654,6 +654,48 @@ def get_strategy():
     results.sort(key=lambda x: {"blue": 0, "green": 1, "orange": 2, "red": 3}.get(x["color"], 4))
     return {"channels": results}
 
+
+@app.post("/api/rebalance-targeted")
+def rebalance_targeted(body: dict = Body(...)):
+    if MOCK:
+        return {"status": "mock"}
+    out_pubkey = body.get("out_pubkey", "")
+    in_pubkey = body.get("in_pubkey", "")
+    amount = int(body.get("amount", 50000))
+    max_fee = int(body.get("max_fee", 100))
+    if not out_pubkey or not in_pubkey:
+        raise HTTPException(status_code=400, detail="Both out_pubkey and in_pubkey required")
+    try:
+        channels = run_lncli("listchannels")["channels"]
+        out_ch = [c for c in channels if c["remote_pubkey"] == out_pubkey]
+        in_ch = [c for c in channels if c["remote_pubkey"] == in_pubkey]
+        if not out_ch or not in_ch:
+            return {"status": "error", "detail": "Channel not found"}
+        out_chan_id = str(out_ch[0].get("scid", out_ch[0].get("chan_id", "")))
+        invoice = run_lncli("addinvoice", "--amt=" + str(amount), "--memo=LCC Targeted Rebalance")
+        payment_request = invoice.get("payment_request")
+        pay_args = [
+            "sendpayment",
+            "--pay_req=" + payment_request,
+            "--outgoing_chan_id=" + out_chan_id,
+            "--last_hop=" + in_pubkey,
+            "--allow_self_payment",
+            "--force",
+            "--fee_limit=" + str(max_fee),
+            "--timeout=60s",
+            "--json"
+        ]
+        result = run_lncli(*pay_args)
+        fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
+        if result.get("status") == "SUCCEEDED" or result.get("payment_hash"):
+            return {"status": "success", "detail": "Moved " + str(amount) + " sats", "fee": fee,
+                    "from": out_ch[0].get("peer_alias", out_pubkey[:16]),
+                    "to": in_ch[0].get("peer_alias", in_pubkey[:16])}
+        else:
+            return {"status": "failed", "detail": result.get("failure_reason", "Payment failed")}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
 @app.get("/api/accounting")
 def get_accounting(days: int = 365):
     import time, csv, io
