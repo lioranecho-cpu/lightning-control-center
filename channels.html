@@ -274,6 +274,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
     <!-- Tabs -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button onclick="openTargetedRebalance()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">&#127919; Targeted Rebalance</button>
       <button onclick="rebalanceNow()" id="rebalance-btn" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">⚖️ Rebalance All Channels</button>
       <span id="rebalance-status" style="margin-left:12px;font-size:11px;color:var(--muted);align-self:center;"></span>
     </div>
@@ -1041,6 +1042,41 @@ function submitOpenChannel(){
       status.style.color = '#ef4444';
       status.textContent = '❌ Connection error — check ProDesk is online';
     });
+}
+
+function openTargetedRebalance() {
+  var tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){ alert('Targeted Rebalance is a Pro feature.'); return; }
+  if(!cachedChannels.length){ alert('No channels loaded'); return; }
+  var list = cachedChannels.map(function(c,i){ return (i+1) + '. ' + c.peer_alias + ' (' + Math.round(c.local_balance/c.capacity*100) + '%% local)'; }).join('\n');
+  var outNum = prompt('Targeted Rebalance\n\nSelect SOURCE (sats leave FROM here):\n\n' + list + '\n\nEnter number:');
+  if(!outNum) return;
+  var outIdx = parseInt(outNum) - 1;
+  if(isNaN(outIdx) || outIdx < 0 || outIdx >= cachedChannels.length){ alert('Invalid'); return; }
+  var inNum = prompt('Select DESTINATION (sats arrive HERE):\n\n' + list + '\n\nEnter number:');
+  if(!inNum) return;
+  var inIdx = parseInt(inNum) - 1;
+  if(isNaN(inIdx) || inIdx < 0 || inIdx >= cachedChannels.length){ alert('Invalid'); return; }
+  if(outIdx === inIdx){ alert('Source and destination must be different'); return; }
+  var amount = prompt('Amount (sats):', '50000');
+  if(!amount) return;
+  var maxFee = prompt('Max fee (sats):', '100');
+  if(!maxFee) return;
+  var src = cachedChannels[outIdx];
+  var dst = cachedChannels[inIdx];
+  if(!confirm('Targeted Rebalance\n\nFROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + parseInt(amount).toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\nProceed?')) return;
+  fetch('https://lcc.satslist.shop/api/rebalance-targeted', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: parseInt(amount), max_fee: parseInt(maxFee)})
+  }).then(function(r){return r.json()}).then(function(d){
+    if(d.status === 'success'){
+      alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats');
+      setTimeout(function(){location.reload()}, 2000);
+    } else {
+      alert('Failed: ' + (d.detail || 'Rebalance failed'));
+    }
+  }).catch(function(){alert('Rebalance failed')});
 }
 </script>
 </body>
