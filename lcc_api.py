@@ -578,7 +578,7 @@ def send_payment(request: Request, body: dict = Body(...)):
                 result = run_lncli("sendpayment", "--pay_req=" + dest, "--amt=" + str(amount), "--json", "--force")
             else:
                 result = run_lncli("sendpayment", "--pay_req=" + dest, "--json", "--force")
-            if result.get("status") == "SUCCEEDED" or result.get("payment_hash"):
+            if result.get("status") == "SUCCEEDED":
                 return {"status": "success", "detail": "Lightning payment sent!", "fee": result.get("fee_sat", 0)}
             else:
                 return {"status": "failed", "detail": result.get("failure_reason", "Payment failed")}
@@ -690,56 +690,44 @@ def rebalance_targeted(body: dict = Body(...)):
             "--allow_self_payment",
             "--force",
             "--fee_limit=" + str(max_fee),
-            "--timeout=60s",
+            "--timeout=90s",
             "--json"
         ]
         result = run_lncli(*pay_args)
         fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
-        if result.get("status") == "SUCCEEDED" or result.get("payment_hash"):
+        if result.get("status") == "SUCCEEDED":
             return {"status": "success", "detail": "Moved " + str(amount) + " sats", "fee": fee,
                     "from": out_ch[0].get("peer_alias", out_pubkey[:16]),
                     "to": in_ch[0].get("peer_alias", in_pubkey[:16])}
         else:
             reason = result.get("failure_reason", "UNKNOWN")
             friendly = {
-                "FAILURE_REASON_NO_ROUTE": "No route found — channels may be too skewed or peers offline",
-                "FAILURE_REASON_TIMEOUT": "Payment timed out — peer may be slow or unreachable",
-                "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel",
-                "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired or invalid — try again",
+                "FAILURE_REASON_NO_ROUTE": "No route found. Try increasing max fee, reducing amount, or try different channels",
+                "FAILURE_REASON_TIMEOUT": "Payment timed out. Peer may be offline — try again later or try different channels",
+                "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel. Try a smaller amount",
+                "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired — try again",
                 "FAILURE_REASON_ERROR": "Payment error — check channel status",
-                "FAILURE_REASON_FEE_INSUFFICIENT": "Routing fee exceeds your max fee limit (" + str(max_fee) + " sats). Try increasing it",
+                "FAILURE_REASON_FEE_INSUFFICIENT": "Routing fee exceeds your max limit (" + str(max_fee) + " sats). Increase max fee and try again",
                 "UNKNOWN": "Unknown error — check lncli logs",
             }.get(reason, reason)
             return {"status": "failed", "detail": friendly, "raw_reason": reason}
-        except HTTPException as he:
+    except HTTPException as he:
         err = he.detail if hasattr(he, 'detail') else str(he)
-        if "insufficient" in err.lower():
-            friendly = "Not enough sats in this channel for the requested amount"
-        elif "no_route" in err.lower() or "unable to find" in err.lower():
-            friendly = "No route found between these channels"
+        if "FAILED" in err:
+            friendly = "Rebalance failed. Try: increase max fee, reduce amount, or pick different channels"
+        elif "insufficient" in err.lower():
+            friendly = "Not enough sats in this channel"
         elif "timeout" in err.lower():
             friendly = "Payment timed out — peer may be offline"
-        elif "FAILED" in err:
-            friendly = "Rebalance failed — no viable route found. Try a smaller amount or different channels"
-        elif "channel not found" in err.lower():
-            friendly = "One of the channels is closed or inactive"
-        elif "fee" in err.lower():
-            friendly = "Fee too high — try increasing max fee limit"
         else:
             friendly = err
         return {"status": "error", "detail": friendly}
-        except Exception as e:
+    except Exception as e:
         err = str(e)
         if "insufficient" in err.lower():
-            friendly = "Not enough sats in this channel for the requested amount"
-        elif "no_route" in err.lower() or "unable to find" in err.lower():
-            friendly = "No route found between these channels"
+            friendly = "Not enough sats in this channel"
         elif "timeout" in err.lower():
             friendly = "Payment timed out — peer may be offline"
-        elif "channel not found" in err.lower():
-            friendly = "One of the channels is closed or inactive"
-        elif "fee" in err.lower():
-            friendly = "Fee too high — try increasing max fee limit"
         else:
             friendly = err
         return {"status": "error", "detail": friendly}
