@@ -38,9 +38,15 @@ MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))
 
 def run_lncli(*args):
     try:
-        timeout = 60 if "sendpayment" in args else 10
+        timeout = 90 if "sendpayment" in args else 10
         result = subprocess.run(["lncli"] + list(args), capture_output=True, text=True, timeout=timeout)
+
         if result.returncode != 0:
+            if "sendpayment" in args:
+                try:
+                    return json.loads(result.stdout)
+                except:
+                    return {"status": "FAILED", "failure_reason": result.stderr.strip()}
             raise HTTPException(status_code=500, detail=f"lncli error: {result.stderr.strip()}")
         return json.loads(result.stdout)
     except FileNotFoundError:
@@ -694,9 +700,49 @@ def rebalance_targeted(body: dict = Body(...)):
                     "from": out_ch[0].get("peer_alias", out_pubkey[:16]),
                     "to": in_ch[0].get("peer_alias", in_pubkey[:16])}
         else:
-            return {"status": "failed", "detail": result.get("failure_reason", "Payment failed")}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
+            reason = result.get("failure_reason", "UNKNOWN")
+            friendly = {
+                "FAILURE_REASON_NO_ROUTE": "No route found — channels may be too skewed or peers offline",
+                "FAILURE_REASON_TIMEOUT": "Payment timed out — peer may be slow or unreachable",
+                "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel",
+                "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired or invalid — try again",
+                "FAILURE_REASON_ERROR": "Payment error — check channel status",
+                "FAILURE_REASON_FEE_INSUFFICIENT": "Routing fee exceeds your max fee limit (" + str(max_fee) + " sats). Try increasing it",
+                "UNKNOWN": "Unknown error — check lncli logs",
+            }.get(reason, reason)
+            return {"status": "failed", "detail": friendly, "raw_reason": reason}
+        except HTTPException as he:
+        err = he.detail if hasattr(he, 'detail') else str(he)
+        if "insufficient" in err.lower():
+            friendly = "Not enough sats in this channel for the requested amount"
+        elif "no_route" in err.lower() or "unable to find" in err.lower():
+            friendly = "No route found between these channels"
+        elif "timeout" in err.lower():
+            friendly = "Payment timed out — peer may be offline"
+        elif "FAILED" in err:
+            friendly = "Rebalance failed — no viable route found. Try a smaller amount or different channels"
+        elif "channel not found" in err.lower():
+            friendly = "One of the channels is closed or inactive"
+        elif "fee" in err.lower():
+            friendly = "Fee too high — try increasing max fee limit"
+        else:
+            friendly = err
+        return {"status": "error", "detail": friendly}
+        except Exception as e:
+        err = str(e)
+        if "insufficient" in err.lower():
+            friendly = "Not enough sats in this channel for the requested amount"
+        elif "no_route" in err.lower() or "unable to find" in err.lower():
+            friendly = "No route found between these channels"
+        elif "timeout" in err.lower():
+            friendly = "Payment timed out — peer may be offline"
+        elif "channel not found" in err.lower():
+            friendly = "One of the channels is closed or inactive"
+        elif "fee" in err.lower():
+            friendly = "Fee too high — try increasing max fee limit"
+        else:
+            friendly = err
+        return {"status": "error", "detail": friendly}
 
 @app.get("/api/accounting")
 def get_accounting(days: int = 365):
