@@ -428,22 +428,24 @@ function loadOnchainDeposits(){
 }
 
 function loadTransactions(){
-  const limit = document.getElementById('tx-limit') ? document.getElementById('tx-limit').value : 10;
-  fetch('https://lcc.satslist.shop/api/transactions?limit=' + limit)
+  const limit = parseInt(document.getElementById('tx-limit') ? document.getElementById('tx-limit').value : 10);
+  fetch('https://lcc.satslist.shop/api/transactions?limit=500')
     .then(r=>r.json()).then(data=>{
       const tbody = document.getElementById('tx-tbody');
       tbody.innerHTML = '';
       const filter = document.getElementById('tx-filter') ? document.getElementById('tx-filter').value : 'all';
       const hideRebalance = document.getElementById('hide-rebalance') ? document.getElementById('hide-rebalance').checked : false;
       let txs = data.transactions || [];
-      // Apply type filter
+      // Apply type filter FIRST
       if(filter === 'received') txs = txs.filter(t => t.type === 'received');
       else if(filter === 'sent') txs = txs.filter(t => t.type === 'sent');
       else if(filter === 'forwarded') txs = txs.filter(t => t.type === 'forwarded');
       else if(filter === 'onchain') txs = txs.filter(t => t.desc && (t.desc.includes('On-chain') || t.desc.includes('Channel') || t.desc.includes('sweep')));
-      else if(filter === 'rebalance') txs = txs.filter(t => t.desc && (t.desc.includes('rebalance') || t.desc.includes('Rebalance')));
+      else if(filter === 'rebalance') txs = txs.filter(t => t.desc && t.desc.toLowerCase().includes('rebalance'));
       // Apply hide rebalance checkbox
       if(hideRebalance) txs = txs.filter(t => !t.desc || (!t.desc.toLowerCase().includes('rebalance')));
+      // THEN apply limit
+      if(limit > 0) txs = txs.slice(0, limit);
       if(!txs.length){
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No transactions found</td></tr>';
         return;
