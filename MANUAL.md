@@ -38,7 +38,8 @@
 26. [Targeted Rebalance](#targeted-rebalance-pro)
 27. [Auto-Reconnect](#auto-reconnect-background-worker)
 28. [Tax Accounting Export](#tax-accounting-export-pro)
-29. [Troubleshooting](#troubleshooting)
+29. [Loop Out (Pro)](#loop-out-pro)
+30. [Troubleshooting](#troubleshooting)
 ---
 
 ## Getting Started
@@ -545,6 +546,53 @@ When LCC recommends **CLOSE / Loop Out** it means the peer fee is too high (>500
 > 💡 Try rebalancing first — it's cheaper. Use Loop Out only when all channels are too full and there's nowhere to rebalance into.
 
 ---
+
+
+## Loop Out (Pro)
+
+Loop Out moves sats from a full Lightning channel back to your on-chain wallet without closing the channel. The channel stays open and gains fresh inbound space.
+
+**How to use it:**
+1. Go to the Channels page
+2. Find a channel with high local balance (80%+ local)
+3. Click Loop Out on the channel card
+4. Enter the amount of sats to move out
+5. Click Get Fee Quote - LCC shows exact fees before you commit
+6. Click Confirm Loop Out - swap initiates immediately
+7. Click Run loop monitor to track progress in a popup window
+
+### Fee Quote Breakdown
+
+| Field | Meaning |
+|-------|--------|
+| Send off-chain | Sats leaving your Lightning channel |
+| Receive on-chain | Sats arriving in your Bitcoin wallet |
+| Total fee | Service fee + on-chain mining fee |
+
+Typical cost: 0.1-0.5% of the swap amount. A 500k sat swap costs roughly 500-2,500 sats total.
+
+### When to Loop Out
+
+- Channel is above 80% local balance and not draining naturally
+- You want to redeploy liquidity into a new or larger channel
+- All channels are full and rebalancing has nowhere to go
+
+Tip: Try rebalancing first - it is cheaper. Use Loop Out when all channels are too full.
+
+### The Liquidity Cycle
+
+Open channel, route payments, earn fees, channel drains, Loop Out, sats back on-chain, open new channel, repeat. This is how professional routing nodes stay efficient.
+
+### Requirements
+
+- Lightning Loop must be installed at ~/go/bin/loop
+- Loop is built into litd - already available if you run litd
+- Minimum swap amount: ~50,000 sats
+- Swap server: swap.lightning.today (Lightning Labs)
+
+### Loop Monitor
+
+After initiating a swap click Run loop monitor in the success dialog. A popup shows all swap history with status badges: INITIATED, IN PROGRESS, SUCCESS, FAILED. Auto-refreshes every 30 seconds.
 
 ## Troubleshooting
 
