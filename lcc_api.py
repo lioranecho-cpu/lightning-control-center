@@ -1254,6 +1254,25 @@ def run_loop(cmd, *args, input_text=None):
     result = subprocess.run(full_cmd, capture_output=True, text=True, input=input_text)
     return result.stdout + result.stderr
 
+@app.get("/api/loop/monitor")
+def loop_monitor():
+    """Get recent loop swap history"""
+    import subprocess
+    result = subprocess.run(
+        ['/home/luca/go/bin/loop', 'monitor'],
+        capture_output=True, text=True, timeout=10
+    )
+    lines = (result.stdout + result.stderr).strip().split('\n')
+    swaps = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('Note:'):
+            continue
+        parts = line.split()
+        if len(parts) >= 3:
+            swaps.append(line)
+    return {"swaps": swaps}
+
 @app.get("/api/loop/quote")
 def loop_quote(amt: int):
     try:

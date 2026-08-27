@@ -1197,7 +1197,7 @@ async function confirmLoopOut() {
     });
     const res = await r.json();
     if (res.success) {
-      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><span style="color:#888">Run loop monitor to track progress.</span>';
+      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><a onclick="window.open(\'https://lcc.satslist.shop/static/loop-monitor.html\',\'lcc-loop-monitor\',\'width=700,height=500,resizable=yes\')" style="color:var(--orange);cursor:pointer;font-size:11px;">▶ Run loop monitor to track progress</a>';
       document.getElementById('loop-success').style.display = 'block';
       btn.textContent = '✅ Swap Initiated';
     } else {
