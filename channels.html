@@ -425,7 +425,7 @@ fetch(API).then(r=>r.json()).then(d=>{
           <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
           <button class="action-btn" onclick="showPeerPolicy('${ch.scid}','${ch.peer_alias}')">Peer Policy</button>
           <button class="action-btn" onclick="openStrategyModal('${ch.channel_point}','${ch.peer_alias}')">⚡ Strategy</button>
-          <button class="action-btn" onclick="openLoopOut('${ch.scid}','${ch.peer_alias}',${ch.local_balance})" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;">🔄 Loop Out</button>
+          <button class="action-btn" onclick="openLoopOut('${ch.scid}','${ch.peer_alias}',${ch.local_balance})">🔄 Loop Out</button>
           <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
@@ -807,7 +807,7 @@ function sortChannels() {
       '<div class="ch-stat">Status: <span style="color:var(--green)">' + ch.status + '</span></div></div>' +
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
-      '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;">🔄 Loop Out</button>' +
+      '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
       '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
       '<button class="action-btn" onclick="showPeerPolicy(\'' + ch.scid + '\',\'' + ch.peer_alias + '\')">Peer Policy</button>' +
       '<button class="action-btn" onclick="openStrategyModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">⚡ Strategy</button>' +
