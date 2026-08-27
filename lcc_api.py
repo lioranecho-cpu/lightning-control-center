@@ -1273,7 +1273,8 @@ def loop_quote(amt: int):
     except Exception as e:
         return {"error": str(e)}
 
-class LoopOutRequest(BaseModel):
+from pydantic import BaseModel as LoopBaseModel
+class LoopOutRequest(LoopBaseModel):
     amt: int
     scid: str
     conf_target: int = 10
