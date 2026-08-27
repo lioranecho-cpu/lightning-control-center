@@ -425,6 +425,7 @@ fetch(API).then(r=>r.json()).then(d=>{
           <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
           <button class="action-btn" onclick="showPeerPolicy('${ch.scid}','${ch.peer_alias}')">Peer Policy</button>
           <button class="action-btn" onclick="openStrategyModal('${ch.channel_point}','${ch.peer_alias}')">⚡ Strategy</button>
+          <button class="action-btn" onclick="openLoopOut('${ch.scid}','${ch.peer_alias}',${ch.local_balance})" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;">🔄 Loop Out</button>
           <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
@@ -806,6 +807,7 @@ function sortChannels() {
       '<div class="ch-stat">Status: <span style="color:var(--green)">' + ch.status + '</span></div></div>' +
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
+      '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;">🔄 Loop Out</button>' +
       '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
       '<button class="action-btn" onclick="showPeerPolicy(\'' + ch.scid + '\',\'' + ch.peer_alias + '\')">Peer Policy</button>' +
       '<button class="action-btn" onclick="openStrategyModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">⚡ Strategy</button>' +
@@ -1079,5 +1081,139 @@ function openTargetedRebalance() {
   }).catch(function(){alert('Rebalance failed')});
 }
 </script>
+
+<!-- Loop Out Modal -->
+<div id="loop-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:400px;width:90%;position:relative;">
+    <button onclick="closeLoopModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">🔄 Loop Out</h3>
+    <p id="loop-channel-name" style="font-size:12px;color:#888;margin-bottom:20px;"></p>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;">Amount (sats)</label>
+      <input id="loop-amt" type="number" placeholder="e.g. 500000"
+        style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;font-family:inherit;"
+        oninput="clearLoopQuote()">
+      <div style="font-size:10px;color:#555;margin-top:4px;">Available: <span id="loop-max">—</span> sats</div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;">Conf Target (blocks)</label>
+      <input id="loop-conf" type="number" value="10" min="1" max="100"
+        style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;font-family:inherit;">
+    </div>
+
+    <button onclick="fetchLoopQuote()" style="width:100%;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;margin-bottom:14px;">
+      Get Fee Quote
+    </button>
+
+    <div id="loop-quote-box" style="display:none;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:14px;margin-bottom:14px;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Send off-chain</span><span id="lq-send">—</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Receive on-chain</span><span id="lq-receive" style="color:#22c55e;">—</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #252d3d;padding-top:6px;margin-top:6px;"><span style="color:#888;">Total fee</span><span id="lq-fee" style="color:#f7931a;">—</span></div>
+    </div>
+
+    <div id="loop-error" style="display:none;color:#ef4444;font-size:11px;margin-bottom:12px;"></div>
+
+    <button id="loop-confirm-btn" onclick="confirmLoopOut()" disabled
+      style="width:100%;padding:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#3b82f6;border-radius:8px;cursor:not-allowed;font-size:13px;font-weight:700;font-family:inherit;opacity:0.5;">
+      Confirm Loop Out
+    </button>
+
+    <div id="loop-success" style="display:none;margin-top:14px;padding:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:11px;color:#22c55e;word-break:break-all;"></div>
+  </div>
+</div>
+
+<script>
+let _loopScid = '', _loopAlias = '';
+
+function openLoopOut(scid, alias, localBal) {
+  _loopScid = scid;
+  _loopAlias = alias;
+  document.getElementById('loop-channel-name').textContent = alias + ' — ' + Number(localBal).toLocaleString() + ' sats local';
+  document.getElementById('loop-max').textContent = Number(localBal).toLocaleString();
+  document.getElementById('loop-amt').value = '';
+  document.getElementById('loop-conf').value = '10';
+  document.getElementById('loop-quote-box').style.display = 'none';
+  document.getElementById('loop-error').style.display = 'none';
+  document.getElementById('loop-success').style.display = 'none';
+  document.getElementById('loop-confirm-btn').disabled = true;
+  document.getElementById('loop-confirm-btn').style.opacity = '0.5';
+  document.getElementById('loop-confirm-btn').style.cursor = 'not-allowed';
+  document.getElementById('loop-modal').style.display = 'flex';
+}
+
+function closeLoopModal() {
+  document.getElementById('loop-modal').style.display = 'none';
+}
+
+function clearLoopQuote() {
+  document.getElementById('loop-quote-box').style.display = 'none';
+  document.getElementById('loop-confirm-btn').disabled = true;
+  document.getElementById('loop-confirm-btn').style.opacity = '0.5';
+  document.getElementById('loop-confirm-btn').style.cursor = 'not-allowed';
+}
+
+async function fetchLoopQuote() {
+  const amt = parseInt(document.getElementById('loop-amt').value);
+  if (!amt || amt < 50000) {
+    document.getElementById('loop-error').textContent = 'Minimum amount is 50,000 sats';
+    document.getElementById('loop-error').style.display = 'block';
+    return;
+  }
+  document.getElementById('loop-error').style.display = 'none';
+  try {
+    const r = await fetch('https://lcc.satslist.shop/api/loop/quote?amt=' + amt);
+    const q = await r.json();
+    if (q.error) {
+      document.getElementById('loop-error').textContent = q.error;
+      document.getElementById('loop-error').style.display = 'block';
+      return;
+    }
+    document.getElementById('lq-send').textContent = Number(q.send_sats).toLocaleString() + ' sats';
+    document.getElementById('lq-receive').textContent = Number(q.receive_sats).toLocaleString() + ' sats';
+    document.getElementById('lq-fee').textContent = Number(q.total_fee).toLocaleString() + ' sats';
+    document.getElementById('loop-quote-box').style.display = 'block';
+    document.getElementById('loop-confirm-btn').disabled = false;
+    document.getElementById('loop-confirm-btn').style.opacity = '1';
+    document.getElementById('loop-confirm-btn').style.cursor = 'pointer';
+  } catch(e) {
+    document.getElementById('loop-error').textContent = 'Quote failed: ' + e.message;
+    document.getElementById('loop-error').style.display = 'block';
+  }
+}
+
+async function confirmLoopOut() {
+  const amt = parseInt(document.getElementById('loop-amt').value);
+  const conf = parseInt(document.getElementById('loop-conf').value) || 10;
+  const btn = document.getElementById('loop-confirm-btn');
+  btn.textContent = '⏳ Initiating swap...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('https://lcc.satslist.shop/api/loop/out', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({amt, scid: _loopScid, conf_target: conf})
+    });
+    const res = await r.json();
+    if (res.success) {
+      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><span style="color:#888">Run loop monitor to track progress.</span>';
+      document.getElementById('loop-success').style.display = 'block';
+      btn.textContent = '✅ Swap Initiated';
+    } else {
+      document.getElementById('loop-error').textContent = res.error || 'Swap failed';
+      document.getElementById('loop-error').style.display = 'block';
+      btn.textContent = 'Confirm Loop Out';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    document.getElementById('loop-error').textContent = 'Error: ' + e.message;
+    document.getElementById('loop-error').style.display = 'block';
+    btn.textContent = 'Confirm Loop Out';
+    btn.disabled = false;
+  }
+}
+</script>
+
 </body>
 </html>
