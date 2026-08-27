@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LCC — Loop Monitor</title>
+<style>
+  :root{--bg:#0f1117;--surface:#161b27;--surface2:#1c2233;--border:#252d3d;--text:#e2e8f0;--muted:#4a5568;--orange:#f7931a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--font:'Inter','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);padding:20px;min-height:100vh;}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .header h1{font-size:18px;font-weight:700;}
+  .subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+  .refresh-btn{padding:6px 14px;background:rgba(247,147,26,.1);border:1px solid rgba(247,147,26,.3);color:var(--orange);border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--font);font-weight:600;}
+  .swap-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .badge{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;}
+  .badge.success{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+  .badge.initiated{background:rgba(247,147,26,.15);color:var(--orange);border:1px solid rgba(247,147,26,.3);}
+  .badge.pending{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3);}
+  .badge.failed{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+  .empty{text-align:center;color:var(--muted);padding:40px;font-size:13px;}
+  .last-updated{font-size:10px;color:var(--muted);text-align:right;margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>🔄 Loop Monitor</h1>
+    <div class="subtitle">Lightning Loop swap history — auto-refreshes every 30s</div>
+  </div>
+  <div style="text-align:right;">
+    <button class="refresh-btn" onclick="loadMonitor()">⟳ Refresh</button>
+    <div class="last-updated" id="last-updated">—</div>
+  </div>
+</div>
+
+<div id="swap-list"></div>
+
+<script>
+async function loadMonitor() {
+  try {
+    const r = await fetch('https://lcc.satslist.shop/api/loop/monitor');
+    const data = await r.json();
+    const list = document.getElementById('swap-list');
+
+    if (!data.swaps || data.swaps.length === 0) {
+      list.innerHTML = '<div class="empty">No swaps found</div>';
+      return;
+    }
+
+    list.innerHTML = data.swaps.map(line => {
+      let badgeClass = 'pending';
+      let status = 'PENDING';
+      if (line.includes('SUCCESS')) { badgeClass = 'success'; status = '✅ SUCCESS'; }
+      else if (line.includes('INITIATED')) { badgeClass = 'initiated'; status = '⏳ INITIATED'; }
+      else if (line.includes('FAILED')) { badgeClass = 'failed'; status = '❌ FAILED'; }
+      else if (line.includes('PREIMAGE_REVEALED')) { badgeClass = 'pending'; status = '🔑 IN PROGRESS'; }
+
+      // Extract amount and cost if present
+      const amtMatch = line.match(/(\d+\.\d+)\s+BTC/);
+      const costMatch = line.match(/cost:\s*server\s*(\d+),\s*onchain\s*(\d+),\s*offchain\s*(\d+)/);
+      const timeMatch = line.match(/\d{4}-\d{2}-\d{2}T[\d:+-]+/);
+
+      let html = '<div class="swap-row">';
+      html += '<span class="badge ' + badgeClass + '">' + status + '</span>';
+      if (timeMatch) html += '<span style="color:var(--muted);font-size:11px;">' + timeMatch[0].replace('T', ' ').split('-04')[0].split('+')[0] + '</span>';
+      if (amtMatch) html += '<span style="color:var(--text);">' + (parseFloat(amtMatch[1]) * 100000000).toLocaleString() + ' sats</span>';
+      if (costMatch) {
+        const total = parseInt(costMatch[1]) + parseInt(costMatch[2]) + parseInt(costMatch[3]);
+        html += '<span style="color:var(--orange);">fee: ' + total.toLocaleString() + ' sats</span>';
+        html += '<span style="color:var(--muted);font-size:10px;">(server ' + costMatch[1] + ' + onchain ' + costMatch[2] + ' + offchain ' + costMatch[3] + ')</span>';
+      }
+      html += '</div>';
+      return html;
+    }).join('');
+
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('swap-list').innerHTML = '<div class="empty">Could not load swap data</div>';
+  }
+}
+
+loadMonitor();
+setInterval(loadMonitor, 30000);
+</script>
+</body>
+</html>
