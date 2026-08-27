@@ -1245,6 +1245,59 @@ def drain_trap_worker():
 drain_trap_thread = threading.Thread(target=drain_trap_worker, daemon=True)
 drain_trap_thread.start()
 
+
+# ── Loop Out ──────────────────────────────────────────────────────────────────
+def run_loop(cmd, *args, input_text=None):
+    """Run loop CLI command"""
+    import subprocess
+    full_cmd = ['/home/luca/go/bin/loop', cmd] + list(args)
+    result = subprocess.run(full_cmd, capture_output=True, text=True, input=input_text)
+    return result.stdout + result.stderr
+
+@app.get("/api/loop/quote")
+def loop_quote(amt: int):
+    try:
+        output = run_loop('quote', 'out', str(amt))
+        lines = output.strip().split('\n')
+        data = {}
+        for line in lines:
+            if 'Send off-chain' in line:
+                data['send_sats'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
+            elif 'Receive on-chain' in line:
+                data['receive_sats'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
+            elif 'Estimated total fee' in line:
+                data['total_fee'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
+        if not data:
+            return {"error": "Could not parse quote", "raw": output}
+        return data
+    except Exception as e:
+        return {"error": str(e)}
+
+class LoopOutRequest(BaseModel):
+    amt: int
+    scid: str
+    conf_target: int = 10
+
+@app.post("/api/loop/out")
+def loop_out(req: LoopOutRequest):
+    try:
+        output = run_loop('out',
+            f'--amt={req.amt}',
+            f'--conf_target={req.conf_target}',
+            f'--channel={req.scid}',
+            '--verbose',
+            input_text='y\n')
+        if 'Swap initiated' in output or 'ID:' in output:
+            swap_id = ''
+            for line in output.split('\n'):
+                if line.strip().startswith('ID:'):
+                    swap_id = line.split('ID:')[-1].strip()
+            return {"success": True, "swap_id": swap_id, "raw": output}
+        else:
+            return {"success": False, "error": output}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
 
