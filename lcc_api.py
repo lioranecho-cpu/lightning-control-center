@@ -920,10 +920,12 @@ def rebalance_channels(target_pubkey: str = None):
                         pay_args.append(f"--outgoing_chan_id={src_chan_id}")
 
                     result = run_lncli(*pay_args)
+                    fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
                     results.append({
                         "from": src.get("peer_alias", src["remote_pubkey"][:16]),
                         "to": dst.get("peer_alias", dst["remote_pubkey"][:16]),
                         "amount": amount,
+                        "fee": fee,
                         "status": "success"
                     })
                 except Exception as e:
