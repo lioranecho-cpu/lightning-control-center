@@ -48,27 +48,22 @@ async function loadMonitor() {
       return;
     }
 
-    list.innerHTML = data.swaps.map(line => {
+    list.innerHTML = data.swaps.map(s => {
       let badgeClass = 'pending';
-      let status = 'PENDING';
-      if (line.includes('SUCCESS')) { badgeClass = 'success'; status = '✅ SUCCESS'; }
-      else if (line.includes('INITIATED')) { badgeClass = 'initiated'; status = '⏳ INITIATED'; }
-      else if (line.includes('FAILED')) { badgeClass = 'failed'; status = '❌ FAILED'; }
-      else if (line.includes('PREIMAGE_REVEALED')) { badgeClass = 'pending'; status = '🔑 IN PROGRESS'; }
-
-      // Extract amount and cost if present
-      const amtMatch = line.match(/(\d+\.\d+)\s+BTC/);
-      const costMatch = line.match(/cost:\s*server\s*(\d+),\s*onchain\s*(\d+),\s*offchain\s*(\d+)/);
-      const timeMatch = line.match(/\d{4}-\d{2}-\d{2}T[\d:+-]+/);
+      let status = '⏳ PENDING';
+      if (s.state === 'SUCCESS') { badgeClass = 'success'; status = '✅ SUCCESS'; }
+      else if (s.state === 'INITIATED') { badgeClass = 'initiated'; status = '⏳ INITIATED'; }
+      else if (s.state === 'FAILED') { badgeClass = 'failed'; status = '❌ FAILED'; }
+      else if (s.state === 'PREIMAGE_REVEALED') { badgeClass = 'pending'; status = '🔑 IN PROGRESS'; }
 
       let html = '<div class="swap-row">';
       html += '<span class="badge ' + badgeClass + '">' + status + '</span>';
-      if (timeMatch) html += '<span style="color:var(--muted);font-size:11px;">' + timeMatch[0].replace('T', ' ').split('-04')[0].split('+')[0] + '</span>';
-      if (amtMatch) html += '<span style="color:var(--text);">' + (parseFloat(amtMatch[1]) * 100000000).toLocaleString() + ' sats</span>';
-      if (costMatch) {
-        const total = parseInt(costMatch[1]) + parseInt(costMatch[2]) + parseInt(costMatch[3]);
-        html += '<span style="color:var(--orange);">fee: ' + total.toLocaleString() + ' sats</span>';
-        html += '<span style="color:var(--muted);font-size:10px;">(server ' + costMatch[1] + ' + onchain ' + costMatch[2] + ' + offchain ' + costMatch[3] + ')</span>';
+      html += '<span style="color:var(--muted);font-size:11px;">' + s.type + '</span>';
+      html += '<span style="color:var(--muted);font-size:11px;">' + s.id + '</span>';
+      html += '<span style="color:var(--text);">' + s.amount.toLocaleString() + ' sats</span>';
+      if (s.total_cost > 0) {
+        html += '<span style="color:var(--orange);">fee: ' + s.total_cost.toLocaleString() + ' sats</span>';
+        html += '<span style="color:var(--muted);font-size:10px;">(server ' + s.cost_server + ' + onchain ' + s.cost_onchain + ' + offchain ' + s.cost_offchain + ')</span>';
       }
       html += '</div>';
       return html;
