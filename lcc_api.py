@@ -1257,21 +1257,36 @@ def run_loop(cmd, *args, input_text=None):
 @app.get("/api/loop/monitor")
 def loop_monitor():
     """Get recent loop swap history"""
-    import subprocess
+    import subprocess, json as _json
     result = subprocess.run(
-        ['/home/luca/go/bin/loop', 'monitor'],
+        ['/home/luca/go/bin/loop', 'listswaps'],
         capture_output=True, text=True, timeout=10
     )
-    lines = (result.stdout + result.stderr).strip().split('\n')
-    swaps = []
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith('Note:'):
-            continue
-        parts = line.split()
-        if len(parts) >= 3:
-            swaps.append(line)
-    return {"swaps": swaps}
+    try:
+        data = _json.loads(result.stdout)
+        swaps = []
+        for s in data.get("swaps", []):
+            amt = int(s.get("amt", 0))
+            state = s.get("state", "UNKNOWN")
+            swap_type = s.get("type", "")
+            cost_server = int(s.get("cost_server", 0))
+            cost_onchain = int(s.get("cost_onchain", 0))
+            cost_offchain = int(s.get("cost_offchain", 0))
+            total_cost = cost_server + cost_onchain + cost_offchain
+            swap_id = s.get("id", "")[:12]
+            swaps.append({
+                "id": swap_id,
+                "type": swap_type,
+                "amount": amt,
+                "state": state,
+                "cost_server": cost_server,
+                "cost_onchain": cost_onchain,
+                "cost_offchain": cost_offchain,
+                "total_cost": total_cost,
+            })
+        return {"swaps": swaps}
+    except:
+        return {"swaps": [], "error": result.stderr.strip()}
 
 @app.get("/api/loop/quote")
 def loop_quote(amt: int):
