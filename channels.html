@@ -1187,7 +1187,7 @@ async function confirmLoopOut() {
   const amt = parseInt(document.getElementById('loop-amt').value);
   const conf = parseInt(document.getElementById('loop-conf').value) || 10;
   const btn = document.getElementById('loop-confirm-btn');
-  btn.textContent = '⏳ Initiating swap...';
+  btn.textContent = '⏳ Connecting to Loop server...';
   btn.disabled = true;
   try {
     const r = await fetch('https://lcc.satslist.shop/api/loop/out', {
