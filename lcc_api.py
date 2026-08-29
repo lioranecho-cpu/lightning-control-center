@@ -1304,7 +1304,9 @@ def loop_quote(amt: int):
             elif 'Estimated total fee' in line:
                 data['total_fee'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
         if not data:
-            return {"error": "Could not parse quote", "raw": output}
+            if "below min" in output.lower() or "amount must be" in output.lower():
+                return {"error": "Minimum Loop Out amount is 250,000 sats"}
+            return {"error": "Could not parse quote. Min: 250,000 sats", "raw": output}
         return data
     except Exception as e:
         return {"error": str(e)}
