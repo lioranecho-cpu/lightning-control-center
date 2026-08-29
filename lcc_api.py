@@ -1276,6 +1276,17 @@ def loop_monitor():
             cost_offchain = int(s.get("cost_offchain", 0))
             total_cost = cost_server + cost_onchain + cost_offchain
             swap_id = s.get("id", "")[:12]
+            # Look up channel alias from saved mappings
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            chan_alias = data.get("loop_swaps", {}).get(swap_id, "")
+            # Parse timestamp
+            init_time = s.get("initiation_time", "0")
+            try:
+                import datetime
+                ts = int(init_time) // 1000000000  # nanoseconds to seconds
+                time_str = datetime.datetime.fromtimestamp(ts).strftime("%m/%d/%Y %I:%M %p")
+            except:
+                time_str = ""
             swaps.append({
                 "id": swap_id,
                 "type": swap_type,
@@ -1285,6 +1296,8 @@ def loop_monitor():
                 "cost_onchain": cost_onchain,
                 "cost_offchain": cost_offchain,
                 "total_cost": total_cost,
+                "channel": chan_alias,
+                "time": time_str,
             })
         return {"swaps": swaps}
     except:
@@ -1320,6 +1333,16 @@ class LoopOutRequest(LoopBaseModel):
 @app.post("/api/loop/out")
 def loop_out(req: LoopOutRequest):
     try:
+        # Look up channel alias before initiating
+        chan_alias = req.scid
+        try:
+            channels = run_lncli("listchannels")["channels"]
+            for c in channels:
+                if c.get("scid") == req.scid or c.get("chan_id") == req.scid:
+                    chan_alias = c.get("peer_alias", req.scid)
+                    break
+        except:
+            pass
         output = run_loop('out',
             f'--amt={req.amt}',
             f'--conf_target={req.conf_target}',
@@ -1331,6 +1354,12 @@ def loop_out(req: LoopOutRequest):
             for line in output.split('\n'):
                 if line.strip().startswith('ID:'):
                     swap_id = line.split('ID:')[-1].strip()
+            # Save swap-to-channel mapping
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            if "loop_swaps" not in data:
+                data["loop_swaps"] = {}
+            data["loop_swaps"][swap_id[:12]] = chan_alias
+            json.dump(data, open(os.path.join(os.path.dirname(__file__), "data.json"), "w"))
             return {"success": True, "swap_id": swap_id, "raw": output}
         else:
             return {"success": False, "error": output}

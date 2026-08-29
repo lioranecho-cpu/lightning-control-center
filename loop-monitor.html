@@ -59,7 +59,8 @@ async function loadMonitor() {
       let html = '<div class="swap-row">';
       html += '<span class="badge ' + badgeClass + '">' + status + '</span>';
       html += '<span style="color:var(--muted);font-size:11px;">' + s.type + '</span>';
-      html += '<span style="color:var(--muted);font-size:11px;">' + s.id + '</span>';
+      html += '<span style="color:var(--orange);font-size:11px;font-weight:600;">' + (s.channel || s.id) + '</span>';
+      if (s.time) html += '<span style="color:var(--muted);font-size:10px;">' + s.time + '</span>';
       html += '<span style="color:var(--text);">' + s.amount.toLocaleString() + ' sats</span>';
       if (s.total_cost > 0) {
         html += '<span style="color:var(--orange);">fee: ' + s.total_cost.toLocaleString() + ' sats</span>';
