@@ -14,6 +14,21 @@
       "last_used": 1786630024,
       "active": true,
       "nwc_uri": "nostr+walletconnect://e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd?relay=wss://relay.primal.net&secret=0c12bdd29bcad6b0e8bd09a4098c8290a560ea38f5bfc04ece04702641daf42e"
+    },
+    {
+      "id": "1bbc38ac8b00fe5d",
+      "name": "rizful",
+      "permissions": [
+        "get_balance",
+        "pay_invoice",
+        "make_invoice"
+      ],
+      "budget_sats": 0,
+      "client_pubkey": "npub1jy2va620klslcjvscwsukrkvf7sxkah0ayw7xgusucycgw07d7sql5d9fn",
+      "created_at": 1788094716,
+      "last_used": null,
+      "active": true,
+      "nwc_uri": "nostr+walletconnect://e6a9d807a84aaf4e2c90219a8ec20b19ad1a8460550e2d4d1f8b1e87c52424dd?relay=wss://relay.primal.net&secret=7471d88ce37828e03de728984a665d4fd7a03f94e20033c4915087b6270f9847"
     }
   ]
 }
