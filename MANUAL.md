@@ -412,6 +412,34 @@ Paste that right above "## Channel Management Tips" in your MANUAL.md on GitHub!
 - A profitable channel is drained below 5% local
 - Rebalancing fee is less than expected routing earnings
 
+
+### Reviving a Drained Outbound Channel
+
+When an outbound channel you opened drains to near 0% local, you have three options:
+
+| Option | Cost | Best for |
+|--------|------|----------|
+| Close + Reopen | ~500 sats | Dead outbound channels with good peers |
+| Loop In | ~1,000 sats | When you want to keep the channel history |
+| Rebalance | 2,000-10,000 sats | Small skew corrections only |
+| Wait | 0 sats | If the channel is still getting inbound traffic |
+
+**Close + Reopen is almost always the cheapest option.** Use it when:
+- Your outbound channel is at 1-5% local
+- The peer is a quality hub worth keeping (LNBiG, ACINQ, block-iad-1)
+- Mempool fees are low (check mempool.space first)
+
+**After reopening — set fees immediately:**
+1. Set PPM to 400-500 (not the default low fee)
+2. Enable Drain and Trap — Drain 400 PPM, Trap 1200 PPM, Floor 40%
+3. This earns decent fees while full and stops draining at 40% local automatically
+
+**Why this beats rebalancing:**
+- A 5M sat rebalance costs 2,000-10,000 sats in routing fees
+- Closing + reopening a 5M channel costs ~500 sats total
+- You get a fresh full channel instead of a partially refilled one
+- No routing fee hunting, no failed attempts, no wasted sats
+
 ### When NOT to Rebalance
 - Channel fees are at 0 PPM
 - Rebalancing fee exceeds expected earnings
