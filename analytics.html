@@ -333,7 +333,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
         </div>
         <div class="panel">
           <div class="panel-header">
-            <h3>💡 Fee Recommendations <span style="font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;">PRO</span></h3>
+            <h3>💡 Fee Recommendations</h3>
           </div>
           <div id="fee-recommendations" style="padding:12px 16px;">
             <div style="color:var(--muted);font-size:12px;">Loading...</div>
@@ -483,40 +483,45 @@ function loadAnalytics(days) {
       pairsContent.innerHTML = html;
     }
 
-    // Fee Recommendations — fetch channel fee data first
+    // Fee Recommendations — outbound channels only
     const recEl = document.getElementById('fee-recommendations');
     if(recEl && pairs.length > 0) {
-      // Build fee map from channels API
       fetch('https://lcc.satslist.shop/api/channels').then(r=>r.json()).then(chData => {
         const feeMap = {};
-        (chData.list||[]).forEach(ch => { feeMap[ch.peer_alias] = ch.fee_ppm || 0; });
-      // Only show channels needing action (not healthy ones)
-      const topPairs = pairs.slice(0, 8).filter(([route, data]) => {
-        const epd = data.count / (days === 'ALL' ? 30 : days);
-        return epd >= 3 || epd < 1;
-      });
-      let recHtml = '';
-      topPairs.forEach(([route, data]) => {
-        const outChannel = route.split(' -> ')[1] || route;
-        const eventsPerDay = data.count / (days === 'ALL' ? 30 : days);
-        let icon, msg, color;
-        const inChannel = route.split(' → ')[0].trim() || route.split(' -> ')[0].trim() || route;
-        if(eventsPerDay >= 1 && eventsPerDay < 3) return;
-        const currentPPM = feeMap[inChannel] || 0;
-        if(eventsPerDay >= 3 && currentPPM < 500) {
-          icon = '🔥'; msg = 'Raise PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--orange)';
-        } else if(eventsPerDay >= 3 && currentPPM >= 500) {
-          icon = '✅'; msg = inChannel + ' at ' + currentPPM + ' PPM — good rate for demand'; color = 'var(--green)'; return;
-        } else if(currentPPM <= 100) {
-          icon = '💤'; msg = inChannel + ' at ' + currentPPM + ' PPM — already low, check liquidity balance'; color = 'var(--muted)';
-        } else {
-          icon = '💤'; msg = 'Lower PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--muted)';
-        }
-        recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);">' +
-          '<div><div style="font-size:12px;color:var(--text);">' + icon + ' ' + outChannel + '</div>' +
-          '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + data.count + ' events · ' + fmt(data.vol) + ' sats</div></div>' +
-          '<div style="font-size:11px;color:' + color + ';text-align:right;max-width:140px;">' + msg + '</div></div>';
-      });
+        const initiatorMap = {};
+        (chData.list||[]).forEach(ch => {
+          feeMap[ch.peer_alias] = ch.fee_ppm || 0;
+          initiatorMap[ch.peer_alias] = ch.initiator; // true = you opened, false = peer opened
+        });
+        const topPairs = pairs.slice(0, 8).filter(([route, data]) => {
+          const epd = data.count / (days === 'ALL' ? 30 : days);
+          return epd >= 3 || epd < 1;
+        });
+        let recHtml = '';
+        topPairs.forEach(([route, data]) => {
+          const inChannel = route.split(' → ')[0].trim() || route.split(' -> ')[0].trim() || route;
+          const outChannel = route.split(' → ')[1] || route.split(' -> ')[1] || route;
+          // Skip peer-opened (inbound) channels — fees on those don't control routing
+          if(initiatorMap[inChannel] === false) return;
+          const eventsPerDay = data.count / (days === 'ALL' ? 30 : days);
+          if(eventsPerDay >= 1 && eventsPerDay < 3) return;
+          const currentPPM = feeMap[inChannel] || 0;
+          let icon, msg, color;
+          if(eventsPerDay >= 3 && currentPPM < 500) {
+            icon = '🔥'; msg = 'Consider raising PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--orange)';
+          } else if(eventsPerDay >= 3 && currentPPM >= 500) {
+            icon = '✅'; msg = inChannel + ' at ' + currentPPM + ' PPM — good rate for demand'; color = 'var(--green)'; return;
+          } else if(currentPPM <= 100) {
+            icon = '💤'; msg = inChannel + ' at ' + currentPPM + ' PPM — already low, check liquidity'; color = 'var(--muted)';
+          } else {
+            icon = '💤'; msg = 'Consider lowering PPM on ' + inChannel + ' (currently ' + currentPPM + ' PPM)'; color = 'var(--muted)';
+          }
+          recHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);">' +
+            '<div><div style="font-size:12px;color:var(--text);">' + icon + ' ' + outChannel + '</div>' +
+            '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + data.count + ' events · ' + fmt(data.vol) + ' sats</div></div>' +
+            '<div style="font-size:11px;color:' + color + ';text-align:right;max-width:140px;">' + msg + '</div></div>';
+        });
+        recHtml += '<div style="font-size:10px;color:var(--muted);margin-top:12px;font-style:italic;">Estimates based on event count only. Upgrade to Pro for Channel Strategy — accurate color-coded analysis per channel.</div>';
         recEl.innerHTML = recHtml || '<div style="color:var(--muted);font-size:12px;">No action needed</div>';
       }).catch(()=>{
         recEl.innerHTML = '<div style="color:var(--muted);font-size:12px;">Could not load fee data</div>';
