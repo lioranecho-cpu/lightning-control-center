@@ -53,7 +53,7 @@
     .btn-orange:hover{background:#e8851a;}
 
     /* Summary cards */
-    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
     .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
     .sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px;}
     .sc-value{font-family:var(--mono);font-size:22px;font-weight:700;}
@@ -270,6 +270,11 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
         <div class="sc-value" id="remote-total">&#8212;</div>
         <div class="sc-sub">sats you can receive</div>
       </div>
+      <div class="summary-card" style="border-top:3px solid var(--yellow);">
+        <div class="sc-label">⏳ Pending</div>
+        <div class="sc-value" id="pending-sats" style="color:var(--yellow);">&#8212;</div>
+        <div class="sc-sub" id="pending-chan-sub">Loading...</div>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -383,6 +388,21 @@ fetch(API).then(r=>r.json()).then(d=>{
 
   document.getElementById('total-cap').textContent = fmt(totalCap + 2000000);
   document.getElementById('active-count').textContent = d.channels.num_active;
+  // Load pending channels
+  fetch('https://lcc.satslist.shop/api/pendingchannels').then(r=>r.json()).then(p => {
+    const opening = p.pending_open || [];
+    const closing = p.pending_closing || [];
+    const total = opening.reduce((s,c) => s + c.local_balance, 0) +
+                  closing.reduce((s,c) => s + c.local_balance, 0);
+    document.getElementById('pending-sats').textContent = fmt(total) + ' sats';
+    let subs = [];
+    if(opening.length) subs.push(opening.length + ' opening');
+    if(closing.length) subs.push(closing.length + ' closing');
+    document.getElementById('pending-chan-sub').textContent = subs.length ? subs.join(' · ') : 'None';
+  }).catch(()=>{
+    document.getElementById('pending-sats').textContent = '0 sats';
+    document.getElementById('pending-chan-sub').textContent = 'None';
+  });
   document.getElementById('pending-sub').textContent = d.channels.num_pending + ' pending';
   document.getElementById('pending-count').textContent = d.channels.num_pending;
   document.getElementById('local-total').textContent = fmt(totalLocal);
