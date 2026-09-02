@@ -273,12 +273,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
         <div class="bc-usd" id="channel-usd">&#8776; $&#8212;</div>
         <div class="bc-sub">Local spendable</div>
       </div>
-      <div class="balance-card" style="border-top:3px solid var(--yellow);">
-        <div class="bc-icon">⏳</div>
-        <div class="bc-label">Pending</div>
-        <div class="bc-value" id="pending-bal">&#8212;</div>
-        <div class="bc-sub" id="pending-sub">Loading...</div>
-      </div>
+
     </div>
 
     <div class="panel" style="margin-bottom:16px;">
@@ -485,22 +480,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('total-bal').textContent = fmt(total) + ' sats';
   document.getElementById('total-usd').innerHTML = toUsd(total, price);
   document.getElementById('onchain-bal').textContent = fmt(d.wallet.confirmed_balance) + ' sats';
-  // Load pending channels
-  fetch('https://lcc.satslist.shop/api/pendingchannels').then(r=>r.json()).then(p => {
-    const opening = p.pending_open || [];
-    const closing = p.pending_closing || [];
-    const total = opening.reduce((s,c) => s + c.local_balance, 0) +
-                  closing.reduce((s,c) => s + c.local_balance, 0);
-    document.getElementById('pending-bal').textContent = fmt(total) + ' sats';
-    let subs = [];
-    if(opening.length) subs.push(opening.length + ' opening');
-    if(closing.length) subs.push(closing.length + ' closing');
-    document.getElementById('pending-sub').textContent = subs.length ? subs.join(' · ') : 'None';
-    document.getElementById('pending-sub').style.color = total > 0 ? 'var(--yellow)' : 'var(--muted)';
-  }).catch(()=>{
-    document.getElementById('pending-bal').textContent = '0 sats';
-    document.getElementById('pending-sub').textContent = 'None';
-  });
+
   document.getElementById('onchain-usd').innerHTML = toUsd(d.wallet.confirmed_balance, price);
   document.getElementById('channel-bal').textContent = fmt(d.wallet.channel_balance) + ' sats';
   document.getElementById('channel-usd').innerHTML = toUsd(d.wallet.channel_balance, price);
