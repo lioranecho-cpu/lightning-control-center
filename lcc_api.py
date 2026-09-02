@@ -1303,6 +1303,33 @@ def loop_monitor():
     except:
         return {"swaps": [], "error": result.stderr.strip()}
 
+@app.get("/api/pendingchannels")
+def get_pending_channels():
+    data = run_lncli("pendingchannels")
+    opening = []
+    for c in data.get("pending_open_channels", []):
+        ch = c.get("channel", {})
+        opening.append({
+            "remote_pub": ch.get("remote_node_pub", "")[:20],
+            "capacity": int(ch.get("capacity", 0)),
+            "local_balance": int(ch.get("local_balance", 0)),
+            "confirmations_left": c.get("confirmations_until_active", 0),
+            "initiator": ch.get("initiator", "") == "INITIATOR_LOCAL"
+        })
+    closing = []
+    for c in data.get("waiting_close_channels", []) + data.get("pending_force_closing_channels", []):
+        ch = c.get("channel", {})
+        closing.append({
+            "remote_pub": ch.get("remote_node_pub", "")[:20],
+            "local_balance": int(ch.get("local_balance", 0)),
+            "blocks_til_maturity": c.get("blocks_til_maturity", 0)
+        })
+    return {
+        "pending_open": opening,
+        "pending_closing": closing,
+        "total_limbo": int(data.get("total_limbo_balance", 0))
+    }
+
 @app.get("/api/loop/quote")
 def loop_quote(amt: int):
     try:
