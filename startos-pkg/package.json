@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc --noEmit && node -e \"require('./startos/main')\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -12,6 +11,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
+    "@vercel/ncc": "^0.38.3",
     "typescript": "^5.4.0"
   },
   "overrides": {
