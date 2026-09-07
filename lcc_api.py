@@ -1258,6 +1258,23 @@ def run_loop(cmd, *args, input_text=None):
     result = subprocess.run(full_cmd, capture_output=True, text=True, input=input_text)
     return result.stdout + result.stderr
 
+@app.put("/api/journal/{entry_id}")
+def update_journal_entry(entry_id: str, body: dict = Body(...)):
+    try:
+        journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+        journal = json.load(open(journal_path)) if os.path.exists(journal_path) else []
+        for entry in journal:
+            if str(entry.get("id")) == str(entry_id):
+                if "title" in body: entry["title"] = body["title"]
+                if "body" in body: entry["body"] = body["body"]
+                if "tag" in body: entry["tag"] = body["tag"]
+                entry["edited"] = True
+                json.dump(journal, open(journal_path, "w"))
+                return {"success": True}
+        return {"success": False, "error": "Entry not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/loop/monitor")
 def loop_monitor():
     """Get recent loop swap history"""
