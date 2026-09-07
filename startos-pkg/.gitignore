@@ -1,0 +1,10 @@
+# Frontend assets copied from repo root by `make frontend`
+icons/
+*.html
+lcc-theme.js
+
+# Build artifacts
+javascript/
+dist/
+node_modules/
+*.s9pk
