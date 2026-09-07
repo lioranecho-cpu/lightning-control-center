@@ -18,10 +18,10 @@ help:
 node_modules: package.json
 	npm install
 
-dist/main.js: $(TS_FILES) tsconfig.json node_modules
-	npx tsc
+javascript/index.js: $(TS_FILES) tsconfig.json node_modules
+	npx ncc build startos/index.ts -o javascript
 
-build: dist/main.js
+build: javascript/index.js
 	docker build \
 		-f Dockerfile \
 		-t $(PACKAGE_ID):$(PACKAGE_VERSION) \
@@ -34,4 +34,4 @@ install: package
 	start-cli s9pk install $(PACKAGE_ID).s9pk
 
 clean:
-	rm -rf dist node_modules $(PACKAGE_ID).s9pk
+	rm -rf javascript node_modules $(PACKAGE_ID).s9pk
