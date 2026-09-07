@@ -964,14 +964,38 @@ def get_journal():
 
 @app.post("/api/journal")
 def save_journal(request: Request):
-    import asyncio, os
+    import asyncio, os, time
     journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
     try:
         body = asyncio.run(request.json())
-        entries = body.get("entries", [])
-        with open(journal_path, "w") as f:
-            json.dump(entries, f, indent=2)
-        return {"status": "saved", "count": len(entries)}
+        # Load existing entries
+        try:
+            with open(journal_path, "r") as f:
+                existing = json.load(f)
+        except:
+            existing = []
+        # If sending full entries array — bulk save
+        if "entries" in body:
+            entries = body["entries"]
+            with open(journal_path, "w") as f:
+                json.dump(entries, f, indent=2)
+            return {"status": "saved", "count": len(entries)}
+        # If sending single entry — append to existing
+        elif "title" in body:
+            new_entry = {
+                "id": int(time.time() * 1000),
+                "title": body.get("title", ""),
+                "body": body.get("body", ""),
+                "tag": body.get("tag", "note"),
+                "block": body.get("block", 0),
+                "date": body.get("date", int(time.time() * 1000))
+            }
+            existing.insert(0, new_entry)
+            with open(journal_path, "w") as f:
+                json.dump(existing, f, indent=2)
+            return {"status": "saved", "count": len(existing), "entry": new_entry}
+        else:
+            return {"status": "error", "detail": "No entries or title provided"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
