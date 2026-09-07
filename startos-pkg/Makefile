@@ -22,8 +22,7 @@ dist/main.js: $(TS_FILES) tsconfig.json node_modules
 	npx tsc
 
 build: dist/main.js
-	docker buildx build \
-		--platform linux/amd64,linux/arm64 \
+	docker build \
 		-f Dockerfile \
 		-t $(PACKAGE_ID):$(PACKAGE_VERSION) \
 		..
