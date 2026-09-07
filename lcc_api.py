@@ -359,6 +359,8 @@ def get_transactions(limit: int = 10):
             if "openchannel" in label: label = "Channel opened on-chain"
             if "closechannel" in label: label = "Channel closed on-chain"
             if "sweep" in label: label = "Channel sweep received"
+            if "BatchOutSweepSuccess" in label: label = "🔄 Loop Out sweep"
+            if "BatchInSweepSuccess" in label: label = "🔄 Loop In sweep"
             if label == "external": label = "On-chain payment"
             transactions.append({
                 "type": tx_type,
