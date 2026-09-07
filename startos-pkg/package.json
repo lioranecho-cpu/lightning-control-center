@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "check": "tsc --noEmit",
+    "build": "ncc build startos/index.ts -o javascript",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

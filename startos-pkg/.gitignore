@@ -2,6 +2,7 @@
 icons/
 *.html
 lcc-theme.js
+.frontend-stamp
 
 # Build artifacts
 javascript/
