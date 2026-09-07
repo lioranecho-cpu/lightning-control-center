@@ -769,7 +769,7 @@ async function saveEntry() {
     const res = await r.json();
     if (res.success) {
       closeEntry();
-      loadEntries();
+      loadEntriesFromAPI();
     } else {
       alert('Save failed: ' + (res.error || 'unknown error'));
     }
