@@ -1,43 +1,16 @@
-.DEFAULT_GOAL := help
+ARCHES := x86 arm
 
-PACKAGE_ID    := lightning-control-center
-PACKAGE_VERSION := $(shell node -p "require('./package.json').version" 2>/dev/null || echo "1.0.0")
-TS_FILES      := $(shell find startos -name '*.ts')
+FRONTEND_SOURCES := $(wildcard ../icons/*) $(wildcard ../*.html) ../lcc-theme.js
 
-.PHONY: help build clean install package inspect frontend
-
-help:
-	@echo "Usage: make <target>"
-	@echo ""
-	@echo "Targets:"
-	@echo "  build    Compile TypeScript and build Docker image"
-	@echo "  package  Build .s9pk package"
-	@echo "  install  Install package to a connected Start9 server"
-	@echo "  clean    Remove build artifacts"
-
-node_modules: package.json
-	npm install
-
-javascript/index.js: $(TS_FILES) tsconfig.json node_modules
-	npx ncc build startos/index.ts -o javascript
-
-# Copy frontend assets from repo root into startos-pkg/ for Docker build context
-frontend:
+.frontend-stamp: $(FRONTEND_SOURCES)
 	cp -r ../icons ./
 	cp ../*.html ./
 	cp ../lcc-theme.js ./
+	@touch $@
 
-build: frontend javascript/index.js
-	docker build \
-		-f Dockerfile \
-		-t $(PACKAGE_ID):$(PACKAGE_VERSION) \
-		.
+frontend: .frontend-stamp
 
-package: frontend javascript/index.js
-	start-cli s9pk pack
+include node_modules/@start9labs/start-sdk/s9pk.mk
 
-install: package
-	start-cli s9pk install $(PACKAGE_ID).s9pk
-
-clean:
-	rm -rf javascript node_modules $(PACKAGE_ID).s9pk icons *.html lcc-theme.js
+# Add frontend as prerequisite to the specific s9pk output files (non-pattern, so it merges)
+$(PACKAGE_ID)_x86_64.s9pk $(PACKAGE_ID)_aarch64.s9pk $(PACKAGE_ID).s9pk: .frontend-stamp
