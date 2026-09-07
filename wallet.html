@@ -51,7 +51,7 @@
 
     /* Balance cards */
     .balance-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
-    .balance-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
+    .balance-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:visible;}
     .balance-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
     .balance-card.onchain::before{background:var(--orange);}
     .balance-card.channel::before{background:var(--blue);}
@@ -61,8 +61,6 @@
     .bc-usd{font-size:12px;color:var(--muted);}
     .bc-sub{font-size:11px;color:var(--muted);margin-top:8px;}
     .bc-icon{position:absolute;top:16px;right:16px;font-size:24px;opacity:0.3;}
-    .bc-icon.tip::after{opacity:0;}
-    .bc-icon.tip:hover::after{opacity:1 !important;}
 
     /* Two column layout */
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
@@ -198,6 +196,7 @@
     box-shadow:0 4px 20px rgba(0,0,0,.5);
   }
   .tip:hover::after{opacity:1;}
+  .bc-label .tip::after{top:calc(100% + 8px);bottom:auto;left:0;transform:none;width:260px;z-index:99999;}
   .tip-right::after{left:auto;right:0;transform:none;}
   .tip-left::after{left:0;transform:none;}
 </style>
