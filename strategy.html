@@ -86,6 +86,7 @@
   <div class="legend-item"><span class="color-dot blue"></span> Keep as-is (inbound lifeline)</div>
 </div>
 <div class="strategy-note">Strategy: Drain channels with peer fees &lt; 100 ppm aggressively. Close channels with peer fees &gt; 500 ppm. Monitor unknowns via LCC Peer Policy tab.</div>
+<div class="strategy-note" style="margin-top:10px;padding:10px 14px;background:rgba(247,147,26,.06);border:1px solid var(--orange-dim);border-radius:8px;color:var(--text);font-style:normal;">⚠️ <strong>CLOSE / Loop Out</strong> flags channels where your peer's fee is high (&gt;500 PPM), meaning payments routing through them cost more than average. This does NOT mean the channel is broken — if it's actively routing, consider raising your own fee instead of closing. Close or Loop Out only if the channel has been inactive for several days.</div>
 
 <script>
 function fmt(n){return Number(n).toLocaleString();}
