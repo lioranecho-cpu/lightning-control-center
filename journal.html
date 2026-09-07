@@ -481,7 +481,7 @@ function renderEntries(search = '') {
   list.innerHTML = filtered.map(e => {
     const date = new Date(e.date).toLocaleString();
     const bodyPreview = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
-    return `<div class="entry-card" onclick="openEntry(${e.id})" style="cursor:pointer;">
+    return `<div class="entry-card" onclick="openEntry('${e.id}')" style="cursor:pointer;">
       <div class="entry-header">
         <div>
           <div class="entry-title">${e.title}</div>
@@ -739,7 +739,7 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
 <script>
 let _editingId = null;
 function openEntry(id) {
-  const e = getEntries().find(x => x.id === id);
+  const e = getEntries().find(x => String(x.id) === String(id));
   if (!e) return;
   _editingId = id;
   document.getElementById('modal-title').value = e.title || '';
