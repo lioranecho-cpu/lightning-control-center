@@ -731,7 +731,7 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <div id="modal-block" style="font-size:11px;color:#555;align-self:center;flex:1;"></div>
       <button onclick="closeEntry()" style="padding:8px 16px;background:transparent;border:1px solid #252d3d;color:#888;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;">Cancel</button>
-      <button onclick="saveEntry()" style="padding:8px 16px;background:rgba(247,147,26,.15);border:1px solid var(--orange-dim);color:var(--orange);border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:600;">💾 Save</button>
+      <button onclick="saveEditedEntry()" style="padding:8px 16px;background:rgba(247,147,26,.15);border:1px solid var(--orange-dim);color:var(--orange);border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:600;">💾 Save</button>
     </div>
   </div>
 </div>
@@ -754,7 +754,7 @@ function closeEntry() {
   document.getElementById('entry-modal').style.display = 'none';
   _editingId = null;
 }
-async function saveEntry() {
+async function saveEditedEntry() {
   if (!_editingId) return;
   const title = document.getElementById('modal-title').value.trim();
   const body = document.getElementById('modal-body').value.trim();
