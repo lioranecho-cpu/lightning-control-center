@@ -24,8 +24,9 @@ dist/main.js: $(TS_FILES) tsconfig.json node_modules
 build: dist/main.js
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
+		-f Dockerfile \
 		-t $(PACKAGE_ID):$(PACKAGE_VERSION) \
-		.
+		..
 
 package: build
 	start-cli s9pk pack

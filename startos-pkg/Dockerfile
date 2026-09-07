@@ -26,10 +26,17 @@ WORKDIR /app
 
 COPY --from=lncli-fetcher /usr/local/bin/lncli /usr/local/bin/lncli
 
-COPY requirements.txt .
+# Python dependencies (from startos-pkg/ inside the repo-root build context)
+COPY startos-pkg/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY lcc_api.py .
+# API server
+COPY startos-pkg/lcc_api.py .
+
+# Frontend — all HTML pages, theme JS, and icon assets live in the repo root
+COPY *.html ./
+COPY lcc-theme.js ./
+COPY icons/ ./icons/
 
 EXPOSE 8765
 
