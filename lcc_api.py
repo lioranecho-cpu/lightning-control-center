@@ -1402,7 +1402,7 @@ def loop_out(req: LoopOutRequest):
                     "body": f"Loop Out initiated: {int(req.amt):,} sats via {chan_alias}. Swap ID: {swap_id[:16]}. Conf target: {req.conf_target} blocks.",
                     "tag": "milestone",
                     "block": block_height,
-                    "timestamp": datetime.datetime.now().isoformat()
+                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
                 })
                 json.dump(journal, open(journal_path, "w"))
             except Exception as je:
