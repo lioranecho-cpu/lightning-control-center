@@ -10,6 +10,9 @@
     "@start9labs/start-sdk": "2.0.9",
     "zod": "^3.22.4"
   },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
   "overrides": {
     "zod": "^3.22.4"
   }
