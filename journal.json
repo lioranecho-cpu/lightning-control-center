@@ -1,5 +1,13 @@
 [
   {
+    "id": 1788791199908,
+    "title": "LNBiG Hub-1 Closed 1m channel open 5m",
+    "body": "LNBiG Hub-1: Drain 1500 PPM, Trap 2000 PPM, Floor 40%.   was still draining at 900 drain and 1500 trap \nKraken: 600 PPM + Drain & Trap\nBase fee fix = routing explosion\n3,566 sats earned by noon on Sep 7",
+    "tag": "routing",
+    "date": "2026-09-07T14:26:39.908Z",
+    "block": "965,942"
+  },
+  {
     "id": "a673ef39",
     "title": "\ud83d\udd04 Loop Out \u2014 AgX\ud83d\uddf2",
     "body": "Loop Out initiated: 9/6/2026 250,000 sats via AgX\ud83d\uddf2. Swap ID: a673ef3983409779. Conf target: 10 blocks.",
