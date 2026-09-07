@@ -622,6 +622,18 @@ Open channel, route payments, earn fees, channel drains, Loop Out, sats back on-
 
 After initiating a swap click Run loop monitor in the success dialog. A popup shows all swap history with status badges: INITIATED, IN PROGRESS, SUCCESS, FAILED. Auto-refreshes every 30 seconds.
 
+The Loop Monitor can also be opened anytime from the **Channels page** — click the **🔄 Loop Monitor** button next to Targeted Rebalance and Rebalance All Channels.
+
+### Auto-Journal
+
+Every Loop Out initiated from LCC is automatically logged to the Node Journal with:
+- Channel the swap was routed through
+- Amount in sats
+- Swap ID (first 16 characters)
+- Block height at time of swap
+
+This gives you a permanent record of all Loop Out activity without manual note-taking.
+
 ## Troubleshooting
 
 **LCC shows no data:** Check lncli getinfo, restart LCC, check logs
