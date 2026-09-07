@@ -9,3 +9,4 @@ javascript/
 dist/
 node_modules/
 *.s9pk
+icon.ico
