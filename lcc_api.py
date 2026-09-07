@@ -1389,6 +1389,24 @@ def loop_out(req: LoopOutRequest):
                 data["loop_swaps"] = {}
             data["loop_swaps"][swap_id[:12]] = chan_alias
             json.dump(data, open(os.path.join(os.path.dirname(__file__), "data.json"), "w"))
+            # Auto-journal entry
+            try:
+                import datetime
+                journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+                journal = json.load(open(journal_path)) if os.path.exists(journal_path) else []
+                block_info = run_lncli("getinfo")
+                block_height = block_info.get("block_height", 0)
+                journal.insert(0, {
+                    "id": swap_id[:8],
+                    "title": f"🔄 Loop Out — {chan_alias}",
+                    "body": f"Loop Out initiated: {int(req.amt):,} sats via {chan_alias}. Swap ID: {swap_id[:16]}. Conf target: {req.conf_target} blocks.",
+                    "tag": "milestone",
+                    "block": block_height,
+                    "timestamp": datetime.datetime.now().isoformat()
+                })
+                json.dump(journal, open(journal_path, "w"))
+            except Exception as je:
+                print(f"[LOOP] Journal write failed: {je}")
             return {"success": True, "swap_id": swap_id, "raw": output}
         else:
             return {"success": False, "error": output}
