@@ -2,7 +2,9 @@
   "extends": "@start9labs/start-sdk/tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./startos"
+    "rootDir": "./startos",
+    "module": "CommonJS",
+    "moduleResolution": "node"
   },
   "include": ["startos/**/*.ts"],
   "exclude": ["node_modules", "dist"]
