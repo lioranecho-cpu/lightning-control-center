@@ -45,10 +45,28 @@ app.add_middleware(
 MOCK = os.environ.get("LCC_MOCK", "false").lower() == "true"
 
 # Persistent data lives under DATA_DIR on Start9 (mounted main volume)
-DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
 
 def _data_path(filename: str) -> str:
     return os.path.join(DATA_DIR, filename)
+
+_DEFAULT_DATA = {
+    "tier": "community",
+    "licenseKey": "",
+    "auto_rebalance_hours": 24,
+    "rebalance_amount": 50000,
+    "channel_strategies": {},
+    "loop_swaps": {},
+}
+
+def _ensure_data_json():
+    path = _data_path("data.json")
+    if not os.path.exists(path):
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(_DEFAULT_DATA, f, indent=2)
+
+_ensure_data_json()
 
 MOCK_DATA: dict = {}
 if MOCK:
@@ -1461,8 +1479,9 @@ threading.Thread(target=auto_reconnect_worker, daemon=True).start()
 
 # ── Static assets ──────────────────────────────────────────────────────────────
 _APP_DIR = os.path.dirname(os.path.abspath(__file__))
-if os.path.isdir(os.path.join(_APP_DIR, "static")):
-    app.mount("/static", StaticFiles(directory=os.path.join(_APP_DIR, "static")), name="static")
+# Serve the app directory itself at /static so all HTML pages are reachable
+# (mirrors the original `directory="."` mount from the bare-metal install)
+app.mount("/static", StaticFiles(directory=_APP_DIR), name="static")
 if os.path.isdir(os.path.join(_APP_DIR, "icons")):
     app.mount("/icons", StaticFiles(directory=os.path.join(_APP_DIR, "icons")), name="icons")
 
