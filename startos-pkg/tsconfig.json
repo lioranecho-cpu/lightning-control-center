@@ -1,19 +1,9 @@
 {
+  "extends": "@start9labs/start-sdk/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
-    "lib": ["ES2020"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./startos",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true
+    "rootDir": "./startos"
   },
-  "include": ["startos/**/*"],
+  "include": ["startos/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

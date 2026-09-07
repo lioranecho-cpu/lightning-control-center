@@ -4,8 +4,8 @@ import { setInterfaces } from './interfaces'
 import { setDependencies } from './dependencies'
 import { seedFiles } from './init/seedFiles'
 
-export const main = sdk.setupMain(async ({ effects, started }) => {
-  const lndGrpcAddress = await sdk.host
+export const main = sdk.setupMain(async ({ effects }) => {
+  const lndGrpcAddressOrNull = await sdk.host
     .getBridgeAddress(effects, {
       packageId: 'lnd',
       hostId: lndGrpcHostId,
@@ -13,6 +13,11 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
       ssl: true,
     })
     .const()
+
+  if (!lndGrpcAddressOrNull) {
+    throw new Error('LND gRPC bridge address is not available')
+  }
+  const lndGrpcAddress: string = lndGrpcAddressOrNull
 
   const maybeBtcAddress = await sdk.host
     .getBridgeAddress(effects, {
@@ -57,28 +62,25 @@ export const main = sdk.setupMain(async ({ effects, started }) => {
     env['BTC_COOKIE_PATH'] = '/mnt/bitcoind/.cookie'
   }
 
-  const daemons = sdk.Daemons.of(effects, started, [
-    sdk.healthCheck.checkPortListening(effects, uiPort, {
-      successMessage: 'LCC web interface is ready',
-      errorMessage: 'LCC web interface is not responding',
-    }),
-  ])
+  const sub = sdk.SubContainer.of(effects, { imageId: 'main' }, mounts, 'lcc-main')
+
+  return sdk.Daemons.of(effects)
     .addDaemon('main', {
-      subcontainer: await sdk.SubContainer.of(effects, { imageId: 'main' }, 'lcc-main'),
-      mounts,
-      command: ['uvicorn', 'lcc_api:app', '--host', '0.0.0.0', '--port', String(uiPort)],
-      env,
+      exec: { command: ['uvicorn', 'lcc_api:app', '--host', '0.0.0.0', '--port', String(uiPort)], env },
+      subcontainer: sub,
       ready: {
         display: 'Web Interface',
-        fn: () =>
-          sdk.healthCheck.checkPortListening(effects, uiPort, {
+        fn: async () => {
+          const result = await sdk.healthCheck.checkPortListening(effects, uiPort, {
             successMessage: 'Ready',
             errorMessage: 'Starting…',
-          }),
+          })
+          return result
+        },
       },
+      requires: [],
     })
-
-  return daemons.build()
+    .build()
 })
 
 export { setInterfaces, setDependencies, seedFiles }

@@ -1,9 +1,7 @@
+import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
-import { z } from 'zod'
 
-const FileHelper = sdk.FileHelper
-
-const shape = z.looseObject({
+const shape = z.object({
   tier: z.string().catch('community'),
   licenseKey: z.string().catch(''),
 })
