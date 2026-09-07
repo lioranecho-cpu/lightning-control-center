@@ -61,6 +61,8 @@
     .bc-usd{font-size:12px;color:var(--muted);}
     .bc-sub{font-size:11px;color:var(--muted);margin-top:8px;}
     .bc-icon{position:absolute;top:16px;right:16px;font-size:24px;opacity:0.3;}
+    .bc-icon.tip::after{opacity:0;}
+    .bc-icon.tip:hover::after{opacity:1 !important;}
 
     /* Two column layout */
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
@@ -178,9 +180,9 @@
     top:calc(100% + 8px);
     left:0;
     transform:none;
-    background:#0a0d14;
-    color:#f0f0f0;
-    border:1px solid #252d3d;
+    background:#0a0d14 !important;
+    color:#f0f0f0 !important;
+    border:1px solid #252d3d !important;
     border-radius:8px;
     padding:8px 12px;
     font-size:11px;
@@ -253,22 +255,22 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
     <!-- Balance cards -->
     <div class="balance-grid">
       <div class="balance-card total">
-        <div class="bc-icon tip" data-tip="Your total wealth: everything in your Bitcoin wallet plus all your Lightning channel balances combined. Think of it as your full Bitcoin net worth on this node.">&#8383;</div>
-        <div class="bc-label">Total Balance</div>
+        <div class="bc-icon">&#8383;</div>
+        <div class="bc-label">Total Balance <span class="tip" data-tip="Your total wealth: everything in your Bitcoin wallet plus all your Lightning channel balances combined. Think of it as your full Bitcoin net worth on this node." style="font-size:10px;color:var(--muted);cursor:help;">ⓘ</span></div>
         <div class="bc-value" id="total-bal">&#8212;</div>
         <div class="bc-usd" id="total-usd">&#8776; $&#8212;</div>
         <div class="bc-sub">On-chain + Channel</div>
       </div>
       <div class="balance-card onchain">
-        <div class="bc-icon tip" data-tip="Sats sitting in your Bitcoin wallet on the blockchain. Use these to open new Lightning channels or send on-chain payments. Orange means some sats are still waiting to confirm — they are safe but not spendable yet.">&#128279;</div>
-        <div class="bc-label">On-Chain Balance</div>
+        <div class="bc-icon">&#128279;</div>
+        <div class="bc-label">On-Chain Balance <span class="tip" data-tip="Sats sitting in your Bitcoin wallet on the blockchain. Use these to open new Lightning channels or send on-chain payments. Orange means some sats are still waiting to confirm — they are safe but not spendable yet." style="font-size:10px;color:var(--muted);cursor:help;">ⓘ</span></div>
         <div class="bc-value" id="onchain-bal">&#8212;</div>
         <div class="bc-usd" id="onchain-usd">&#8776; $&#8212;</div>
         <div class="bc-sub" id="unconfirmed-sub">Confirmed</div>
       </div>
       <div class="balance-card channel">
-        <div class="bc-icon tip" data-tip="Sats on your side of all open Lightning channels. This is your spending power on Lightning — what you can send instantly to anyone on the network without touching the blockchain.">&#9889;</div>
-        <div class="bc-label">Channel Balance</div>
+        <div class="bc-icon">&#9889;</div>
+        <div class="bc-label">Channel Balance <span class="tip" data-tip="Sats on your side of all open Lightning channels. This is your spending power on Lightning — what you can send instantly to anyone on the network without touching the blockchain." style="font-size:10px;color:var(--muted);cursor:help;">ⓘ</span></div>
         <div class="bc-value" id="channel-bal">&#8212;</div>
         <div class="bc-usd" id="channel-usd">&#8776; $&#8212;</div>
         <div class="bc-sub">Local spendable</div>
