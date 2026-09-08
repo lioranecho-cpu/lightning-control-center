@@ -23,18 +23,12 @@ export const manifest = setupManifest({
     lnd: {
       description: 'Required for Lightning node management — channels, payments, routing.',
       optional: false,
-      metadata: {
-        title: 'LND',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/lnd-startos/refs/heads/master/icon.png',
-      },
+      s9pk: null,
     },
     bitcoind: {
       description: 'Provides mempool data and fee estimates.',
       optional: true,
-      metadata: {
-        title: 'Bitcoin',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/bitcoind-startos/refs/heads/master/icon.png',
-      },
+      s9pk: null,
     },
   },
 })
