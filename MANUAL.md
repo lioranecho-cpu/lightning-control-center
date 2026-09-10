@@ -484,6 +484,41 @@ Tips:
 - Set max fee based on peer fees along the route
 - Start with small amounts (10-50k sats) to test
 
+
+## Per-Channel Auto Rebalance (Pro)
+
+Set automatic rebalancing on individual channels — each with its own amount, interval, and fee cap.
+
+### How to Enable
+
+1. Click the **🔁 Auto Rebalance** button on any channel card
+2. Enter rebalance amount in sats (default: 10,000 — enter 0 to disable)
+3. Set interval in hours (default: 12)
+4. Set maximum fee per rebalance (default: 400 sats)
+
+### How it Works
+
+- Runs in the background every hour
+- Checks each enabled channel's local balance
+- If local balance is above 60 percent, triggers a rebalance
+- Sends sats from the full channel to the emptiest channel on your node
+- Logs results: success, fee paid, or failure reason
+- Respects your max fee cap — never overpays
+
+### Recommended Settings
+
+- **ACINQ / block-iad-1 (5M channels):** 10k sats, every 12 hours, 400 max fee
+- **Medium channels (1M):** 10k sats, every 24 hours, 200 max fee
+- **Small channels (500k):** skip — not worth the fees
+
+### Tips
+
+- Start with 10k sats — small amounts find cheap routes
+- Monitor for 24 hours before enabling more channels
+- Check results: Settings page or journal logs
+- Enter 0 as amount to disable on any channel
+- The fee cap protects you — if no cheap route exists, it skips and tries next cycle
+
 ---
 
 ## Auto-Reconnect (Background Worker)
