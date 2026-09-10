@@ -829,6 +829,7 @@ function sortChannels() {
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
       '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
+      '<button class="action-btn" onclick="toggleAutoRebalance(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">🔁 Auto Rebalance</button>' +
       '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
       '<button class="action-btn" onclick="showPeerPolicy(\'' + ch.scid + '\',\'' + ch.peer_alias + '\')">Peer Policy</button>' +
       '<button class="action-btn" onclick="openStrategyModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">⚡ Strategy</button>' +
@@ -1234,7 +1235,43 @@ async function confirmLoopOut() {
     btn.disabled = false;
   }
 }
-</script>
 
+function toggleAutoRebalance(chanPoint, alias) {
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){ alert('Auto Rebalance is a Pro feature. Upgrade at satslist.shop'); return; }
+  var amount = prompt('\u{1F501} Auto Rebalance for ' + alias + '\n\nSet rebalance amount (sats):\n(Enter 0 to disable)', '10000');
+  if(amount === null) return;
+  amount = parseInt(amount);
+  if(amount === 0) {
+    fetch('api/channel-auto-rebalance', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({chan_point: chanPoint, enabled: false})
+    }).then(r=>r.json()).then(d=>{
+      alert('Auto Rebalance DISABLED for ' + alias);
+    });
+    return;
+  }
+  var hours = prompt('Run every X hours:', '12');
+  if(hours === null) return;
+  var maxFee = prompt('Max fee per rebalance (sats):', '400');
+  if(maxFee === null) return;
+  fetch('api/channel-auto-rebalance', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      chan_point: chanPoint,
+      enabled: true,
+      amount: amount,
+      hours: parseInt(hours),
+      max_fee: parseInt(maxFee),
+      target_pct: 50
+    })
+  }).then(r=>r.json()).then(d=>{
+    alert('Auto Rebalance ENABLED for ' + alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nEvery ' + hours + ' hours\nMax fee: ' + maxFee + ' sats');
+  }).catch(()=>alert('Failed to set auto rebalance'));
+}
+
+</script>
 </body>
 </html>

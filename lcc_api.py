@@ -1205,10 +1205,86 @@ def set_channel_strategy(chan_point: str, body: dict = Body(...)):
 
 # Auto-rebalance scheduler
 def auto_rebalance_job():
+    import time as _time
     while True:
         try:
-            settings = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
-            hours = int(settings.get("auto_rebalance_hours", 24))
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            per_channel = data.get("channel_auto_rebalance", {})
+            now = int(_time.time())
+            
+            if per_channel and not MOCK:
+                channels = run_lncli("listchannels")["channels"]
+                underfull = [c for c in channels if int(c["capacity"]) > 0 and
+                             int(c["local_balance"]) / int(c["capacity"]) < 0.20]
+                
+                for ch in channels:
+                    cp = ch.get("channel_point", "")
+                    settings = per_channel.get(cp)
+                    if not settings or not settings.get("enabled"):
+                        continue
+                    
+                    # Check if it's time to run
+                    last_run = settings.get("last_run", 0)
+                    interval = settings.get("hours", 24) * 3600
+                    if now - last_run < interval:
+                        continue
+                    
+                    # Check if channel needs rebalancing
+                    cap = int(ch.get("capacity", 1))
+                    local = int(ch.get("local_balance", 0))
+                    pct = (local / cap) * 100
+                    target = settings.get("target_pct", 50)
+                    
+                    if pct <= target + 10:
+                        continue  # Already near target
+                    
+                    # Find best underfull destination
+                    if not underfull:
+                        continue
+                    
+                    amount = settings.get("amount", 10000)
+                    max_fee = settings.get("max_fee", 400)
+                    alias = settings.get("alias", cp[:16])
+                    
+                    try:
+                        # Get channel ID
+                        src_chan_id = None
+                        chan_info = run_lncli("getchaninfo", f"--chan_point={cp}")
+                        src_chan_id = chan_info.get("channel_id")
+                        
+                        dst = underfull[0]
+                        invoice = run_lncli("addinvoice", f"--amt={amount}", f"--memo=Auto-Rebalance: {alias}")
+                        payment_request = invoice.get("payment_request")
+                        
+                        pay_args = [
+                            "sendpayment",
+                            "--pay_req=" + payment_request,
+                            "--last_hop=" + dst["remote_pubkey"],
+                            "--allow_self_payment",
+                            "--force",
+                            "--fee_limit=" + str(max_fee),
+                            "--timeout=30s",
+                            "--json"
+                        ]
+                        if src_chan_id:
+                            pay_args.append(f"--outgoing_chan_id={src_chan_id}")
+                        
+                        result = run_lncli(*pay_args)
+                        fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
+                        status = "success" if result.get("status") == "SUCCEEDED" else "failed"
+                        print(f"[AUTO-REBAL] {alias} -> {dst.get('peer_alias','?')}: {status} ({amount} sats, fee: {fee})")
+                    except Exception as e:
+                        print(f"[AUTO-REBAL] {alias} failed: {e}")
+                    
+                    # Update last_run
+                    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                    if cp in data.get("channel_auto_rebalance", {}):
+                        data["channel_auto_rebalance"][cp]["last_run"] = now
+                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            json.dump(data, f, indent=2)
+            
+            # Also run global rebalance if configured
+            hours = int(data.get("auto_rebalance_hours", 0))
             if hours > 0 and not MOCK:
                 channels = run_lncli("listchannels")["channels"]
                 overfull = [c for c in channels if int(c["capacity"]) > 0 and
@@ -1217,12 +1293,11 @@ def auto_rebalance_job():
                              int(c["local_balance"]) / int(c["capacity"]) < 0.20]
                 if overfull and underfull:
                     rebalance_channels()
-                wait = hours * 3600
-            else:
-                wait = 3600
-        except:
-            wait = 86400
-        threading.Event().wait(wait)
+        except Exception as e:
+            print(f"[AUTO-REBAL] Error: {e}")
+        
+        # Check every hour
+        threading.Event().wait(3600)
 
 def drain_trap_worker():
     while True:
@@ -1453,6 +1528,56 @@ def loop_out(req: LoopOutRequest):
             return {"success": False, "error": output}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.post("/api/channel-auto-rebalance")
+def set_channel_auto_rebalance(body: dict = Body(...)):
+    """Set per-channel auto-rebalance settings"""
+    chan_point = body.get("chan_point", "")
+    enabled = body.get("enabled", False)
+    amount = int(body.get("amount", 10000))
+    hours = int(body.get("hours", 24))
+    max_fee = int(body.get("max_fee", 400))
+    target_pct = int(body.get("target_pct", 50))
+    
+    if not chan_point:
+        raise HTTPException(status_code=400, detail="chan_point required")
+    
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    if "channel_auto_rebalance" not in data:
+        data["channel_auto_rebalance"] = {}
+    
+    # Get channel alias for display
+    alias = chan_point[:16]
+    try:
+        channels = run_lncli("listchannels")["channels"]
+        for c in channels:
+            if c.get("channel_point") == chan_point:
+                alias = c.get("peer_alias", chan_point[:16])
+                break
+    except:
+        pass
+    
+    data["channel_auto_rebalance"][chan_point] = {
+        "enabled": enabled,
+        "amount": amount,
+        "hours": hours,
+        "max_fee": max_fee,
+        "target_pct": target_pct,
+        "alias": alias,
+        "last_run": data.get("channel_auto_rebalance", {}).get(chan_point, {}).get("last_run", 0)
+    }
+    
+    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+        json.dump(data, f, indent=2)
+    
+    return {"status": "success", "channel": alias, "enabled": enabled, "amount": amount, "hours": hours}
+
+@app.get("/api/channel-auto-rebalance")
+def get_channel_auto_rebalance():
+    """Get all per-channel auto-rebalance settings"""
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    return {"channels": data.get("channel_auto_rebalance", {})}
 
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
