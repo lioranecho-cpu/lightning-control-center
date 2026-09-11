@@ -79,6 +79,7 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - 💡 **Fee Recommendations** — data-driven PPM suggestions with current channel fees
 - 🌊 **Drain & Trap** — automated fee strategy per channel (drain PPM, trap PPM, floor %)
 - ⚖️ **Auto-rebalance scheduler** — set interval and amount
+- 🔁 **Per-channel auto-rebalance** — individual amount, interval, fee cap per channel with journal logging and auto-disable after 3 consecutive failures
 - 🔀 **Manual rebalance** — per-channel with fee estimate
 - 📡 **Live HTLC Stream** — real-time routing event monitor (companion app)
 - 🔐 **Nostr login** — NIP-07 (Alby, nos2x) or nsec
