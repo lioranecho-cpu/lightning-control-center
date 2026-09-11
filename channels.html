@@ -1243,7 +1243,7 @@ function toggleAutoRebalance(chanPoint, alias) {
   if(amount === null) return;
   amount = parseInt(amount);
   if(amount === 0) {
-    fetch('api/channel-auto-rebalance', {
+    fetch('https://lcc.satslist.shop/api/channel-auto-rebalance', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chan_point: chanPoint, enabled: false})
@@ -1256,7 +1256,7 @@ function toggleAutoRebalance(chanPoint, alias) {
   if(hours === null) return;
   var maxFee = prompt('Max fee per rebalance (sats):', '400');
   if(maxFee === null) return;
-  fetch('api/channel-auto-rebalance', {
+  fetch('https://lcc.satslist.shop/api/channel-auto-rebalance', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
