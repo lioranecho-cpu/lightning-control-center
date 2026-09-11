@@ -1204,6 +1204,27 @@ def set_channel_strategy(chan_point: str, body: dict = Body(...)):
     return {"status": "saved", "strategy": data["channel_strategies"].get(chan_point)}
 
 # Auto-rebalance scheduler
+
+def _log_journal(title, body, tag="auto-rebalance"):
+    """Write an entry to the node journal"""
+    import time as _t
+    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    try:
+        with open(journal_path, "r") as f:
+            entries = json.load(f)
+    except:
+        entries = []
+    entries.insert(0, {
+        "id": int(_t.time() * 1000),
+        "title": title,
+        "body": body,
+        "tag": tag,
+        "block": 0,
+        "date": int(_t.time() * 1000)
+    })
+    with open(journal_path, "w") as f:
+        json.dump(entries, f, indent=2)
+
 def auto_rebalance_job():
     import time as _time
     while True:
@@ -1271,8 +1292,44 @@ def auto_rebalance_job():
                         
                         result = run_lncli(*pay_args)
                         fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
-                        status = "success" if result.get("status") == "SUCCEEDED" else "failed"
-                        print(f"[AUTO-REBAL] {alias} -> {dst.get('peer_alias','?')}: {status} ({amount} sats, fee: {fee})")
+                        dst_alias = dst.get('peer_alias', '?')
+                        if result.get("status") == "SUCCEEDED":
+                            print(f"[AUTO-REBAL] {alias} -> {dst_alias}: SUCCESS ({amount} sats, fee: {fee})")
+                            _log_journal(
+                                f"Auto-rebalance: {alias} → {dst_alias}",
+                                f"Moved {amount:,} sats | Fee: {fee} sats | Route: {alias} → {dst_alias}",
+                                "auto-rebalance"
+                            )
+                            # Reset fail counter on success
+                            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                            if cp in data.get("channel_auto_rebalance", {}):
+                                data["channel_auto_rebalance"][cp]["consecutive_fails"] = 0
+                                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                    json.dump(data, f, indent=2)
+                        else:
+                            reason = result.get("failure_reason", "unknown")
+                            print(f"[AUTO-REBAL] {alias} -> {dst_alias}: FAILED ({reason})")
+                            # Track consecutive failures
+                            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                            if cp in data.get("channel_auto_rebalance", {}):
+                                fails = data["channel_auto_rebalance"][cp].get("consecutive_fails", 0) + 1
+                                data["channel_auto_rebalance"][cp]["consecutive_fails"] = fails
+                                if fails >= 3:
+                                    data["channel_auto_rebalance"][cp]["enabled"] = False
+                                    _log_journal(
+                                        f"⚠️ Auto-rebalance DISABLED: {alias}",
+                                        f"3 consecutive failures — channel may be structurally bad. Re-enable manually from Channels page.",
+                                        "warning"
+                                    )
+                                    print(f"[AUTO-REBAL] {alias} disabled after 3 consecutive failures")
+                                else:
+                                    _log_journal(
+                                        f"Auto-rebalance failed: {alias}",
+                                        f"Attempt {fails}/3 | Reason: {reason} | Route: {alias} → {dst_alias}",
+                                        "auto-rebalance"
+                                    )
+                                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                    json.dump(data, f, indent=2)
                     except Exception as e:
                         print(f"[AUTO-REBAL] {alias} failed: {e}")
                     
