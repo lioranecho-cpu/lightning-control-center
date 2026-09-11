@@ -1,3 +1,6 @@
+
+
+
 # ⚡ Lightning Control Center (LCC)
 **The dashboard for the Bitcoin sovereign stack.**
 
@@ -81,7 +84,8 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - ⚖️ **Auto-rebalance scheduler** — set interval and amount
 - 🔁 **Per-channel auto-rebalance** — individual amount, interval, fee cap per channel with journal logging and auto-disable after 3 consecutive failures
 
-https://github.com/lioranecho-cpu/lightning-control-center/raw/main/channel-autorebalance.mp4
+[https://github.com/lioranecho-cpu/lightning-control-center/raw/main/channel-autorebalance.mp4](https://github.com/user-attachments/assets/c1c02202-0eef-48a0-b219-6e7342839a1f
+)
 - 🔀 **Manual rebalance** — per-channel with fee estimate
 - 📡 **Live HTLC Stream** — real-time routing event monitor (companion app)
 - 🔐 **Nostr login** — NIP-07 (Alby, nos2x) or nsec
