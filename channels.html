@@ -295,6 +295,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
         <option value="local_pct">Sort: Most full</option>
         <option value="local_pct_asc">Sort: Most empty</option>
         <option value="fee">Sort: Fee PPM</option>
+        <option value="name">Sort: Channel name</option>
       </select>
       <span id="lcc-refresh-timer" style="font-size:10px;color:var(--muted);font-family:monospace;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);">Refreshing in 60s</span>
     </div>
@@ -809,6 +810,7 @@ function sortChannels() {
   else if(sortBy === 'local_pct') channels.sort((a,b) => (b.local_balance/b.capacity) - (a.local_balance/a.capacity));
   else if(sortBy === 'local_pct_asc') channels.sort((a,b) => (a.local_balance/a.capacity) - (b.local_balance/b.capacity));
   else if(sortBy === 'fee') channels.sort((a,b) => b.fee_ppm - a.fee_ppm);
+  else if(sortBy === 'name') channels.sort((a,b) => a.peer_alias.localeCompare(b.peer_alias));
   channels.forEach(ch => {
     const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const localPct = Math.round((ch.local_balance / ch.capacity) * 100);
