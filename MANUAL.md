@@ -484,7 +484,31 @@ Tips:
 - Set max fee based on peer fees along the route
 - Start with small amounts (10-50k sats) to test
 
+## Routing Pattern Analysis
 
+Find your node's peak routing hours to optimize when auto-rebalancing runs.
+
+### How to Analyze Your Routing Patterns
+
+Export your routing history CSV from the Routing page (All time), then ask Claude or any AI assistant:
+
+"Analyze this routing CSV and show me hourly and daily patterns - when does my node route the most?"
+
+### What to Look For
+
+- Peak hours with highest fees - these are your money hours
+- Dead hours with low or zero activity
+- Daily patterns - weekdays vs weekends
+
+### How to Use This Data
+
+Set your per-channel auto-rebalance to run 1 hour BEFORE your peak hours. This ensures channels have liquidity when traffic spikes.
+
+Example: If your node peaks at 9-11 AM and 10-11 PM, set auto-rebalance to run at 8 AM and 9 PM.
+
+Tip: You need at least 2 weeks of routing data for reliable patterns. Re-analyze monthly as your channel mix changes.
+
+---
 ## Per-Channel Auto Rebalance (Pro)
 
 Set automatic rebalancing on individual channels — each with its own amount, interval, and fee cap.
