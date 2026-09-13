@@ -1245,10 +1245,22 @@ def auto_rebalance_job():
                         continue
                     
                     # Check if it's time to run
+                    mode = settings.get("mode", "interval")
                     last_run = settings.get("last_run", 0)
-                    interval = settings.get("hours", 24) * 3600
-                    if now - last_run < interval:
-                        continue
+                    
+                    if mode == "scheduled":
+                        import datetime as _dt
+                        current_hour = _dt.datetime.now().hour
+                        scheduled = settings.get("scheduled_hours", [])
+                        if current_hour not in scheduled:
+                            continue
+                        # Only run once per scheduled hour
+                        if now - last_run < 3500:
+                            continue
+                    else:
+                        interval = settings.get("hours", 24) * 3600
+                        if now - last_run < interval:
+                            continue
                     
                     # Check if channel needs rebalancing
                     cap = int(ch.get("capacity", 1))

@@ -1254,23 +1254,35 @@ function toggleAutoRebalance(chanPoint, alias) {
     });
     return;
   }
-  var hours = prompt('Run every X hours:', '12');
-  if(hours === null) return;
-  var maxFee = prompt('Max fee per rebalance (sats):', '400');
-  if(maxFee === null) return;
+  var mode = prompt('Mode:\n1 = Interval (every X hours)\n2 = Scheduled (specific hours)\n\nEnter 1 or 2:', '1');
+  if(mode === null) return;
+  var payload = {chan_point: chanPoint, enabled: true, amount: amount, target_pct: 50};
+  var msg = '';
+  if(mode === '2') {
+    var times = prompt('Enter hours to run (comma separated, 24hr format):\nExample: 8,21 for 8 AM and 9 PM', '8,21');
+    if(times === null) return;
+    var maxFee = prompt('Max fee per rebalance (sats):', '400');
+    if(maxFee === null) return;
+    payload.mode = 'scheduled';
+    payload.scheduled_hours = times.split(',').map(function(h){return parseInt(h.trim())});
+    payload.max_fee = parseInt(maxFee);
+    msg = 'Scheduled at: ' + times + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats';
+  } else {
+    var hours = prompt('Run every X hours:', '12');
+    if(hours === null) return;
+    var maxFee = prompt('Max fee per rebalance (sats):', '400');
+    if(maxFee === null) return;
+    payload.mode = 'interval';
+    payload.hours = parseInt(hours);
+    payload.max_fee = parseInt(maxFee);
+    msg = 'Every ' + hours + ' hours\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats';
+  }
   fetch('https://lcc.satslist.shop/api/channel-auto-rebalance', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      chan_point: chanPoint,
-      enabled: true,
-      amount: amount,
-      hours: parseInt(hours),
-      max_fee: parseInt(maxFee),
-      target_pct: 50
-    })
+    body: JSON.stringify(payload)
   }).then(r=>r.json()).then(d=>{
-    alert('Auto Rebalance ENABLED for ' + alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nEvery ' + hours + ' hours\nMax fee: ' + maxFee + ' sats');
+    alert('Auto Rebalance ENABLED for ' + alias + '\n' + msg);
   }).catch(()=>alert('Failed to set auto rebalance'));
 }
 
