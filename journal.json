@@ -1,5 +1,206 @@
 [
   {
+    "id": 1789396033370,
+    "title": "Auto-rebalance: CoinGate \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 26 sats | Route: CoinGate \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789396033370
+  },
+  {
+    "id": 1789389591105,
+    "title": "Auto-rebalance: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 22 sats | Route: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789389591105
+  },
+  {
+    "id": 1789389585447,
+    "title": "Auto-rebalance: ACINQ \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 33 sats | Route: ACINQ \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789389585447
+  },
+  {
+    "id": 1789389583359,
+    "title": "Auto-rebalance: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 17 sats | Route: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789389583359
+  },
+  {
+    "id": 1789389581916,
+    "title": "Auto-rebalance: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 32 sats | Route: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789389581916
+  },
+  {
+    "id": 1789389581151,
+    "title": "Auto-rebalance: Unwetter \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 18 sats | Route: Unwetter \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789389581151
+  },
+  {
+    "id": 1789385978976,
+    "title": "Auto-rebalance: Absolem \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 23 sats | Route: Absolem \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789385978976
+  },
+  {
+    "id": 1789375177016,
+    "title": "Auto-rebalance: AgX\ud83d\uddf2 \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 22 sats | Route: AgX\ud83d\uddf2 \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789375177016
+  },
+  {
+    "id": 1789367975763,
+    "title": "Auto-rebalance: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 18 sats | Route: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789367975763
+  },
+  {
+    "id": 1789349974090,
+    "title": "Auto-rebalance: ACINQ \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 34 sats | Route: ACINQ \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789349974090
+  },
+  {
+    "id": 1789349973262,
+    "title": "Auto-rebalance: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 33 sats | Route: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789349973262
+  },
+  {
+    "id": 1789349972520,
+    "title": "Auto-rebalance: Unwetter \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 19 sats | Route: Unwetter \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789349972520
+  },
+  {
+    "id": 1789346370378,
+    "title": "Auto-rebalance: LighToshi.node \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 21 sats | Route: LighToshi.node \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789346370378
+  },
+  {
+    "id": 1789335567851,
+    "title": "Auto-rebalance: CharroNegro \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 22 sats | Route: CharroNegro \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789335567851
+  },
+  {
+    "id": 1789324758406,
+    "title": "Auto-rebalance: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 24 sats | Route: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789324758406
+  },
+  {
+    "id": 1789303143870,
+    "title": "Auto-rebalance: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 25 sats | Route: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789303143870
+  },
+  {
+    "id": 1789303141251,
+    "title": "Auto-rebalance: ACINQ \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 34 sats | Route: ACINQ \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789303141251
+  },
+  {
+    "id": 1789303140436,
+    "title": "Auto-rebalance: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 19 sats | Route: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789303140436
+  },
+  {
+    "id": 1789303138989,
+    "title": "Auto-rebalance: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 33 sats | Route: block-iad-1 \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789303138989
+  },
+  {
+    "id": 1789303138177,
+    "title": "Auto-rebalance: Unwetter \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 20 sats | Route: Unwetter \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789303138177
+  },
+  {
+    "id": 1789299535275,
+    "title": "Auto-rebalance: Absolem \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 24 sats | Route: Absolem \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789299535275
+  },
+  {
+    "id": 1789288733260,
+    "title": "Auto-rebalance: AgX\ud83d\uddf2 \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 23 sats | Route: AgX\ud83d\uddf2 \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789288733260
+  },
+  {
+    "id": 1789281531958,
+    "title": "Auto-rebalance: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 19 sats | Route: \ud83c\udf3dJiriBear\ud83d\udc3b \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789281531958
+  },
+  {
+    "id": 1789264712948,
+    "title": "Auto-rebalance: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "body": "Moved 10,000 sats | Fee: 23 sats | Route: The Wrath Of The Wolves \ud83d\ude21\ud83d\udc3a \u2192 LNBiG [Hub-3]",
+    "tag": "auto-rebalance",
+    "block": 0,
+    "date": 1789264712948
+  },
+  {
+    "id": 1789261544551,
+    "title": "Routing Pattern Analysis \u2014 Channel Peak Hours",
+    "body": "Based on 1,237 events over 56 days (Jul 18 - Sep 12 2026).\n\nMorning peak (rebalance at 8 AM):\n- block-iad-1: 9AM (919 sats), 11AM (864 sats)\n- ACINQ: 11AM (565 sats)\n- JiriBear: 3AM (521 sats), 9AM (496 sats)\n- Wrath: 3PM (523 sats), 9AM (446 sats)\n- SatoshiSamourai: 9AM (410 sats)\n- LighToshi: 9AM (372 sats)\n- LV-426: 9AM (367 sats)\n- NostroMostro: 9AM (223 sats)\n\nEvening peak (rebalance at 9 PM):\n- Unwetter: 10PM (283 sats)\n- YOLOSpirit: 10PM (156 sats)\n- FuzzNode: 10PM (139 sats)\n- Absolem: 10PM (123 sats)\n- kappa: 10PM (112 sats)\n- CharroNegro: 6PM (201 sats)\n\nNight (rebalance at 4 AM):\n- AGX: 5AM (80 sats)\n- JiriBear: 3AM (521 sats)\n\nBest days: Mon (5811), Wed (4099), Tue (3580)\nWorst days: Fri (774), Sat (1165)\n\nRe-analyze monthly as channel mix changes.",
+    "tag": "",
+    "block": 0,
+    "date": 1789261544551,
+    "edited": true
+  },
+  {
     "id": 1789257216287,
     "title": "Auto-rebalance: CharroNegro \u2192 LNBiG [Hub-3]",
     "body": "Moved 10,000 sats | Fee: 22 sats | Route: CharroNegro \u2192 LNBiG [Hub-3]",

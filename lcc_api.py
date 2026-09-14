@@ -1627,14 +1627,20 @@ def set_channel_auto_rebalance(body: dict = Body(...)):
     except:
         pass
     
+    mode = body.get("mode", "interval")
+    scheduled_hours = body.get("scheduled_hours", [])
+    
     data["channel_auto_rebalance"][chan_point] = {
         "enabled": enabled,
         "amount": amount,
         "hours": hours,
         "max_fee": max_fee,
         "target_pct": target_pct,
+        "mode": mode,
+        "scheduled_hours": scheduled_hours,
         "alias": alias,
-        "last_run": data.get("channel_auto_rebalance", {}).get(chan_point, {}).get("last_run", 0)
+        "last_run": data.get("channel_auto_rebalance", {}).get(chan_point, {}).get("last_run", 0),
+        "consecutive_fails": data.get("channel_auto_rebalance", {}).get(chan_point, {}).get("consecutive_fails", 0)
     }
     
     with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
