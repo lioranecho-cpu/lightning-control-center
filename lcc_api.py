@@ -1312,12 +1312,29 @@ def auto_rebalance_job():
                                 f"Moved {amount:,} sats | Fee: {fee} sats | Route: {alias} → {dst_alias}",
                                 "auto-rebalance"
                             )
-                            # Reset fail counter on success
+                            # Reset fail counter and save ROI tracking entry
+                            import time as _t2
                             data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
                             if cp in data.get("channel_auto_rebalance", {}):
                                 data["channel_auto_rebalance"][cp]["consecutive_fails"] = 0
-                                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
-                                    json.dump(data, f, indent=2)
+                            
+                            # ROI tracker — save rebalance event for 2hr and 24hr comparison
+                            if "rebalance_roi" not in data:
+                                data["rebalance_roi"] = []
+                            data["rebalance_roi"].append({
+                                "channel": alias,
+                                "chan_point": cp,
+                                "time": int(_t2.time()),
+                                "amount": amount,
+                                "fee_paid": fee,
+                                "routing_2hr": None,
+                                "routing_24hr": None
+                            })
+                            # Keep last 100 entries
+                            data["rebalance_roi"] = data["rebalance_roi"][-100:]
+                            
+                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                json.dump(data, f, indent=2)
                         else:
                             reason = result.get("failure_reason", "unknown")
                             print(f"[AUTO-REBAL] {alias} -> {dst_alias}: FAILED ({reason})")
@@ -1654,8 +1671,99 @@ def get_channel_auto_rebalance():
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
     return {"channels": data.get("channel_auto_rebalance", {})}
 
+
+@app.get("/api/rebalance-roi")
+def get_rebalance_roi():
+    """Get ROI tracking data for auto-rebalances"""
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    entries = data.get("rebalance_roi", [])
+    
+    total_fees_paid = sum(e.get("fee_paid", 0) for e in entries)
+    total_routing_2hr = sum(e.get("routing_2hr", 0) for e in entries if e.get("routing_2hr") is not None)
+    total_routing_24hr = sum(e.get("routing_24hr", 0) for e in entries if e.get("routing_24hr") is not None)
+    
+    return {
+        "entries": entries[-20:],
+        "summary": {
+            "total_rebalances": len(entries),
+            "total_fees_paid": total_fees_paid,
+            "total_routing_2hr": total_routing_2hr,
+            "total_routing_24hr": total_routing_24hr,
+            "net_2hr": total_routing_2hr - total_fees_paid,
+            "net_24hr": total_routing_24hr - total_fees_paid
+        }
+    }
+
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
+
+def roi_tracker_worker():
+    """Check routing fees earned after each auto-rebalance — 2hr and 24hr windows"""
+    import time as _t3
+    while True:
+        try:
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            roi_entries = data.get("rebalance_roi", [])
+            now = int(_t3.time())
+            updated = False
+            
+            for entry in roi_entries:
+                rebal_time = entry.get("time", 0)
+                chan_alias = entry.get("channel", "")
+                
+                # Skip if both windows already filled
+                if entry.get("routing_2hr") is not None and entry.get("routing_24hr") is not None:
+                    continue
+                
+                # Check 2hr window (after 2 hours have passed)
+                if entry.get("routing_2hr") is None and now - rebal_time >= 7200:
+                    try:
+                        fwd = run_lncli("fwdinghistory", f"--start_time={rebal_time}", f"--end_time={rebal_time + 7200}", "--max_events=1000")
+                        fees_2hr = sum(int(e.get("fee", 0)) for e in fwd.get("forwarding_events", [])
+                                      if chan_alias.lower() in str(e.get("peer_alias_in", "")).lower() or
+                                         chan_alias.lower() in str(e.get("peer_alias_out", "")).lower())
+                        entry["routing_2hr"] = fees_2hr
+                        updated = True
+                        profit = fees_2hr - entry.get("fee_paid", 0)
+                        _log_journal(
+                            f"ROI 2hr: {chan_alias} {'✅' if profit >= 0 else '❌'} {'+' if profit >= 0 else ''}{profit} sats",
+                            f"Rebalance fee: {entry.get('fee_paid', 0)} sats | Routing earned (2hr): {fees_2hr} sats | Net: {profit} sats",
+                            "roi-tracker"
+                        )
+                    except:
+                        pass
+                
+                # Check 24hr window (after 24 hours have passed)
+                if entry.get("routing_24hr") is None and now - rebal_time >= 86400:
+                    try:
+                        fwd = run_lncli("fwdinghistory", f"--start_time={rebal_time}", f"--end_time={rebal_time + 86400}", "--max_events=1000")
+                        fees_24hr = sum(int(e.get("fee", 0)) for e in fwd.get("forwarding_events", [])
+                                       if chan_alias.lower() in str(e.get("peer_alias_in", "")).lower() or
+                                          chan_alias.lower() in str(e.get("peer_alias_out", "")).lower())
+                        entry["routing_24hr"] = fees_24hr
+                        updated = True
+                        profit = fees_24hr - entry.get("fee_paid", 0)
+                        _log_journal(
+                            f"ROI 24hr: {chan_alias} {'✅' if profit >= 0 else '❌'} {'+' if profit >= 0 else ''}{profit} sats",
+                            f"Rebalance fee: {entry.get('fee_paid', 0)} sats | Routing earned (24hr): {fees_24hr} sats | Net: {profit} sats",
+                            "roi-tracker"
+                        )
+                    except:
+                        pass
+            
+            if updated:
+                data["rebalance_roi"] = roi_entries
+                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                    json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"[ROI-TRACKER] Error: {e}")
+        
+        # Check every 30 minutes
+        threading.Event().wait(1800)
+
+roi_thread = threading.Thread(target=roi_tracker_worker, daemon=True)
+roi_thread.start()
+
 
 def auto_reconnect_worker():
     """Reconnect disconnected channel peers every 30 minutes"""
