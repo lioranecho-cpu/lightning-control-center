@@ -535,6 +535,17 @@ Set automatic rebalancing on individual channels — each with its own amount, i
 - **Medium channels (1M):** 10k sats, every 24 hours, 200 max fee
 - **Small channels (500k):** skip — not worth the fees
 
+### Channel Card Status Badge
+
+Each channel card displays the current auto-rebalance configuration at a glance:
+
+- **OFF** — no auto-rebalance configured
+- **🔄 6h · 10k · max 400s** — interval mode, runs every 6 hours, 10k sats, 400 sat fee cap
+- **⏰ 8,21:00 · 20k · max 400s** — scheduled mode, runs at 8 AM and 9 PM, 20k sats, 400 sat fee cap
+- **❌ 2/3** — shows consecutive failure count, auto-disables at 3
+
+The badge updates in real-time when you change settings. No need to check terminal or data files — everything visible on the channel card.
+
 ### Tips
 
 - Start with 10k sats — small amounts find cheap routes
