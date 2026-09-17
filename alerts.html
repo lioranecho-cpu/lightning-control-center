@@ -294,7 +294,7 @@ function runChecks(){
     document.getElementById('topbar-usd').textContent='~$'+((total/100000000)*price).toFixed(2);
     document.getElementById('btc-price').textContent='$'+price.toLocaleString();
     document.getElementById('mempool-size').textContent=d.mempool.size_mb+' MB';
-    document.getElementById('fee-rate').textContent=d.mempool.fee_sat_vbyte+' sat/vB';
+    document.getElementById('fee-rate').textContent=d.mempool.fee_sat_vbyte+' sat/vB · '+d.mempool.congestion;
     document.getElementById('peer-count').textContent=d.node.num_peers+' peers';
     const t=getThresholds();
     const minOnchain=t.onchain||100000,maxSkew=t.skew||90,maxFee=t.fee||50,minCh=t.channels||1;
