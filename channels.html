@@ -412,7 +412,11 @@ fetch(API).then(r=>r.json()).then(d=>{
 
   // Active channels — cache and render
   cachedChannels = [...channels];
-  sortChannels();
+  // Fetch auto-rebalance settings
+  fetch('https://lcc.satslist.shop/api/channel-auto-rebalance')
+    .then(r=>r.json())
+    .then(d=>{ window._autoRebalData = d.channels || {}; sortChannels(); })
+    .catch(()=>{ window._autoRebalData = {}; sortChannels(); });
   // Skip inline forEach — sortChannels handles rendering
   if(false) channels.forEach(ch => {
     const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -827,7 +831,17 @@ function sortChannels() {
       '<div class="ch-stats">' +
       '<div class="ch-stat">Fee PPM: <span>' + ch.fee_ppm + '</span></div>' +
       '<div class="ch-stat">Base Fee: <span>' + ch.base_fee + ' msat</span></div>' +
-      '<div class="ch-stat">Status: <span style="color:var(--green)">' + ch.status + '</span></div></div>' +
+      '<div class="ch-stat">Status: <span style="color:var(--green)">' + ch.status + '</span></div>' +
+      (function(){
+        var ar = (window._autoRebalData || {})[ch.channel_point];
+        if(!ar || !ar.enabled) return '<div class="ch-stat">Auto Rebal: <span style="color:var(--muted)">OFF</span></div>';
+        var mode = ar.mode === 'scheduled' ? '⏰ ' + (ar.scheduled_hours||[]).join(',') + ':00' : '🔄 ' + ar.hours + 'h';
+        var lastRun = ar.last_run ? new Date(ar.last_run * 1000).toLocaleString() : 'never';
+        var fails = ar.consecutive_fails || 0;
+        var failBadge = fails > 0 ? ' ❌' + fails + '/3' : '';
+        return '<div class="ch-stat">Auto Rebal: <span style="color:var(--green)">' + mode + ' · ' + ar.amount/1000 + 'k · max ' + ar.max_fee + 's' + failBadge + '</span></div>';
+      })() +
+      '</div>' +
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
       '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
