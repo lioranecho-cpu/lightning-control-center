@@ -230,9 +230,19 @@ def get_mempool():
     if MOCK:
         return MOCK_DATA["mempool"]
     info = run_bitcoin_cli("getmempoolinfo")
-    fee_info = run_bitcoin_cli("estimatesmartfee", "6")
     size_mb = round(info.get("bytes", 0) / 1_000_000, 1)
-    fee_sat_vbyte = round(fee_info.get("feerate", 0.00001) * 100_000_000 / 1000, 1)
+    
+    # Use mempool.space API for accurate real-time fee rates
+    try:
+        import urllib.request
+        req = urllib.request.urlopen("https://mempool.space/api/v1/fees/recommended", timeout=5)
+        fees = json.loads(req.read().decode())
+        fee_sat_vbyte = fees.get("halfHourFee", 1)
+    except:
+        # Fallback to Bitcoin Core estimate
+        fee_info = run_bitcoin_cli("estimatesmartfee", "6")
+        fee_sat_vbyte = round(fee_info.get("feerate", 0.00001) * 100_000_000 / 1000, 1)
+    
     congestion = "Low" if size_mb < 5 else "Medium" if size_mb < 50 else "High"
     return {"size_mb": size_mb, "fee_sat_vbyte": fee_sat_vbyte, "congestion": congestion}
 
