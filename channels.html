@@ -1088,27 +1088,62 @@ function openTargetedRebalance() {
   var tier = window.LCC_TIER || 'community';
   if(tier === 'community'){ alert('Targeted Rebalance is a Pro feature.'); return; }
   if(!cachedChannels.length){ alert('No channels loaded'); return; }
-  var list = cachedChannels.map(function(c,i){ return (i+1) + '. ' + c.peer_alias + ' (' + Math.round(c.local_balance/c.capacity*100) + '%% local)'; }).join('\n');
-  var outNum = prompt('Targeted Rebalance\n\nSelect SOURCE channel (sats will leave FROM this channel).\nType the number next to the channel name and click OK.\n\n' + list + '\n\nEnter number:');
-  if(!outNum) return;
-  var outIdx = parseInt(outNum) - 1;
-  if(isNaN(outIdx) || outIdx < 0 || outIdx >= cachedChannels.length){ alert('Invalid'); return; }
-  var inNum = prompt('Select DESTINATION channel (sats will arrive INTO this channel).\nType the number next to the channel name and click OK.\n\n' + list + '\n\nEnter number:');
-  if(!inNum) return;
-  var inIdx = parseInt(inNum) - 1;
-  if(isNaN(inIdx) || inIdx < 0 || inIdx >= cachedChannels.length){ alert('Invalid'); return; }
-  if(outIdx === inIdx){ alert('Source and destination must be different'); return; }
-  var amount = prompt('Amount (sats):', '50000');
-  if(!amount) return;
-  var maxFee = prompt('Max fee (sats):', '100');
-  if(!maxFee) return;
-  var src = cachedChannels[outIdx];
-  var dst = cachedChannels[inIdx];
-  if(!confirm('Targeted Rebalance\n\nFROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + parseInt(amount).toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\nProceed?')) return;
+  
+  var html = '<div style="max-height:70vh;overflow-y:auto;font-family:var(--font);font-size:13px;">';
+  html += '<h3 style="margin:0 0 10px;color:var(--orange);">Targeted Rebalance</h3>';
+  html += '<p style="color:var(--muted);margin:0 0 8px;">Select SOURCE (sats leave from) and DESTINATION (sats arrive to):</p>';
+  html += '<table style="width:100%;border-collapse:collapse;">';
+  html += '<tr style="color:var(--muted);font-size:11px;text-align:left;"><th style="padding:4px;">Src</th><th style="padding:4px;">Dst</th><th style="padding:4px;">Channel</th><th style="padding:4px;">Local</th></tr>';
+  cachedChannels.forEach(function(c,i){
+    var pct = Math.round(c.local_balance/c.capacity*100);
+    var color = pct > 80 ? 'var(--orange)' : pct < 20 ? 'var(--green)' : 'var(--text)';
+    html += '<tr style="border-top:1px solid var(--border);">';
+    html += '<td style="padding:4px;"><input type="radio" name="tr-src" value="'+i+'"></td>';
+    html += '<td style="padding:4px;"><input type="radio" name="tr-dst" value="'+i+'"></td>';
+    html += '<td style="padding:4px;">'+c.peer_alias+'</td>';
+    html += '<td style="padding:4px;color:'+color+'">'+pct+'%</td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+  html += '<div style="margin-top:12px;">';
+  html += '<label style="font-size:11px;color:var(--muted);">Amount (sats):</label> ';
+  html += '<input type="number" id="tr-amount" value="50000" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:100px;font-family:var(--font);">';
+  html += '  <label style="font-size:11px;color:var(--muted);margin-left:12px;">Max fee:</label> ';
+  html += '<input type="number" id="tr-maxfee" value="400" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:80px;font-family:var(--font);">';
+  html += '</div>';
+  html += '<div style="margin-top:12px;display:flex;gap:8px;">';
+  html += '<button onclick="executeTargetedRebalance()" style="background:var(--orange);color:#000;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:700;font-family:var(--font);">Execute</button>';
+  html += '<button onclick="document.getElementById(\'tr-modal\').remove()" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);padding:8px 20px;border-radius:8px;cursor:pointer;font-family:var(--font);">Cancel</button>';
+  html += '</div></div>';
+  
+  var modal = document.createElement('div');
+  modal.id = 'tr-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;';
+  box.innerHTML = html;
+  modal.appendChild(box);
+  modal.addEventListener('click', function(e){ if(e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function executeTargetedRebalance() {
+  var srcRadio = document.querySelector('input[name="tr-src"]:checked');
+  var dstRadio = document.querySelector('input[name="tr-dst"]:checked');
+  if(!srcRadio || !dstRadio){ alert('Select both source and destination'); return; }
+  var srcIdx = parseInt(srcRadio.value);
+  var dstIdx = parseInt(dstRadio.value);
+  if(srcIdx === dstIdx){ alert('Source and destination must be different'); return; }
+  var amount = parseInt(document.getElementById('tr-amount').value);
+  var maxFee = parseInt(document.getElementById('tr-maxfee').value);
+  var src = cachedChannels[srcIdx];
+  var dst = cachedChannels[dstIdx];
+  if(!confirm('FROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\nProceed?')) return;
+  document.getElementById('tr-modal').remove();
   fetch('https://lcc.satslist.shop/api/rebalance-targeted', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: parseInt(amount), max_fee: parseInt(maxFee)})
+    body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: amount, max_fee: maxFee})
   }).then(function(r){return r.json()}).then(function(d){
     if(d.status === 'success'){
       alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats');
