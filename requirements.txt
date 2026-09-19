@@ -6,3 +6,5 @@ uvicorn==0.51.0
 python-dotenv
 aiofiles
 psutil
+nostr-sdk
+slowapi

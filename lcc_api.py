@@ -11,7 +11,7 @@ import time as time_module
 from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -34,7 +34,7 @@ app.add_middleware(
 
 MOCK = os.environ.get("LCC_MOCK", "false").lower() == "true"
 
-MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))) if MOCK else {}
 
 def run_lncli(*args):
     try:
@@ -69,7 +69,7 @@ def run_bitcoin_cli(*args):
 
 @app.get("/")
 def root():
-    return {"name": "Lightning Control Center API", "version": "0.1.0", "mock": MOCK}
+        return RedirectResponse(url="/dashboard")
 
 @app.get("/api/node")
 def get_node_info():
