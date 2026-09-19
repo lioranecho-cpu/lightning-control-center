@@ -172,7 +172,7 @@ def get_routing(days: int = 30):
         return MOCK_DATA["routing"]
     now_ts = int(time.time())
     start = now_ts - (days * 86400)
-    history = run_lncli("fwdinghistory", f"--start_time={start}", "--max_events=1000")
+    history = run_lncli("fwdinghistory", f"--start_time={start}", "--max_events=5000")
     events = history.get("forwarding_events", [])
     start_60 = now_ts - (60 * 86400)
     history_60 = run_lncli("fwdinghistory", f"--start_time={start_60}", "--max_events=1000")
