@@ -484,6 +484,43 @@ Tips:
 - Set max fee based on peer fees along the route
 - Start with small amounts (10-50k sats) to test
 
+
+## Rebalance ROI Tracker (Pro)
+
+Track the profitability of every channel — routing fees earned vs rebalance costs paid.
+
+### How It Works
+
+The ROI tracker compares two numbers per channel:
+- Rebalance Cost — total sats spent on auto-rebalances for that channel
+- Routing Earned — total routing fees earned through that channel
+
+The difference is your Net ROI. Positive = profitable channel. Negative = losing money.
+
+### Time Filters
+
+Use the filter buttons to view ROI over different periods:
+- 24h — today's performance
+- 7d — weekly trend
+- 30d — monthly picture
+- All — lifetime ROI since node started
+
+### What to Look For
+
+- Channels with high routing earned and low rebalance cost = your best performers
+- Channels with rebalance cost but zero routing = stop rebalancing those
+- Channels with zero rebalance cost and positive routing = free money, leave them alone
+
+### How to Use This Data
+
+- Disable auto-rebalance on channels with negative ROI
+- Increase rebalance frequency on profitable channels
+- Consider closing channels that consistently show negative ROI after 21 days
+
+The ROI tracker is found on the Analytics page under the Top Routing Pairs section.
+
+---
+
 ## Routing Pattern Analysis
 
 Find your node's peak routing hours to optimize when auto-rebalancing runs.
