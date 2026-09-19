@@ -6,57 +6,58 @@
   <title>LCC — Analytics</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -64,6 +65,8 @@
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
   <style>
@@ -256,57 +259,58 @@
 </style>
   <script src="/static/lcc-theme.js?v=12">
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -314,6 +318,8 @@
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -349,57 +355,58 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
   });
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -407,6 +414,8 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -507,8 +516,14 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
       <!-- Rebalance ROI Tracker -->
       <div class="panel">
         <div class="panel-header">
-          <h3>&#128200; Rebalance ROI (24hr)</h3>
-          <span style="font-size:11px;color:var(--muted)" id="roi-summary">Loading...</span>
+          <h3>&#128200; Rebalance ROI</h3>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button onclick="loadROI(1)" class="roi-filter" id="roi-1d" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--font);">24h</button>
+            <button onclick="loadROI(7)" class="roi-filter" id="roi-7d" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--font);">7d</button>
+            <button onclick="loadROI(30)" class="roi-filter" id="roi-30d" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--font);">30d</button>
+            <button onclick="loadROI(0)" class="roi-filter active" id="roi-all" style="background:rgba(247,147,26,0.12);border:1px solid var(--orange-dim);color:var(--orange);padding:3px 8px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--font);font-weight:600;">All</button>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px;" id="roi-summary">Loading...</span>
+          </div>
         </div>
         <div id="roi-content">
           <div class="empty-state">Loading ROI data...</div>
@@ -658,7 +673,7 @@ function loadAnalytics(days) {
       pairMap[key].vol += parseInt(e.amt_out || 0);
     });
 
-    const pairs = Object.entries(pairMap).sort((a,b) => b[1].fee - a[1].fee);
+    const pairs = Object.entries(pairMap).sort((a,b) => b[1].fee - a[1].fee).slice(0, 20);
     const pairsContent = document.getElementById('pairs-content');
 
     if(pairs.length === 0) {
@@ -765,57 +780,58 @@ loadAnalytics(7);
 updateTime();setInterval(updateTime,1000);
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -823,6 +839,8 @@ updateTime();setInterval(updateTime,1000);
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 <div class="cmd-overlay" id="cmd-palette" onclick="if(event.target===this)closeCmd()">
@@ -861,57 +879,58 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 });
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -919,6 +938,8 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 <script>
@@ -1006,57 +1027,58 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -1064,6 +1086,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -1094,57 +1118,58 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -1152,6 +1177,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -1164,57 +1191,58 @@ function launchGame(){
 }
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -1222,6 +1250,8 @@ function launchGame(){
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -1229,57 +1259,58 @@ function launchGame(){
 if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -1287,6 +1318,8 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 
@@ -1315,57 +1348,58 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
 })();
 
   // Rebalance ROI Tracker
-  fetch('https://lcc.satslist.shop/api/rebalance-roi')
+  function loadROI(days) {
+    // Update active button
+    document.querySelectorAll('.roi-filter').forEach(b => {
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--muted)';
+      b.style.border = '1px solid var(--border)';
+      b.style.fontWeight = '400';
+    });
+    var activeBtn = document.getElementById('roi-' + (days === 0 ? 'all' : days + 'd'));
+    if(activeBtn) {
+      activeBtn.style.background = 'rgba(247,147,26,0.12)';
+      activeBtn.style.color = 'var(--orange)';
+      activeBtn.style.border = '1px solid var(--orange-dim)';
+      activeBtn.style.fontWeight = '600';
+    }
+    fetch('https://lcc.satslist.shop/api/rebalance-roi?days=' + days)
     .then(r=>r.json())
     .then(d=>{
       const summary = d.summary || {};
-      const entries = d.entries || [];
+      const channels = d.channels || [];
       const summaryEl = document.getElementById('roi-summary');
       const contentEl = document.getElementById('roi-content');
       
-      const net = summary.net_24hr || 0;
+      const net = summary.net || 0;
       const netColor = net >= 0 ? 'var(--green)' : '#ef4444';
-      summaryEl.innerHTML = 'Net 24hr: <span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats</span> | Rebalances: '+summary.total_rebalances;
+      summaryEl.innerHTML = '<span style="color:'+netColor+';font-weight:700;">'+(net>=0?'+':'')+fmt(net)+' sats net</span>';
       
-      if(entries.length === 0) {
-        contentEl.innerHTML = '<div class="empty-state">No ROI data yet. Auto-rebalance entries will appear here.</div>';
+      if(channels.length === 0) {
+        contentEl.innerHTML = '<div class="empty-state">No data yet.</div>';
         return;
       }
       
-      // Group by channel for per-channel summary
-      const chanMap = {};
-      entries.forEach(e => {
-        const ch = e.channel || '?';
-        if(!chanMap[ch]) chanMap[ch] = {fee_paid: 0, routing_24hr: 0, count: 0};
-        chanMap[ch].fee_paid += e.fee_paid || 0;
-        chanMap[ch].routing_24hr += (e.routing_24hr !== null ? e.routing_24hr : 0);
-        chanMap[ch].count++;
-      });
-      
-      const sorted = Object.entries(chanMap).sort((a,b) => (b[1].routing_24hr - b[1].fee_paid) - (a[1].routing_24hr - a[1].fee_paid));
-      
-      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Rebalances</th><th>Fees Paid</th><th>Routing (24hr)</th><th>Net ROI</th></tr></thead><tbody>';
-      sorted.forEach(([ch, data]) => {
-        const net = data.routing_24hr - data.fee_paid;
-        const icon = net >= 0 ? '✅' : '❌';
-        const color = net >= 0 ? 'var(--green)' : '#ef4444';
+      let html = '<table class="pairs-table"><thead><tr><th>Channel</th><th>Events</th><th>Rebal Cost</th><th>Routing Earned</th><th>Net ROI</th></tr></thead><tbody>';
+      channels.forEach(ch => {
+        const icon = ch.net >= 0 ? '✅' : '❌';
+        const color = ch.net >= 0 ? 'var(--green)' : '#ef4444';
+        const costStr = ch.rebalance_cost > 0 ? '-'+fmt(ch.rebalance_cost) : '0';
         html += '<tr>';
-        html += '<td>'+ch+'</td>';
-        html += '<td style="color:var(--muted);font-family:var(--mono)">'+data.count+'</td>';
-        html += '<td style="color:#ef4444;font-family:var(--mono)">-'+fmt(data.fee_paid)+' sats</td>';
-        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(data.routing_24hr)+' sats</td>';
-        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(net>=0?'+':'')+fmt(net)+' sats</span></td>';
+        html += '<td>'+ch.channel+'</td>';
+        html += '<td style="color:var(--muted);font-family:var(--mono)">'+ch.routing_events+'</td>';
+        html += '<td style="color:'+(ch.rebalance_cost > 0 ? '#ef4444' : 'var(--muted)')+';font-family:var(--mono)">'+costStr+' sats</td>';
+        html += '<td style="color:var(--green);font-family:var(--mono)">+'+fmt(ch.routing_earned)+' sats</td>';
+        html += '<td style="font-family:var(--mono)"><span style="color:'+color+';font-weight:700;">'+icon+' '+(ch.net>=0?'+':'')+fmt(ch.net)+' sats</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';
       
-      // Add totals row
       html += '<div style="margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;font-size:12px;">';
-      html += '<span style="color:var(--muted);">Total Paid: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_fees_paid)+' sats</span></span>';
-      html += '<span style="color:var(--muted);">Total Earned (24hr): <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_24hr)+' sats</span></span>';
-      const totalNet = summary.net_24hr || 0;
-      const totalColor = totalNet >= 0 ? 'var(--green)' : '#ef4444';
-      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(totalNet>=0?'+':'')+fmt(totalNet)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Rebal Cost: <span style="color:#ef4444;font-weight:600;">-'+fmt(summary.total_rebalance_cost)+' sats</span></span>';
+      html += '<span style="color:var(--muted);">Routing Earned: <span style="color:var(--green);font-weight:600;">+'+fmt(summary.total_routing_earned)+' sats</span></span>';
+      const totalColor = summary.net >= 0 ? 'var(--green)' : '#ef4444';
+      html += '<span style="color:var(--muted);">Net: <span style="color:'+totalColor+';font-weight:600;">'+(summary.net>=0?'+':'')+fmt(summary.net)+' sats</span></span>';
       html += '</div>';
       
       contentEl.innerHTML = html;
@@ -1373,6 +1407,8 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
     .catch(()=>{
       document.getElementById('roi-content').innerHTML = '<div class="empty-state">Failed to load ROI data.</div>';
     });
+  }
+  loadROI(0);
 
 </script>
 </body>
