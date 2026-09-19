@@ -1683,24 +1683,91 @@ def get_channel_auto_rebalance():
 
 
 @app.get("/api/rebalance-roi")
-def get_rebalance_roi():
-    """Get ROI tracking data for auto-rebalances"""
+def get_rebalance_roi(days: int = 0):
+    """Get ROI per channel — rebalance cost vs routing income over time."""
     data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
-    entries = data.get("rebalance_roi", [])
+    roi_entries = data.get("rebalance_roi", [])
     
-    total_fees_paid = sum(e.get("fee_paid", 0) for e in entries)
-    total_routing_2hr = sum(e.get("routing_2hr", 0) for e in entries if e.get("routing_2hr") is not None)
-    total_routing_24hr = sum(e.get("routing_24hr", 0) for e in entries if e.get("routing_24hr") is not None)
+    now_ts = int(time.time())
+    start_ts = now_ts - (days * 86400) if days > 0 else 0
+    
+    # Get rebalance costs per channel from roi entries
+    rebal_costs = {}
+    rebal_counts = {}
+    for e in roi_entries:
+        if e.get("time", 0) < start_ts:
+            continue
+        ch = e.get("channel", "?")
+        rebal_costs[ch] = rebal_costs.get(ch, 0) + e.get("fee_paid", 0)
+        rebal_counts[ch] = rebal_counts.get(ch, 0) + 1
+    
+    # Get routing income per channel from fwdinghistory
+    try:
+        history = run_lncli("fwdinghistory", f"--start_time={start_ts}", "--max_events=5000")
+        events = history.get("forwarding_events", [])
+        
+        # Build chan_id -> alias map
+        channels = run_lncli("listchannels").get("channels", [])
+        chan_map = {}
+        for ch in channels:
+            cid = ch.get("chan_id", "")
+            alias = ch.get("peer_alias") or ch.get("remote_pubkey", "")[:12]
+            if cid:
+                chan_map[str(cid)] = alias
+        
+        routing_income = {}
+        routing_events = {}
+        routing_volume = {}
+        for e in events:
+            fee = int(e.get("fee", 0))
+            vol = int(e.get("amt_out", 0))
+            alias_in = e.get("peer_alias_in", "")
+            alias_out = e.get("peer_alias_out", "")
+            if "unable to lookup" in alias_in: alias_in = "Closed channels"
+            if "unable to lookup" in alias_out: alias_out = "Closed channels"
+            if not alias_in and not alias_out:
+                continue
+            # Credit fee to inbound channel only (avoids double counting)
+            if alias_in:
+                routing_income[alias_in] = routing_income.get(alias_in, 0) + fee
+                routing_events[alias_in] = routing_events.get(alias_in, 0) + 1
+                routing_volume[alias_in] = routing_volume.get(alias_in, 0) + vol
+    except:
+        routing_income = {}
+        routing_events = {}
+        routing_volume = {}
+    
+    # Merge all channel names
+    all_channels = set(list(rebal_costs.keys()) + list(routing_income.keys()))
+    
+    results = []
+    total_cost = 0
+    total_earned = 0
+    for ch in all_channels:
+        cost = rebal_costs.get(ch, 0)
+        earned = routing_income.get(ch, 0)
+        net = earned - cost
+        total_cost += cost
+        total_earned += earned
+        results.append({
+            "channel": ch,
+            "rebalances": rebal_counts.get(ch, 0),
+            "rebalance_cost": cost,
+            "routing_earned": earned,
+            "routing_events": routing_events.get(ch, 0),
+            "routing_volume": routing_volume.get(ch, 0),
+            "net": net
+        })
+    
+    results.sort(key=lambda x: x["net"], reverse=True)
     
     return {
-        "entries": entries[-20:],
+        "channels": results,
         "summary": {
-            "total_rebalances": len(entries),
-            "total_fees_paid": total_fees_paid,
-            "total_routing_2hr": total_routing_2hr,
-            "total_routing_24hr": total_routing_24hr,
-            "net_2hr": total_routing_2hr - total_fees_paid,
-            "net_24hr": total_routing_24hr - total_fees_paid
+            "total_channels": len(results),
+            "total_rebalance_cost": total_cost,
+            "total_routing_earned": total_earned,
+            "net": total_earned - total_cost
         }
     }
 
