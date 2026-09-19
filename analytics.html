@@ -597,7 +597,7 @@ function loadAnalytics(days) {
     const events = d.forwarding_events || [];
     const allFees = d.daily_fees || [];
     const allVolume = d.daily_volume || [];
-    const totalFees = d.fees_30d_sats || 0;
+    const totalFees = d.fees_alltime_sats || 0;
     const totalVol = d.volume_30d_btc || 0;
 
     // Summary cards
