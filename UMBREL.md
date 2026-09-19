@@ -2,51 +2,34 @@
 
 ## Install Options
 
-### 🧪 Beta (Available Now) — Manual Sideload via SSH
+### 🛍️ Community App Store (Available Now)
 
-For technical users who want early access before App Store approval.
+No SSH or terminal needed.
 
-**Requirements:**
-- Umbrel with Bitcoin and Lightning apps installed and synced
-- SSH access to your Umbrel device
+**Step 1 — Add the Sparkie Labs store**
 
-**Steps:**
+1. Umbrel dashboard → **App Store** → ⚙️ gear icon → **Add community app store**
+2. Paste: `https://github.com/lioranecho-cpu/umbrel-apps`
+3. Click **Add** — syncs in ~30 seconds
 
-1. SSH into your Umbrel:
-```bash
-ssh umbrel@umbrel.local
-```
+**Step 2 — Install dependencies** (from official App Store)
 
-2. Navigate to the apps directory:
-```bash
-cd ~/umbrel/app-data
-```
+1. **Bitcoin Node** — install first
+2. **Lightning Node** — install after Bitcoin Node is running
 
-3. Create the LCC folder:
-```bash
-mkdir lightning-control-center && cd lightning-control-center
-```
+> Pruned node (10 GB) works fine — no need for the full chain.
 
-4. Download the app files:
-```bash
-curl -O https://raw.githubusercontent.com/lioranecho-cpu/umbrel-apps/master/lightning-control-center/umbrel-app.yml
-curl -O https://raw.githubusercontent.com/lioranecho-cpu/umbrel-apps/master/lightning-control-center/docker-compose.yml
-```
+**Step 3 — Install LCC**
 
-5. Install:
-```bash
-~/umbrel/scripts/app install lightning-control-center
-```
+App Store → scroll to **Sparkie Labs** → **Lightning Control Center** → Install
 
-6. Access LCC at `http://umbrel.local:8766`
+Open at `http://umbrel.local:8766`
 
 ---
 
-### 🛍️ App Store (Coming Soon)
+### 🏪 Official App Store (Pending)
 
-Pending approval — PR #5983 at github.com/getumbrel/umbrel-apps
-
-Once approved — one click install from your Umbrel dashboard.
+PR #5983 at github.com/getumbrel/umbrel-apps — one-click install once approved.
 
 ---
 
@@ -59,8 +42,6 @@ Once approved — one click install from your Umbrel dashboard.
 
 ## 🤖 AI-Assisted Installation
 
-Not sure where to start? Paste this prompt into [Claude](https://claude.ai) for step-by-step guided installation:
+Not sure where to start? Paste this prompt into [Claude](https://claude.ai):
 
-> I want to sideload Lightning Control Center (LCC) on my Umbrel node. LCC is a browser-based Lightning node management dashboard by Sparkie Labs. GitHub: https://github.com/lioranecho-cpu/lightning-control-center — Please guide me through the manual sideload installation on my Umbrel device step by step. Ask me what I need along the way.
-
-Claude will ask for your Umbrel details and walk you through every step.
+> I want to install Lightning Control Center (LCC) on my Umbrel node via the Sparkie Labs community app store. LCC is a browser-based Lightning node management dashboard by Sparkie Labs. GitHub: https://github.com/lioranecho-cpu/lightning-control-center — Please guide me step by step.
