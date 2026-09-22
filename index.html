@@ -303,6 +303,7 @@
             <div class="health-item"><span class="health-label"><span class="tip" data-tip="Open source Lightning wallet platform running on your node">LNbits</span></span><span class="health-val ok">&#10003; Running</span></div>
             <div class="health-item"><span class="health-label">Mining Pool</span><span class="health-val ok">&#10003; Active</span></div>
             <div class="health-item"><span class="health-label">Uptime</span><span class="health-val ok" id="uptime-val">&#8212;</span></div>
+            <div class="health-item"><span class="health-label">Network IP</span><span class="health-val ok" id="ip-check-val">&#8212;</span></div>
           </div>
         </div>
         <div class="panel">
@@ -803,6 +804,41 @@ if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+<script>
+// IP Match Check
+fetch('https://lcc.satslist.shop/api/ip-check').then(r=>r.json()).then(d=>{
+  const el = document.getElementById('ip-check-val');
+  if(!el) return;
+  if(d.match === true) {
+    el.textContent = '\u2713 Matched';
+    el.className = 'health-val ok';
+  } else if(d.match === false) {
+    el.innerHTML = '\u26a0 Mismatch <button onclick="fixIpMismatch()" style="margin-left:8px;background:var(--orange);color:#000;border:none;padding:2px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-weight:600;">Fix</button>';
+    el.className = 'health-val warn';
+  } else {
+    el.textContent = '\u2014 Unknown';
+    el.className = 'health-val';
+  }
+}).catch(()=>{
+  const el = document.getElementById('ip-check-val');
+  if(el) el.textContent = '\u2014 Check failed';
+});
+
+function fixIpMismatch() {
+  if(!confirm('This will update your node\'s advertised IP and restart LND. Continue?')) return;
+  fetch('https://lcc.satslist.shop/api/ip-fix', {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.status === 'success') {
+        alert('IP updated to ' + d.new_ip + '. LND restarted.');
+        location.reload();
+      } else {
+        alert('Failed: ' + (d.detail || 'Unknown error'));
+      }
+    })
+    .catch(()=>alert('Failed to update IP'));
+}
 </script>
 </body>
 </html>

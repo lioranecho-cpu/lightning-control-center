@@ -225,6 +225,71 @@ def get_routing(days: int = 30):
         "daily_volume": [round(v / 100_000_000, 8) for v in daily_volume],
     }
 
+
+@app.get("/api/ip-check")
+def check_ip_match():
+    """Check if the advertised externalip matches the current public IP"""
+    try:
+        import urllib.request
+        current_ip = urllib.request.urlopen("https://api.ipify.org", timeout=5).read().decode().strip()
+    except:
+        current_ip = None
+    
+    advertised_ip = None
+    try:
+        with open(os.path.expanduser("~/.lnd/lnd.conf")) as f:
+            for line in f:
+                if line.strip().startswith("externalip="):
+                    advertised_ip = line.strip().split("=", 1)[1].split(":")[0]
+                    break
+    except:
+        pass
+    
+    match = (current_ip == advertised_ip) if (current_ip and advertised_ip) else None
+    
+    return {
+        "current_ip": current_ip,
+        "advertised_ip": advertised_ip,
+        "match": match
+    }
+
+@app.post("/api/ip-fix")
+def fix_ip():
+    """Update lnd.conf externalip to match current public IP and restart LND"""
+    try:
+        import urllib.request, subprocess
+        current_ip = urllib.request.urlopen("https://api.ipify.org", timeout=5).read().decode().strip()
+        
+        conf_path = os.path.expanduser("~/.lnd/lnd.conf")
+        with open(conf_path) as f:
+            lines = f.readlines()
+        
+        new_lines = []
+        updated = False
+        for line in lines:
+            if line.strip().startswith("externalip="):
+                port = line.strip().split(":")[-1] if ":" in line.strip() else "9735"
+                new_lines.append(f"externalip={current_ip}:{port}\n")
+                updated = True
+            else:
+                new_lines.append(line)
+        
+        if updated:
+            with open(conf_path, "w") as f:
+                f.writelines(new_lines)
+            
+            subprocess.run(["sudo", "systemctl", "restart", "lnd"], check=True)
+            _log_journal(
+                "IP Address Updated",
+                f"Node externalip updated to {current_ip} and LND restarted.",
+                "system"
+            )
+            return {"status": "success", "new_ip": current_ip}
+        else:
+            return {"status": "error", "detail": "No externalip line found in lnd.conf"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
 @app.get("/api/mempool")
 def get_mempool():
     if MOCK:
