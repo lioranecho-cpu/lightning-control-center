@@ -26,3 +26,5 @@ node_modules/
 deploy.sh
 .env
 data.json
+nwc_connections.json
+nohup.out
