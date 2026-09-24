@@ -200,10 +200,22 @@ def get_routing(days: int = 30):
     channels = run_lncli("listchannels").get("channels", [])
     chan_map = {}
     for ch in channels:
-        cid = ch.get("chan_id", "")
+        cid = ch.get("scid") or ch.get("chan_id", "")
         alias = ch.get("peer_alias") or ch.get("remote_pubkey", "")[:12] + "..."
         if cid:
             chan_map[str(cid)] = alias
+
+    # Build alias -> current fee policy (base_msat + ppm) of the OUTBOUND channel,
+    # since that's the leg that actually charges the fee for a routed payment
+    fee_report = run_lncli("feereport").get("channel_fees", [])
+    fee_policy = {}
+    for fr in fee_report:
+        cid = str(fr.get("chan_id", ""))
+        alias = chan_map.get(cid, cid[-8:] if cid else "?")
+        fee_policy[alias] = {
+            "base_msat": int(fr.get("base_fee_msat", 0)),
+            "ppm": int(fr.get("fee_per_mil", 0)),
+        }
 
     # Enrich events with aliases
     def enrich(evts):
@@ -223,6 +235,7 @@ def get_routing(days: int = 30):
         "forwarding_events": enrich(events_all),
         "daily_fees": daily_fees,
         "daily_volume": [round(v / 100_000_000, 8) for v in daily_volume],
+        "fee_policy": fee_policy,
     }
 
 
@@ -313,7 +326,9 @@ def get_mempool():
 
 @app.get("/api/mining")
 def get_mining():
-    return MOCK_DATA["mining"]
+    if MOCK:
+        return MOCK_DATA["mining"]
+    return {"miners": [], "total_hashrate": 0, "status": "not configured"}
 
 @app.get("/api/dashboard")
 def get_dashboard():
@@ -1747,6 +1762,64 @@ def get_channel_auto_rebalance():
     return {"channels": data.get("channel_auto_rebalance", {})}
 
 
+@app.post("/api/channel-auto-fee")
+def set_channel_auto_fee(body: dict = Body(...)):
+    """Set per-channel auto-fee-by-liquidity settings. Fee drifts between
+    a min and max based on current local balance ratio - high local balance
+    (channel not draining) -> fee toward min to attract routing; low local
+    balance (already draining) -> fee toward max to slow it down."""
+    chan_point = body.get("chan_point", "")
+    enabled = body.get("enabled", False)
+    min_base = int(body.get("min_base", 0))
+    max_base = int(body.get("max_base", 1000))
+    min_ppm = int(body.get("min_ppm", 50))
+    max_ppm = int(body.get("max_ppm", 500))
+    hours = int(body.get("hours", 6))
+
+    if not chan_point:
+        raise HTTPException(status_code=400, detail="chan_point required")
+
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    if "channel_auto_fee" not in data:
+        data["channel_auto_fee"] = {}
+
+    alias = chan_point[:16]
+    try:
+        channels = run_lncli("listchannels")["channels"]
+        for c in channels:
+            if c.get("channel_point") == chan_point:
+                alias = c.get("peer_alias", chan_point[:16])
+                break
+    except:
+        pass
+
+    prev = data.get("channel_auto_fee", {}).get(chan_point, {})
+    data["channel_auto_fee"][chan_point] = {
+        "enabled": enabled,
+        "min_base": min_base,
+        "max_base": max_base,
+        "min_ppm": min_ppm,
+        "max_ppm": max_ppm,
+        "hours": hours,
+        "alias": alias,
+        "last_run": prev.get("last_run", 0),
+        "last_base": prev.get("last_base"),
+        "last_ppm": prev.get("last_ppm"),
+    }
+
+    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+        json.dump(data, f, indent=2)
+
+    return {"status": "success", "channel": alias, "enabled": enabled}
+
+
+@app.get("/api/channel-auto-fee")
+def get_channel_auto_fee():
+    """Get all per-channel auto-fee-by-liquidity settings"""
+    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    return {"channels": data.get("channel_auto_fee", {})}
+
+
 @app.get("/api/rebalance-roi")
 def get_rebalance_roi(days: int = 0):
     """Get ROI per channel — rebalance cost vs routing income over time."""
@@ -1838,6 +1911,106 @@ def get_rebalance_roi(days: int = 0):
 
 scheduler_thread = threading.Thread(target=auto_rebalance_job, daemon=True)
 scheduler_thread.start()
+
+def auto_fee_job():
+    """Background loop: nudge each enabled channel's fee between a min and
+    max based on current local-liquidity ratio. High local balance (channel
+    isn't draining) -> fee drifts toward min, to attract more routing.
+    Low local balance (already draining) -> fee drifts toward max, to slow
+    the drain and earn more per sat that does go out."""
+    import time as _time
+    while True:
+        try:
+            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            per_channel = data.get("channel_auto_fee", {})
+            now = int(_time.time())
+
+            if per_channel and not MOCK:
+                channels = run_lncli("listchannels")["channels"]
+                chan_by_point = {c.get("channel_point", ""): c for c in channels}
+                fee_report = run_lncli("feereport").get("channel_fees", [])
+                own_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
+
+                for cp, settings in list(per_channel.items()):
+                    if not settings.get("enabled"):
+                        continue
+
+                    ch = chan_by_point.get(cp)
+                    if not ch:
+                        continue
+
+                    interval = settings.get("hours", 6) * 3600
+                    last_run = settings.get("last_run", 0)
+                    if now - last_run < interval:
+                        continue
+
+                    cap = int(ch.get("capacity", 1))
+                    local = int(ch.get("local_balance", 0))
+                    ratio = (local / cap) if cap > 0 else 0.5  # 1.0 = fully local, 0.0 = fully drained
+
+                    min_base = int(settings.get("min_base", 0))
+                    max_base = int(settings.get("max_base", 1000))
+                    min_ppm = int(settings.get("min_ppm", 50))
+                    max_ppm = int(settings.get("max_ppm", 500))
+                    alias = settings.get("alias", cp[:16])
+
+                    new_base = int(round(max_base - (max_base - min_base) * ratio))
+                    new_ppm = int(round(max_ppm - (max_ppm - min_ppm) * ratio))
+                    new_base = max(min_base, min(max_base, new_base))
+                    new_ppm = max(min_ppm, min(max_ppm, new_ppm))
+
+                    scid = str(ch.get("scid") or ch.get("chan_id", ""))
+                    current_base, current_ppm = None, None
+                    for fr in fee_report:
+                        if str(fr.get("chan_id", "")) == scid:
+                            current_base = int(fr.get("base_fee_msat", 0))
+                            current_ppm = int(fr.get("fee_per_mil", 0))
+                            break
+
+                    if current_base == new_base and current_ppm == new_ppm:
+                        data2 = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                        if cp in data2.get("channel_auto_fee", {}):
+                            data2["channel_auto_fee"][cp]["last_run"] = now
+                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                json.dump(data2, f, indent=2)
+                        continue
+
+                    try:
+                        chan_info = run_lncli("getchaninfo", f"--chan_point={cp}")
+                        if chan_info.get("node1_pub") == own_pubkey:
+                            tld = chan_info.get("node1_policy", {}).get("time_lock_delta", 40)
+                        else:
+                            tld = chan_info.get("node2_policy", {}).get("time_lock_delta", 40)
+
+                        run_lncli(
+                            "updatechanpolicy",
+                            f"--base_fee_msat={new_base}",
+                            f"--fee_rate_ppm={new_ppm}",
+                            f"--time_lock_delta={tld}",
+                            f"--chan_point={cp}",
+                        )
+                        print(f"[AUTO-FEE] {alias}: liquidity {ratio*100:.0f}% local -> base {new_base} msat / ppm {new_ppm}")
+                        _log_journal(
+                            f"Auto-fee adjusted: {alias}",
+                            f"Liquidity {ratio*100:.0f}% local | Base: {current_base}\u2192{new_base} msat | PPM: {current_ppm}\u2192{new_ppm}",
+                            "auto-fee"
+                        )
+
+                        data2 = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                        if cp in data2.get("channel_auto_fee", {}):
+                            data2["channel_auto_fee"][cp]["last_run"] = now
+                            data2["channel_auto_fee"][cp]["last_base"] = new_base
+                            data2["channel_auto_fee"][cp]["last_ppm"] = new_ppm
+                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                json.dump(data2, f, indent=2)
+                    except Exception as e:
+                        print(f"[AUTO-FEE] {alias} failed: {e}")
+        except Exception as e:
+            print(f"[AUTO-FEE] job error: {e}")
+        _time.sleep(3600)
+
+fee_thread = threading.Thread(target=auto_fee_job, daemon=True)
+fee_thread.start()
 
 def roi_tracker_worker():
     """Check routing fees earned after each auto-rebalance — 2hr and 24hr windows"""

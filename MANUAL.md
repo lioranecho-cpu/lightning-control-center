@@ -40,6 +40,7 @@
 28. [Tax Accounting Export](#tax-accounting-export-pro)
 29. [Loop Out (Pro)](#loop-out-pro)
 30. [Troubleshooting](#troubleshooting)
+31. [Auto Fee by Liquidity (Pro)](#auto-fee-by-liquidity-pro)
 ---
 
 ## Getting Started
@@ -141,7 +142,7 @@ Deep insights into your routing performance.
 
 - **Routing Fees Over Time** — daily earnings with time filters (7D, 30D, 90D, All)
 - **Fee Projections** — estimated daily, weekly, monthly, yearly earnings
-- **Top Routing Pairs** — routes ranked by fees earned with event count and volume
+- **Top Routing Pairs** — routes ranked by fees earned with event count and volume, each row also shows which channel's outbound fee policy is actually charging on that route (base msat / PPM). The outbound leg always sets the fee for a route, not the inbound one — this column answers "which of my channels is charging here" at a glance.
 - **Routed Volume** — daily BTC volume chart
 - **Fee Recommendations (Pro)** — actionable PPM suggestions per channel
 
@@ -282,6 +283,21 @@ Data-driven PPM suggestions in Analytics page.
 - Low activity at low PPM: already low, check liquidity balance
 - Low activity at high PPM: Lower PPM on [channel]
 - Healthy channels hidden — only actionable advice shown
+
+---
+
+## Auto Fee by Liquidity (Pro)
+
+Per-channel automation that adjusts a channel's live fee policy based on its current local balance, so you don't have to babysit fees manually.
+
+- Set a min/max base fee and min/max PPM per channel, plus a check interval in hours
+- **High local balance** (channel full of your sats, not draining) — fee drifts toward the **minimum**, to attract more routing through it
+- **Low local balance** (channel already heavily drained) — fee drifts toward the **maximum**, to slow the drain and earn more per sat that does go out
+- Runs as its own background job, independent of Auto Rebalance — safe to run both on the same channel at once
+- Only calls `updatechanpolicy` when the calculated fee actually changed — won't spam the network graph with no-op updates
+- Reads and preserves the channel's real `time_lock_delta` automatically — never guesses or resets it
+- Toggle per channel from the Channels page (💰 Auto Fee button); enter -1 at the min base fee prompt to disable
+- All changes are logged to the Node Journal
 
 ---
 

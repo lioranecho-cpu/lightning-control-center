@@ -679,14 +679,21 @@ function loadAnalytics(days) {
     if(pairs.length === 0) {
       pairsContent.innerHTML = '<div class="empty-state">&#9203; No routing events yet.<br>Fees will appear here once payments route through your node.</div>';
     } else {
-      let html = '<table class="pairs-table"><thead><tr><th>Route</th><th>Events</th><th>Volume</th><th>Fees</th></tr></thead><tbody>';
+      const feePolicy = d.fee_policy || {};
+      let html = '<table class="pairs-table"><thead><tr><th>Route</th><th>Events</th><th>Volume</th><th>Fees</th><th>Fee Set By (outbound)</th></tr></thead><tbody>';
       pairs.forEach(([route, data]) => {
         const parts = route.split(' → ');
+        const chargingLeg = parts[1];
+        const pol = feePolicy[chargingLeg];
+        const polText = pol
+          ? `${chargingLeg}: ${pol.base_msat} msat / ${pol.ppm} ppm`
+          : 'unknown';
         html += `<tr>
           <td><span class="pair-route">${parts[0]}<span class="pair-arrow">→</span>${parts[1]}</span></td>
           <td style="color:var(--muted);font-family:var(--mono)">${data.count}</td>
           <td style="color:var(--muted);font-family:var(--mono)">${fmt(data.vol)} sats</td>
           <td><span class="fee-amount">+${fmt(data.fee)} sats</span></td>
+          <td style="color:var(--muted);font-family:var(--mono);font-size:0.85em" title="This channel's outbound policy is what sets the fee for this route">${polText}</td>
         </tr>`;
       });
       html += '</tbody></table>';

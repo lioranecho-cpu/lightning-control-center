@@ -417,6 +417,11 @@ fetch(API).then(r=>r.json()).then(d=>{
     .then(r=>r.json())
     .then(d=>{ window._autoRebalData = d.channels || {}; sortChannels(); })
     .catch(()=>{ window._autoRebalData = {}; sortChannels(); });
+  // Fetch auto-fee settings
+  fetch('https://lcc.satslist.shop/api/channel-auto-fee')
+    .then(r=>r.json())
+    .then(d=>{ window._autoFeeData = d.channels || {}; sortChannels(); })
+    .catch(()=>{ window._autoFeeData = {}; sortChannels(); });
   // Skip inline forEach — sortChannels handles rendering
   if(false) channels.forEach(ch => {
     const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -841,11 +846,17 @@ function sortChannels() {
         var failBadge = fails > 0 ? ' ❌' + fails + '/3' : '';
         return '<div class="ch-stat">Auto Rebal: <span style="color:var(--green)">' + mode + ' · ' + ar.amount/1000 + 'k · max ' + ar.max_fee + 's' + failBadge + '</span></div>';
       })() +
+      (function(){
+        var af = (window._autoFeeData || {})[ch.channel_point];
+        if(!af || !af.enabled) return '<div class="ch-stat">Auto Fee: <span style="color:var(--muted)">OFF</span></div>';
+        return '<div class="ch-stat">Auto Fee: <span style="color:var(--green)">💰 ' + af.min_base + '-' + af.max_base + 'msat / ' + af.min_ppm + '-' + af.max_ppm + 'ppm · every ' + af.hours + 'h</span></div>';
+      })() +
       '</div>' +
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
       '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
       '<button class="action-btn" onclick="toggleAutoRebalance(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">🔁 Auto Rebalance</button>' +
+      '<button class="action-btn" onclick="toggleAutoFee(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">💰 Auto Fee</button>' +
       '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
       '<button class="action-btn" onclick="showPeerPolicy(\'' + ch.scid + '\',\'' + ch.peer_alias + '\')">Peer Policy</button>' +
       '<button class="action-btn" onclick="openStrategyModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">⚡ Strategy</button>' +
@@ -1333,6 +1344,48 @@ function toggleAutoRebalance(chanPoint, alias) {
   }).then(r=>r.json()).then(d=>{
     alert('Auto Rebalance ENABLED for ' + alias + '\n' + msg);
   }).catch(()=>alert('Failed to set auto rebalance'));
+}
+
+function toggleAutoFee(chanPoint, alias) {
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){ alert('Auto Fee is a Pro feature. Upgrade at satslist.shop'); return; }
+  var minBase = prompt('💰 Auto Fee (by liquidity) for ' + alias + '\n\nMin base fee, msat (used when channel is FULL of your local sats — attracts routing):\n(Enter -1 to disable)', '0');
+  if(minBase === null) return;
+  minBase = parseInt(minBase);
+  if(minBase === -1) {
+    fetch('https://lcc.satslist.shop/api/channel-auto-fee', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({chan_point: chanPoint, enabled: false})
+    }).then(r=>r.json()).then(d=>{
+      alert('Auto Fee DISABLED for ' + alias);
+    });
+    return;
+  }
+  var maxBase = prompt('Max base fee, msat (used when channel is already DRAINED — slows further drain):', '1000');
+  if(maxBase === null) return;
+  var minPpm = prompt('Min PPM (channel full of local sats):', '50');
+  if(minPpm === null) return;
+  var maxPpm = prompt('Max PPM (channel already drained):', '500');
+  if(maxPpm === null) return;
+  var hours = prompt('Check every X hours:', '6');
+  if(hours === null) return;
+  var payload = {
+    chan_point: chanPoint,
+    enabled: true,
+    min_base: minBase,
+    max_base: parseInt(maxBase),
+    min_ppm: parseInt(minPpm),
+    max_ppm: parseInt(maxPpm),
+    hours: parseInt(hours)
+  };
+  fetch('https://lcc.satslist.shop/api/channel-auto-fee', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r=>r.json()).then(d=>{
+    alert('Auto Fee ENABLED for ' + alias + '\nBase: ' + minBase + '-' + maxBase + ' msat\nPPM: ' + minPpm + '-' + maxPpm + '\nChecked every ' + hours + 'h');
+  }).catch(()=>alert('Failed to set auto fee'));
 }
 
 </script>
