@@ -11,7 +11,7 @@ import time as time_module
 from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -612,6 +612,74 @@ app.mount("/icons", StaticFiles(directory="icons"), name="icons")
 @app.get("/dashboard")
 def dashboard():
     return FileResponse("index.html")
+
+import hmac as _hmac
+import hashlib as _hashlib
+import time as _time_auth
+
+_LCC_PASSWORD = os.environ.get("LCC_PASSWORD", "")
+_LCC_SESSION_SECRET = os.environ.get("LCC_SESSION_SECRET", "")
+_SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+
+def _make_session_token():
+    ts = str(int(_time_auth.time()))
+    sig = _hmac.new(_LCC_SESSION_SECRET.encode(), ts.encode(), _hashlib.sha256).hexdigest()
+    return f"{ts}.{sig}"
+
+def _verify_session_token(token):
+    if not token or not _LCC_SESSION_SECRET:
+        return False
+    try:
+        ts, sig = token.split(".", 1)
+        expected = _hmac.new(_LCC_SESSION_SECRET.encode(), ts.encode(), _hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(sig, expected):
+            return False
+        if int(_time_auth.time()) - int(ts) > _SESSION_MAX_AGE:
+            return False
+        return True
+    except Exception:
+        return False
+
+_PUBLIC_AUTH_PATHS = {"/api/login", "/login"}
+
+@app.middleware("http")
+async def auth_gate(request: Request, call_next):
+    path = request.url.path
+    if path in _PUBLIC_AUTH_PATHS or path.startswith("/icons/"):
+        return await call_next(request)
+    token = request.cookies.get("lcc_session")
+    if _verify_session_token(token):
+        return await call_next(request)
+    if path.startswith("/api/"):
+        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return RedirectResponse(url="/login")
+
+@app.get("/login")
+def login_page():
+    return FileResponse("login.html")
+
+@app.post("/api/login")
+def api_login(body: dict = Body(...)):
+    password = body.get("password", "")
+    if not _LCC_PASSWORD or not _hmac.compare_digest(password, _LCC_PASSWORD):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    token = _make_session_token()
+    resp = JSONResponse({"status": "ok"})
+    resp.set_cookie(
+        key="lcc_session",
+        value=token,
+        max_age=_SESSION_MAX_AGE,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    return resp
+
+@app.post("/api/logout")
+def api_logout():
+    resp = JSONResponse({"status": "ok"})
+    resp.delete_cookie("lcc_session")
+    return resp
 
 @app.post("/api/openchannel")
 @limiter.limit("3/minute")
