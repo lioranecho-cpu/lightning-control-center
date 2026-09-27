@@ -259,6 +259,14 @@ fetch('/static/sidebar.html')
             </div>
             <button class="btn btn-orange" onclick="changePassword()">Update Password</button>
             <div class="feedback" id="pw-feedback"></div>
+            <div style="border-top:1px solid var(--border);margin:20px 0 16px;"></div>
+            <div class="form-group" id="nostr-login-panel">
+              <label class="form-label">&#9889; Nostr Login (npub)</label>
+              <textarea class="form-input" id="nostr-npubs" rows="2" placeholder="npub1..." style="font-family:var(--mono);font-size:12px;resize:vertical;"></textarea>
+              <div class="toggle-sub" style="margin-top:6px;line-height:1.5;">Sign in with a Nostr browser extension (Alby, nos2x). Paste your <b>npub</b>, your public key. <b style="color:var(--red);">Never paste your nsec.</b> One per line. Leave empty to turn Nostr login off. Your password always keeps working.</div>
+            </div>
+            <button class="btn btn-orange" onclick="saveNostrNpubs()">Save Nostr Login</button>
+            <div class="feedback" id="nostr-npubs-msg"></div>
           </div>
         </div>
 
@@ -342,14 +350,7 @@ fetch('/static/sidebar.html')
           </div>
         </div>
 
-        <div class="panel-header" id="nostr-login-panel">
-  <h3>&#9889; Nostr Login</h3>
-  <p style="opacity:.8;font-size:14px;margin:6px 0 10px;">Sign in with your Nostr key through a browser extension (Alby, nos2x). Paste your <b>npub</b> (your public key). <b>Never paste your nsec.</b> One npub per line. Leave empty to turn Nostr login off. Your password always keeps working.</p>
-  <textarea id="nostr-npubs" rows="2" placeholder="npub1..." style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;padding:8px;border-radius:8px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;"></textarea>
-  <div style="margin-top:8px;"><button type="button" onclick="saveNostrNpubs()">Save</button> <span id="nostr-npubs-msg" style="margin-left:8px;font-size:13px;"></span></div>
-</div>
-
-<!-- Routing fee defaults -->
+        <!-- Routing fee defaults -->
         <div class="panel">
           <div class="panel-header"><h3>&#128200; Default Fee Policy</h3></div>
           <div class="panel-body">
@@ -938,9 +939,9 @@ function saveNostrNpubs(){
   var list=el.value.split(/[\s,]+/).filter(Boolean);
   fetch('/api/settings/nostr-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({npubs:list})})
     .then(async function(r){var d=await r.json().catch(function(){return {};});
-      if(r.ok){msg.style.color='#2ecc71';msg.textContent=list.length?'Saved. Nostr login is on.':'Saved. Nostr login is off.';}
-      else{msg.style.color='#e74c3c';msg.textContent=d.detail||'Could not save.';}})
-    .catch(function(){msg.style.color='#e74c3c';msg.textContent='Could not save.';});
+      if(r.ok){msg.className='feedback ok';msg.textContent=list.length?'Saved. Nostr login is on.':'Saved. Nostr login is off.';}
+      else{msg.className='feedback err';msg.textContent=d.detail||'Could not save.';}})
+    .catch(function(){msg.className='feedback err';msg.textContent='Could not save.';});
 }
 loadNostrNpubs();
 </script>
