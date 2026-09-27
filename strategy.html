@@ -94,8 +94,8 @@ function fmt(n){return Number(n).toLocaleString();}
 async function loadStrategy(){
   try {
     const [strat, dash] = await Promise.all([
-      fetch('https://lcc.satslist.shop/api/strategy').then(r=>r.json()),
-      fetch('https://lcc.satslist.shop/api/dashboard').then(r=>r.json())
+      fetch('/api/strategy').then(r=>r.json()),
+      fetch('/api/dashboard').then(r=>r.json())
     ]);
 
     const channels = strat.channels;

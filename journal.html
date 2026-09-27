@@ -220,7 +220,7 @@
 
 <aside class="sidebar" id="sidebar-container"></aside>
 <script>
-fetch('https://lcc.satslist.shop/static/sidebar.html')
+fetch('/static/sidebar.html')
   .then(r=>r.text())
   .then(html=>{
     document.getElementById('sidebar-container').outerHTML = html;
@@ -339,9 +339,9 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-const API = 'https://lcc.satslist.shop/api/dashboard';
+const API = '/api/dashboard';
 const STORAGE_KEY = 'lcc_journal_entries';
-const API_URL = 'https://lcc.satslist.shop/api/journal';
+const API_URL = '/api/journal';
 
 // Load node data
 fetch(API).then(r=>r.json()).then(d=>{
@@ -366,7 +366,7 @@ function getEntries() {
 function saveEntries(entries) {
   _journalCache = entries;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  fetch('https://lcc.satslist.shop/api/journal', {
+  fetch('/api/journal', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({entries: entries})
@@ -377,14 +377,14 @@ async function loadEntriesFromAPI() {
   _journalCache = local;
   renderEntries();
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/journal');
+    const r = await fetch('/api/journal');
     const d = await r.json();
     if(d.entries && d.entries.length > 0) {
       _journalCache = d.entries;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(d.entries));
       renderEntries();
     } else if(local.length > 0) {
-      fetch('https://lcc.satslist.shop/api/journal', {
+      fetch('/api/journal', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({entries: local})
@@ -546,23 +546,23 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 <script>
 const CMD_COMMANDS = [
   // Navigation
-  {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='https://lcc.satslist.shop/'},
-  {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='https://lcc.satslist.shop/static/wallet.html'},
-  {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='https://lcc.satslist.shop/static/channels.html'},
-  {icon:'🔀', label:'Routing', hint:'Go to Routing', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
-  {icon:'👥', label:'Peers', hint:'Go to Peers', action:()=>location.href='https://lcc.satslist.shop/static/peers.html'},
-  {icon:'📊', label:'Analytics', hint:'Go to Analytics', action:()=>location.href='https://lcc.satslist.shop/static/analytics.html'},
-  {icon:'🔔', label:'Alerts', hint:'Go to Alerts', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
-  {icon:'⛏️', label:'Mining', hint:'Go to Mining', action:()=>location.href='https://lcc.satslist.shop/static/mining.html'},
-  {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='https://lcc.satslist.shop/static/system.html'},
-  {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='https://lcc.satslist.shop/static/settings.html'},
-  {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='https://lcc.satslist.shop/static/journal.html'},
+  {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='/'},
+  {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='/static/wallet.html'},
+  {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='/static/channels.html'},
+  {icon:'🔀', label:'Routing', hint:'Go to Routing', action:()=>location.href='/static/routing.html'},
+  {icon:'👥', label:'Peers', hint:'Go to Peers', action:()=>location.href='/static/peers.html'},
+  {icon:'📊', label:'Analytics', hint:'Go to Analytics', action:()=>location.href='/static/analytics.html'},
+  {icon:'🔔', label:'Alerts', hint:'Go to Alerts', action:()=>location.href='/static/alerts.html'},
+  {icon:'⛏️', label:'Mining', hint:'Go to Mining', action:()=>location.href='/static/mining.html'},
+  {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='/static/system.html'},
+  {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='/static/settings.html'},
+  {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='/static/journal.html'},
   // Quick Actions
   {icon:'📋', label:'Copy Pubkey', hint:'Copy your node pubkey to clipboard', action:()=>{
-    fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>navigator.clipboard.writeText(d.pubkey).then(()=>alert('Pubkey copied!')));
+    fetch('/api/node').then(r=>r.json()).then(d=>navigator.clipboard.writeText(d.pubkey).then(()=>alert('Pubkey copied!')));
   }},
-  {icon:'🔀', label:'Rebalance Channels', hint:'Go to Alerts page to rebalance', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
-  {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
+  {icon:'🔀', label:'Rebalance Channels', hint:'Go to Alerts page to rebalance', action:()=>location.href='/static/alerts.html'},
+  {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='/static/routing.html'},
   {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
   {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
@@ -660,12 +660,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 function launchGame(){
   const overlay = document.getElementById('satoshi-game');
   if(overlay) { overlay.style.display='flex'; }
-  else { location.href='https://lcc.satslist.shop/dashboard'; }
+  else { location.href='/dashboard'; }
 }
 </script>
 
 <script>
-if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
+if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='/static/login.html';});}
 </script>
 
 
@@ -753,7 +753,7 @@ async function saveEditedEntry() {
   const tag = document.getElementById('modal-tag-select').value;
   if (!title) return;
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/journal/' + _editingId, {
+    const r = await fetch('/api/journal/' + _editingId, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({title, body, tag})

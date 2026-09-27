@@ -4,6 +4,13 @@ import json
 import os
 from dotenv import load_dotenv
 load_dotenv()
+
+# Data files live under LCC_DATA_DIR when set (a mounted volume on StartOS or
+# Umbrel, so they survive image upgrades); otherwise this script's own
+# directory, which is what bare-metal installs like the ProDesk have always
+# used. Unset means identical behaviour to before.
+LCC_DATA_DIR = os.environ.get("LCC_DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
+_DATA_JSON_PATH = os.path.join(LCC_DATA_DIR, "data.json")
 import time
 from datetime import datetime, timezone
 import time as time_module
@@ -35,7 +42,7 @@ app.add_middleware(
 
 MOCK = os.environ.get("LCC_MOCK", "false").lower() == "true"
 
-MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))) if MOCK else {}
+MOCK_DATA = json.load(open(_DATA_JSON_PATH)) if MOCK else {}
 
 # ─── LND REST connection (v0.2.0 — remote node connection) ───────────────────
 # Replaces the old `lncli` subprocess wrapper. Works identically whether LND
@@ -392,18 +399,44 @@ def run_lncli(*args):
         raise HTTPException(status_code=500, detail=f"LND REST translation error for '{cmd}': {e}")
 
 
+# Configurable so a container can point at its own binary, or none at all,
+# instead of assuming the ProDesk's snap install.
+BITCOIN_CLI_PATH = os.getenv("BITCOIN_CLI_PATH", "/snap/bitcoin-core/current/bin/bitcoin-cli")
+_bitcoin_cli_warned = False
+
+
+def _warn_bitcoin_once(msg):
+    global _bitcoin_cli_warned
+    if not _bitcoin_cli_warned:
+        print(f"[lcc] {msg} - Bitcoin Core data will be omitted")
+        _bitcoin_cli_warned = True
+
+
 def run_bitcoin_cli(*args):
+    """Query Bitcoin Core, returning {} when it is not reachable.
+
+    Bitcoin Core is optional: LCC may run in a container without it, or
+    against a remote LND. Callers all use .get() with defaults, so an empty
+    result blanks those individual fields rather than failing the whole
+    request - which otherwise takes the entire dashboard down with it.
+    """
     try:
         rpc_user = os.getenv("RPC_USER", "")
         rpc_pass = os.getenv("RPC_PASS", "")
-        result = subprocess.run(["/snap/bitcoin-core/current/bin/bitcoin-cli", f"-rpcuser={rpc_user}", f"-rpcpassword={rpc_pass}"] + list(args), capture_output=True, text=True, timeout=10)
+        result = subprocess.run([BITCOIN_CLI_PATH, f"-rpcuser={rpc_user}", f"-rpcpassword={rpc_pass}"] + list(args), capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"bitcoin-cli error: {result.stderr.strip()}")
+            _warn_bitcoin_once(f"bitcoin-cli error: {result.stderr.strip()}")
+            return {}
         return json.loads(result.stdout)
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="bitcoin-cli not found")
+        _warn_bitcoin_once(f"bitcoin-cli not found at {BITCOIN_CLI_PATH}")
+        return {}
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="bitcoin-cli timed out")
+        _warn_bitcoin_once("bitcoin-cli timed out")
+        return {}
+    except Exception as e:
+        _warn_bitcoin_once(f"bitcoin-cli unavailable: {e}")
+        return {}
 
 @app.get("/")
 def root():
@@ -424,8 +457,8 @@ def get_node_info():
         "block_height": info.get("block_height"),
         "num_peers": info.get("num_peers"),
         "uptime_seconds": int(__import__("time").time() - __import__("psutil").boot_time()),
-        "auto_rebalance_hours": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("auto_rebalance_hours", 24),
-        "rebalance_amount": json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))).get("rebalance_amount", 50000),
+        "auto_rebalance_hours": json.load(open(_DATA_JSON_PATH)).get("auto_rebalance_hours", 24),
+        "rebalance_amount": json.load(open(_DATA_JSON_PATH)).get("rebalance_amount", 50000),
     }
 
 def get_btc_price():
@@ -1296,7 +1329,7 @@ def get_accounting(days: int = 365):
     except Exception as ex:
         print(f"[ACCT] chain error: {ex}")
     try:
-        data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        data = json.load(open(_DATA_JSON_PATH))
         rate_cents = float(data.get("energy_rate", 0))
         watts = float(data.get("energy_watts", 0))
         btc_price = float(data.get("energy_btc_price", 0))
@@ -1325,7 +1358,7 @@ def estimate_rebalance_fee(target_pubkey: str = "", amount: int = 0):
     if not target_pubkey:
         raise HTTPException(status_code=400, detail="target_pubkey required")
     if amount <= 0:
-        data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        data = json.load(open(_DATA_JSON_PATH))
         amount = data.get("rebalance_amount", 50000)
     try:
         node_info = run_lncli("getinfo")
@@ -1412,7 +1445,7 @@ def rebalance_channels(target_pubkey: str = None):
                 dst_local = int(dst["local_balance"])
                 
                 # Calculate amount to rebalance (move toward 50%)
-                settings = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                settings = json.load(open(_DATA_JSON_PATH))
                 amount = min(
                     src_local - int(src_cap * 0.50),  # excess in source
                     int(dst_cap * 0.50) - dst_local,  # deficit in destination
@@ -1471,17 +1504,17 @@ def rebalance_channels(target_pubkey: str = None):
 
 @app.post("/api/settings/rebalance")
 def set_rebalance_schedule(hours: int = 24, amount: int = 50000):
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     data["auto_rebalance_hours"] = hours
     data["rebalance_amount"] = amount
-    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+    with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
     return {"auto_rebalance_hours": hours, "rebalance_amount": amount, "status": "updated"}
 
 @app.get("/api/journal")
 def get_journal():
     import os
-    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
     try:
         with open(journal_path, "r") as f:
             return {"entries": json.load(f)}
@@ -1491,7 +1524,7 @@ def get_journal():
 @app.post("/api/journal")
 def save_journal(request: Request):
     import asyncio, os, time
-    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
     try:
         body = asyncio.run(request.json())
         # Load existing entries
@@ -1527,7 +1560,7 @@ def save_journal(request: Request):
 
 @app.get("/api/settings/lnbits")
 def get_lnbits_settings():
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     return {
         "url": data.get("lnbits_url", ""),
         "invoice_key": data.get("lnbits_invoice_key", "")
@@ -1587,7 +1620,7 @@ def get_pnl(period: str = "30d"):
 
 @app.get("/api/tier")
 def get_tier():
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     return {"tier": data.get("tier", "community")}
 
 @app.post("/api/tier/{key}")
@@ -1602,9 +1635,9 @@ def set_tier(key: str):
         KEYS = {"DEMO": "community"}
     if key not in KEYS:
         raise HTTPException(status_code=403, detail="Invalid license key")
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     data["tier"] = KEYS[key]
-    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+    with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
     return {"tier": data["tier"], "status": "activated"}
 
@@ -1614,7 +1647,7 @@ import secrets
 from nostr_sdk import Keys
 
 NWC_RELAY = "wss://relay.primal.net"
-NWC_DATA_FILE = os.path.join(os.path.dirname(__file__), "nwc_connections.json")
+NWC_DATA_FILE = os.path.join(LCC_DATA_DIR, "nwc_connections.json")
 
 def load_nwc_data():
     if not os.path.exists(NWC_DATA_FILE):
@@ -1640,7 +1673,7 @@ def nwc_generate(body: dict = Body(...)):
     client_secret = client_keys.secret_key().to_hex()
     client_pubkey = client_keys.public_key().to_bech32()
     try:
-        cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        cfg = json.load(open(_DATA_JSON_PATH))
         node_pubkey = cfg.get("nwc_pubkey_hex", cfg.get("nwc_pubkey", ""))
     except:
         node_pubkey = ""
@@ -1681,7 +1714,7 @@ def nwc_delete(conn_id: str):
 @app.post("/api/auth/verify-password")
 def verify_password(body: dict = Body(...)):
     pw = body.get("password", "")
-    cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    cfg = json.load(open(_DATA_JSON_PATH))
     correct = cfg.get("lcc_password", "")
     return {"authorized": pw == correct}
 
@@ -1693,7 +1726,7 @@ def verify_nsec(body: dict = Body(...)):
         sk = SecretKey.parse(nsec)
         keys = Keys(sk)
         pubkey_hex = keys.public_key().to_hex()
-        cfg = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+        cfg = json.load(open(_DATA_JSON_PATH))
         node_pubkey = cfg.get("nwc_pubkey_hex", "")
         authorized = pubkey_hex == node_pubkey
         return {"authorized": authorized}
@@ -1704,12 +1737,12 @@ def verify_nsec(body: dict = Body(...)):
 # ─── Drain & Trap Channel Strategy ───────────────────────────────────────────
 @app.get("/api/channel-strategies")
 def get_channel_strategies():
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     return {"strategies": data.get("channel_strategies", {})}
 
 @app.post("/api/channel-strategies/{chan_point:path}")
 def set_channel_strategy(chan_point: str, body: dict = Body(...)):
-    f = os.path.join(os.path.dirname(__file__), "data.json")
+    f = _DATA_JSON_PATH
     data = json.load(open(f))
     if "channel_strategies" not in data:
         data["channel_strategies"] = {}
@@ -1734,7 +1767,7 @@ def set_channel_strategy(chan_point: str, body: dict = Body(...)):
 def _log_journal(title, body, tag="auto-rebalance"):
     """Write an entry to the node journal"""
     import time as _t
-    journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+    journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
     try:
         with open(journal_path, "r") as f:
             entries = json.load(f)
@@ -1755,7 +1788,7 @@ def auto_rebalance_job():
     import time as _time
     while True:
         try:
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             per_channel = data.get("channel_auto_rebalance", {})
             now = int(_time.time())
             
@@ -1840,7 +1873,7 @@ def auto_rebalance_job():
                             )
                             # Reset fail counter and save ROI tracking entry
                             import time as _t2
-                            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                            data = json.load(open(_DATA_JSON_PATH))
                             if cp in data.get("channel_auto_rebalance", {}):
                                 data["channel_auto_rebalance"][cp]["consecutive_fails"] = 0
                             
@@ -1859,13 +1892,13 @@ def auto_rebalance_job():
                             # Keep last 100 entries
                             data["rebalance_roi"] = data["rebalance_roi"][-100:]
                             
-                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            with open(_DATA_JSON_PATH, "w") as f:
                                 json.dump(data, f, indent=2)
                         else:
                             reason = result.get("failure_reason", "unknown")
                             print(f"[AUTO-REBAL] {alias} -> {dst_alias}: FAILED ({reason})")
                             # Track consecutive failures
-                            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                            data = json.load(open(_DATA_JSON_PATH))
                             if cp in data.get("channel_auto_rebalance", {}):
                                 fails = data["channel_auto_rebalance"][cp].get("consecutive_fails", 0) + 1
                                 data["channel_auto_rebalance"][cp]["consecutive_fails"] = fails
@@ -1883,16 +1916,16 @@ def auto_rebalance_job():
                                         f"Attempt {fails}/3 | Reason: {reason} | Route: {alias} → {dst_alias}",
                                         "auto-rebalance"
                                     )
-                                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                                with open(_DATA_JSON_PATH, "w") as f:
                                     json.dump(data, f, indent=2)
                     except Exception as e:
                         print(f"[AUTO-REBAL] {alias} failed: {e}")
                     
                     # Update last_run
-                    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                    data = json.load(open(_DATA_JSON_PATH))
                     if cp in data.get("channel_auto_rebalance", {}):
                         data["channel_auto_rebalance"][cp]["last_run"] = now
-                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                        with open(_DATA_JSON_PATH, "w") as f:
                             json.dump(data, f, indent=2)
             
             # Also run global rebalance if configured
@@ -1914,7 +1947,7 @@ def auto_rebalance_job():
 def drain_trap_worker():
     while True:
         try:
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             strategies = data.get("channel_strategies", {})
             if strategies and not MOCK:
                 channels = run_lncli("listchannels").get("channels", [])
@@ -1940,7 +1973,7 @@ def drain_trap_worker():
                         strategies[chan_point]["state"] = "trapped"
                         strategies[chan_point]["trapped_at"] = int(time.time())
                         data["channel_strategies"] = strategies
-                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                        with open(_DATA_JSON_PATH, "w") as f:
                             json.dump(data, f, indent=2)
                     elif pct > floor and current_state == "trapped":
                         # Back to drain mode
@@ -1951,7 +1984,7 @@ def drain_trap_worker():
                             f"--chan_point={chan_point}")
                         strategies[chan_point]["state"] = "draining"
                         data["channel_strategies"] = strategies
-                        with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                        with open(_DATA_JSON_PATH, "w") as f:
                             json.dump(data, f, indent=2)
         except Exception as e:
             pass
@@ -1972,7 +2005,7 @@ def run_loop(cmd, *args, input_text=None):
 @app.put("/api/journal/{entry_id}")
 def update_journal_entry(entry_id: str, body: dict = Body(...)):
     try:
-        journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+        journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
         journal = json.load(open(journal_path)) if os.path.exists(journal_path) else []
         for entry in journal:
             if str(entry.get("id")) == str(entry_id):
@@ -2007,7 +2040,7 @@ def loop_monitor():
             total_cost = cost_server + cost_onchain + cost_offchain
             swap_id = s.get("id", "")[:12]
             # Look up channel alias from saved mappings
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             chan_alias = data.get("loop_swaps", {}).get(swap_id, "")
             # Parse timestamp
             init_time = s.get("initiation_time", "0")
@@ -2112,15 +2145,15 @@ def loop_out(req: LoopOutRequest):
                 if line.strip().startswith('ID:'):
                     swap_id = line.split('ID:')[-1].strip()
             # Save swap-to-channel mapping
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             if "loop_swaps" not in data:
                 data["loop_swaps"] = {}
             data["loop_swaps"][swap_id[:12]] = chan_alias
-            json.dump(data, open(os.path.join(os.path.dirname(__file__), "data.json"), "w"))
+            json.dump(data, open(_DATA_JSON_PATH, "w"))
             # Auto-journal entry
             try:
                 import datetime
-                journal_path = os.path.join(os.path.dirname(__file__), "journal.json")
+                journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
                 journal = json.load(open(journal_path)) if os.path.exists(journal_path) else []
                 block_info = run_lncli("getinfo")
                 block_height = block_info.get("block_height", 0)
@@ -2155,7 +2188,7 @@ def set_channel_auto_rebalance(body: dict = Body(...)):
     if not chan_point:
         raise HTTPException(status_code=400, detail="chan_point required")
     
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     if "channel_auto_rebalance" not in data:
         data["channel_auto_rebalance"] = {}
     
@@ -2186,7 +2219,7 @@ def set_channel_auto_rebalance(body: dict = Body(...)):
         "consecutive_fails": data.get("channel_auto_rebalance", {}).get(chan_point, {}).get("consecutive_fails", 0)
     }
     
-    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+    with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
     
     return {"status": "success", "channel": alias, "enabled": enabled, "amount": amount, "hours": hours}
@@ -2194,7 +2227,7 @@ def set_channel_auto_rebalance(body: dict = Body(...)):
 @app.get("/api/channel-auto-rebalance")
 def get_channel_auto_rebalance():
     """Get all per-channel auto-rebalance settings"""
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     return {"channels": data.get("channel_auto_rebalance", {})}
 
 
@@ -2215,7 +2248,7 @@ def set_channel_auto_fee(body: dict = Body(...)):
     if not chan_point:
         raise HTTPException(status_code=400, detail="chan_point required")
 
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     if "channel_auto_fee" not in data:
         data["channel_auto_fee"] = {}
 
@@ -2243,7 +2276,7 @@ def set_channel_auto_fee(body: dict = Body(...)):
         "last_ppm": prev.get("last_ppm"),
     }
 
-    with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+    with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
 
     return {"status": "success", "channel": alias, "enabled": enabled}
@@ -2252,14 +2285,14 @@ def set_channel_auto_fee(body: dict = Body(...)):
 @app.get("/api/channel-auto-fee")
 def get_channel_auto_fee():
     """Get all per-channel auto-fee-by-liquidity settings"""
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     return {"channels": data.get("channel_auto_fee", {})}
 
 
 @app.get("/api/rebalance-roi")
 def get_rebalance_roi(days: int = 0):
     """Get ROI per channel — rebalance cost vs routing income over time."""
-    data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+    data = json.load(open(_DATA_JSON_PATH))
     roi_entries = data.get("rebalance_roi", [])
     
     now_ts = int(time.time())
@@ -2357,7 +2390,7 @@ def auto_fee_job():
     import time as _time
     while True:
         try:
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             per_channel = data.get("channel_auto_fee", {})
             now = int(_time.time())
 
@@ -2404,10 +2437,10 @@ def auto_fee_job():
                             break
 
                     if current_base == new_base and current_ppm == new_ppm:
-                        data2 = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                        data2 = json.load(open(_DATA_JSON_PATH))
                         if cp in data2.get("channel_auto_fee", {}):
                             data2["channel_auto_fee"][cp]["last_run"] = now
-                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            with open(_DATA_JSON_PATH, "w") as f:
                                 json.dump(data2, f, indent=2)
                         continue
 
@@ -2432,12 +2465,12 @@ def auto_fee_job():
                             "auto-fee"
                         )
 
-                        data2 = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+                        data2 = json.load(open(_DATA_JSON_PATH))
                         if cp in data2.get("channel_auto_fee", {}):
                             data2["channel_auto_fee"][cp]["last_run"] = now
                             data2["channel_auto_fee"][cp]["last_base"] = new_base
                             data2["channel_auto_fee"][cp]["last_ppm"] = new_ppm
-                            with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                            with open(_DATA_JSON_PATH, "w") as f:
                                 json.dump(data2, f, indent=2)
                     except Exception as e:
                         print(f"[AUTO-FEE] {alias} failed: {e}")
@@ -2453,7 +2486,7 @@ def roi_tracker_worker():
     import time as _t3
     while True:
         try:
-            data = json.load(open(os.path.join(os.path.dirname(__file__), "data.json")))
+            data = json.load(open(_DATA_JSON_PATH))
             roi_entries = data.get("rebalance_roi", [])
             now = int(_t3.time())
             updated = False
@@ -2504,7 +2537,7 @@ def roi_tracker_worker():
             
             if updated:
                 data["rebalance_roi"] = roi_entries
-                with open(os.path.join(os.path.dirname(__file__), "data.json"), "w") as f:
+                with open(_DATA_JSON_PATH, "w") as f:
                     json.dump(data, f, indent=2)
         except Exception as e:
             print(f"[ROI-TRACKER] Error: {e}")

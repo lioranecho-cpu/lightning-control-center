@@ -272,7 +272,7 @@
 <div style="display:flex;">
 <aside class="sidebar" id="sidebar-container"></aside>
 <script>
-fetch('https://lcc.satslist.shop/static/sidebar.html')
+fetch('/static/sidebar.html')
   .then(r=>r.text())
   .then(html=>{
     document.getElementById('sidebar-container').outerHTML = html;
@@ -376,7 +376,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 </div>
 
 <script>
-const API = 'https://lcc.satslist.shop/api';
+const API = '/api';
 let currentURI = '';
 
 function timeAgo(ts){

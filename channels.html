@@ -209,7 +209,7 @@
 
 <aside class="sidebar" id="sidebar-container"></aside>
 <script>
-fetch('https://lcc.satslist.shop/static/sidebar.html')
+fetch('/static/sidebar.html')
   .then(r=>r.text())
   .then(html=>{
     document.getElementById('sidebar-container').outerHTML = html;
@@ -281,7 +281,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
       <button onclick="openTargetedRebalance()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">&#127919; Targeted Rebalance</button>
       <button onclick="rebalanceNow()" id="rebalance-btn" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">⚖️ Rebalance All Channels</button>
-      <button onclick="window.open('https://lcc.satslist.shop/static/loop-monitor.html','lcc-loop-monitor','width=700,height=500,resizable=yes')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">🔄 Loop Monitor</button>
+      <button onclick="window.open('/static/loop-monitor.html','lcc-loop-monitor','width=700,height=500,resizable=yes')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">🔄 Loop Monitor</button>
       <span id="rebalance-status" style="margin-left:12px;font-size:11px;color:var(--muted);align-self:center;"></span>
     </div>
     <div class="tabs">
@@ -357,7 +357,7 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-const API = 'https://lcc.satslist.shop/api/dashboard';
+const API = '/api/dashboard';
 function fmt(n){return Number(n).toLocaleString();}
 
 const pendingChannels = [];
@@ -383,7 +383,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   document.getElementById('total-cap').textContent = fmt(totalCap + 2000000);
   document.getElementById('active-count').textContent = d.channels.num_active;
   // Load pending channels
-  fetch('https://lcc.satslist.shop/api/pendingchannels').then(r=>r.json()).then(p => {
+  fetch('/api/pendingchannels').then(r=>r.json()).then(p => {
     const opening = p.pending_open || [];
     const closing = p.pending_closing || [];
     const total = opening.reduce((s,c) => s + c.local_balance, 0) +
@@ -405,12 +405,12 @@ fetch(API).then(r=>r.json()).then(d=>{
   // Active channels — cache and render
   cachedChannels = [...channels];
   // Fetch auto-rebalance settings
-  fetch('https://lcc.satslist.shop/api/channel-auto-rebalance')
+  fetch('/api/channel-auto-rebalance')
     .then(r=>r.json())
     .then(d=>{ window._autoRebalData = d.channels || {}; sortChannels(); })
     .catch(()=>{ window._autoRebalData = {}; sortChannels(); });
   // Fetch auto-fee settings
-  fetch('https://lcc.satslist.shop/api/channel-auto-fee')
+  fetch('/api/channel-auto-fee')
     .then(r=>r.json())
     .then(d=>{ window._autoFeeData = d.channels || {}; sortChannels(); })
     .catch(()=>{ window._autoFeeData = {}; sortChannels(); });
@@ -489,7 +489,7 @@ function rebalanceNow(){
   btn.disabled = true;
   btn.textContent = '⏳ Rebalancing...';
   status.textContent = '';
-  fetch('https://lcc.satslist.shop/api/rebalance', {method:'POST'})
+  fetch('/api/rebalance', {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
@@ -578,23 +578,23 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 <script>
 const CMD_COMMANDS = [
   // Navigation
-  {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='https://lcc.satslist.shop/'},
-  {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='https://lcc.satslist.shop/static/wallet.html'},
-  {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='https://lcc.satslist.shop/static/channels.html'},
-  {icon:'🔀', label:'Routing', hint:'Go to Routing', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
-  {icon:'👥', label:'Peers', hint:'Go to Peers', action:()=>location.href='https://lcc.satslist.shop/static/peers.html'},
-  {icon:'📊', label:'Analytics', hint:'Go to Analytics', action:()=>location.href='https://lcc.satslist.shop/static/analytics.html'},
-  {icon:'🔔', label:'Alerts', hint:'Go to Alerts', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
-  {icon:'⛏️', label:'Mining', hint:'Go to Mining', action:()=>location.href='https://lcc.satslist.shop/static/mining.html'},
-  {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='https://lcc.satslist.shop/static/system.html'},
-  {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='https://lcc.satslist.shop/static/settings.html'},
-  {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='https://lcc.satslist.shop/static/journal.html'},
+  {icon:'🏠', label:'Dashboard', hint:'Go to Dashboard', action:()=>location.href='/'},
+  {icon:'💳', label:'Wallet', hint:'Go to Wallet', action:()=>location.href='/static/wallet.html'},
+  {icon:'🔗', label:'Channels', hint:'Go to Channels', action:()=>location.href='/static/channels.html'},
+  {icon:'🔀', label:'Routing', hint:'Go to Routing', action:()=>location.href='/static/routing.html'},
+  {icon:'👥', label:'Peers', hint:'Go to Peers', action:()=>location.href='/static/peers.html'},
+  {icon:'📊', label:'Analytics', hint:'Go to Analytics', action:()=>location.href='/static/analytics.html'},
+  {icon:'🔔', label:'Alerts', hint:'Go to Alerts', action:()=>location.href='/static/alerts.html'},
+  {icon:'⛏️', label:'Mining', hint:'Go to Mining', action:()=>location.href='/static/mining.html'},
+  {icon:'💻', label:'System', hint:'Go to System', action:()=>location.href='/static/system.html'},
+  {icon:'⚙️', label:'Settings', hint:'Go to Settings', action:()=>location.href='/static/settings.html'},
+  {icon:'📓', label:'Journal', hint:'Go to Node Journal', action:()=>location.href='/static/journal.html'},
   // Quick Actions
   {icon:'📋', label:'Copy Pubkey', hint:'Copy your node pubkey to clipboard', action:()=>{
-    fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>navigator.clipboard.writeText(d.pubkey).then(()=>alert('Pubkey copied!')));
+    fetch('/api/node').then(r=>r.json()).then(d=>navigator.clipboard.writeText(d.pubkey).then(()=>alert('Pubkey copied!')));
   }},
-  {icon:'🔀', label:'Rebalance Channels', hint:'Go to Alerts page to rebalance', action:()=>location.href='https://lcc.satslist.shop/static/alerts.html'},
-  {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='https://lcc.satslist.shop/static/routing.html'},
+  {icon:'🔀', label:'Rebalance Channels', hint:'Go to Alerts page to rebalance', action:()=>location.href='/static/alerts.html'},
+  {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='/static/routing.html'},
   {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
   {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
@@ -697,12 +697,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 function launchGame(){
   const overlay = document.getElementById('satoshi-game');
   if(overlay) { overlay.style.display='flex'; }
-  else { location.href='https://lcc.satslist.shop/dashboard'; }
+  else { location.href='/dashboard'; }
 }
 </script>
 
 <script>
-if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
+if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='/static/login.html';});}
 </script>
 
 
@@ -787,7 +787,7 @@ function applyFees(){
   const status = document.getElementById('fee-modal-status');
   status.textContent = '⏳ Updating...';
   status.style.color = 'var(--muted)';
-  fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40&chan_point='+encodeURIComponent(currentChanPoint), {method:'POST'})
+  fetch('/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40&chan_point='+encodeURIComponent(currentChanPoint), {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       status.textContent = '✅ Fees updated for ' + document.getElementById('fee-modal-peer').textContent;
@@ -861,7 +861,7 @@ window.currentStratChanPoint = '';
 window._strategies = {};
 
 // Load strategies on page load so badges render correctly
-fetch('https://lcc.satslist.shop/api/channel-strategies')
+fetch('/api/channel-strategies')
   .then(r=>r.json()).then(data=>{
     window._strategies = data.strategies || {};
     // Re-render channels with strategy badges
@@ -872,7 +872,7 @@ function openStrategyModal(chanPoint, alias) {
   window.currentStratChanPoint = chanPoint;
   document.getElementById('strat-alias').textContent = alias;
   document.getElementById('strategy-modal').style.display = 'flex';
-  fetch('https://lcc.satslist.shop/api/channel-strategies')
+  fetch('/api/channel-strategies')
     .then(r=>r.json()).then(data=>{
       window._strategies = data.strategies || {};
       const s = data.strategies[chanPoint];
@@ -905,7 +905,7 @@ function saveStrategy() {
     trap_ppm: parseInt(document.getElementById('trap-ppm').value),
     floor_pct: parseInt(document.getElementById('floor-pct').value)
   };
-  fetch('https://lcc.satslist.shop/api/channel-strategies/' + window.currentStratChanPoint, {
+  fetch('/api/channel-strategies/' + window.currentStratChanPoint, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body)
@@ -913,7 +913,7 @@ function saveStrategy() {
     if(strategy === 'drain_trap') {
       const ppm = body.drain_ppm;
       const cp = window.currentStratChanPoint;
-      fetch('https://lcc.satslist.shop/api/updatefees?base_fee_msat=0&fee_rate_ppm=' + ppm + '&time_lock_delta=40&chan_point=' + cp, {method:'POST'})
+      fetch('/api/updatefees?base_fee_msat=0&fee_rate_ppm=' + ppm + '&time_lock_delta=40&chan_point=' + cp, {method:'POST'})
         .finally(()=>{
           closeStrategyModal();
           alert('✅ Strategy active! Channel draining at ' + ppm + ' PPM.');
@@ -933,7 +933,7 @@ document.addEventListener('click', function(e) {
 });
 
 function showPeerPolicy(scid, alias) {
-  fetch('https://lcc.satslist.shop/api/chaninfo?scid=' + scid)
+  fetch('/api/chaninfo?scid=' + scid)
     .then(r=>r.json())
     .then(data=>{
       const p1 = data.node1_policy || {};
@@ -958,7 +958,7 @@ function rebalanceChannel(pubkey, alias){
     return;
   }
   if(!confirm('⚖️ Rebalance channel with ' + alias + '?\n\nFees will be shown in wallet transactions after completion.')) return;
-  fetch('https://lcc.satslist.shop/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
+  fetch('/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
@@ -976,7 +976,7 @@ function closeChannelConfirm(chanPoint, alias){
   }
   if(!confirm('⚠️ Close channel with ' + alias + '?\n\nThis will broadcast a closing transaction on-chain. Funds will be returned to your wallet after confirmation.')) return;
   if(!confirm('⚠️ FINAL CONFIRMATION\n\nClose ' + alias + ' channel?\n\nThis cannot be undone.')) return;
-  fetch('https://lcc.satslist.shop/api/closechannel?chan_point='+encodeURIComponent(chanPoint), {method:'POST'})
+  fetch('/api/closechannel?chan_point='+encodeURIComponent(chanPoint), {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       if(d.status === 'closing'){
@@ -1065,7 +1065,7 @@ function submitOpenChannel(){
   status.style.color = 'var(--muted)';
   status.textContent = 'Connecting to peer and opening channel...';
 
-  fetch('https://lcc.satslist.shop/api/openchannel?peer_address=' + encodeURIComponent(peer) + '&local_amt=' + amount + '&private=' + isPrivate + '&sat_per_vbyte=' + feeRate, {method:'POST'})
+  fetch('/api/openchannel?peer_address=' + encodeURIComponent(peer) + '&local_amt=' + amount + '&private=' + isPrivate + '&sat_per_vbyte=' + feeRate, {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
       btn.disabled = false;
@@ -1143,7 +1143,7 @@ function executeTargetedRebalance() {
   var dst = cachedChannels[dstIdx];
   if(!confirm('FROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\nProceed?')) return;
   document.getElementById('tr-modal').remove();
-  fetch('https://lcc.satslist.shop/api/rebalance-targeted', {
+  fetch('/api/rebalance-targeted', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: amount, max_fee: maxFee})
@@ -1239,7 +1239,7 @@ async function fetchLoopQuote() {
   }
   document.getElementById('loop-error').style.display = 'none';
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/loop/quote?amt=' + amt);
+    const r = await fetch('/api/loop/quote?amt=' + amt);
     const q = await r.json();
     if (q.error) {
       document.getElementById('loop-error').textContent = q.error;
@@ -1266,14 +1266,14 @@ async function confirmLoopOut() {
   btn.textContent = '⏳ Connecting to Loop server...';
   btn.disabled = true;
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/loop/out', {
+    const r = await fetch('/api/loop/out', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({amt, scid: _loopScid, conf_target: conf})
     });
     const res = await r.json();
     if (res.success) {
-      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><a onclick="window.open(\'https://lcc.satslist.shop/static/loop-monitor.html\',\'lcc-loop-monitor\',\'width=700,height=500,resizable=yes\')" style="color:var(--orange);cursor:pointer;font-size:11px;">▶ Run loop monitor to track progress</a>';
+      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><a onclick="window.open(\'/static/loop-monitor.html\',\'lcc-loop-monitor\',\'width=700,height=500,resizable=yes\')" style="color:var(--orange);cursor:pointer;font-size:11px;">▶ Run loop monitor to track progress</a>';
       document.getElementById('loop-success').style.display = 'block';
       btn.textContent = '✅ Swap Initiated';
     } else {
@@ -1297,7 +1297,7 @@ function toggleAutoRebalance(chanPoint, alias) {
   if(amount === null) return;
   amount = parseInt(amount);
   if(amount === 0) {
-    fetch('https://lcc.satslist.shop/api/channel-auto-rebalance', {
+    fetch('/api/channel-auto-rebalance', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chan_point: chanPoint, enabled: false})
@@ -1329,7 +1329,7 @@ function toggleAutoRebalance(chanPoint, alias) {
     payload.max_fee = parseInt(maxFee);
     msg = 'Every ' + hours + ' hours\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats';
   }
-  fetch('https://lcc.satslist.shop/api/channel-auto-rebalance', {
+  fetch('/api/channel-auto-rebalance', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
@@ -1345,7 +1345,7 @@ function toggleAutoFee(chanPoint, alias) {
   if(minBase === null) return;
   minBase = parseInt(minBase);
   if(minBase === -1) {
-    fetch('https://lcc.satslist.shop/api/channel-auto-fee', {
+    fetch('/api/channel-auto-fee', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chan_point: chanPoint, enabled: false})
@@ -1371,7 +1371,7 @@ function toggleAutoFee(chanPoint, alias) {
     max_ppm: parseInt(maxPpm),
     hours: parseInt(hours)
   };
-  fetch('https://lcc.satslist.shop/api/channel-auto-fee', {
+  fetch('/api/channel-auto-fee', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)

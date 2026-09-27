@@ -66,7 +66,7 @@
 <body>
 <aside class="sidebar" id="sidebar-container"></aside>
 <script>
-fetch('https://lcc.satslist.shop/static/sidebar.html')
+fetch('/static/sidebar.html')
   .then(r=>r.text())
   .then(html=>{
     document.getElementById('sidebar-container').outerHTML = html;
@@ -205,14 +205,14 @@ async function loadTreasury(){
   // Load LNbits settings from API if not already loaded
   if(!LNBITS_KEY){
     try{
-      const cfg = await fetch('https://lcc.satslist.shop/api/settings/lnbits').then(r=>r.json());
+      const cfg = await fetch('/api/settings/lnbits').then(r=>r.json());
       LNBITS_KEY = cfg.invoice_key;
       LNBITS_URL = cfg.url;
     } catch(e){ console.error('Failed to load LNbits config:', e); }
   }
   try{
     // Get BTC price
-    const nodeResp = await fetch('https://lcc.satslist.shop/api/node');
+    const nodeResp = await fetch('/api/node');
     if(nodeResp.ok){
       const node = await nodeResp.json();
       btcPrice = node.wallet?.btc_price_usd || 65000;
@@ -358,7 +358,7 @@ function downloadAccounting() {
     alert('Accounting export is a Pro feature. Upgrade at satslist.shop');
     return;
   }
-  fetch('https://lcc.satslist.shop/api/accounting?days=9999')
+  fetch('/api/accounting?days=9999')
     .then(r=>r.json())
     .then(d=>{
       if(!d.csv){ alert('No accounting data'); return; }
@@ -390,7 +390,7 @@ async function loadPnl(period = '30d') {
     }
   });
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/pnl?period=' + period);
+    const r = await fetch('/api/pnl?period=' + period);
     const d = await r.json();
     document.getElementById('pnl-routing').textContent = '+' + d.routing_fees.toLocaleString() + ' sats';
     document.getElementById('pnl-rebalance').textContent = '-' + d.rebalance_fees.toLocaleString() + ' sats';
@@ -404,7 +404,7 @@ async function loadPnl(period = '30d') {
     // Get BTC price from dashboard API
     let btcPrice = 62831;
     try {
-      const priceResp = await fetch('https://lcc.satslist.shop/api/dashboard');
+      const priceResp = await fetch('/api/dashboard');
       const priceData = await priceResp.json();
       if(priceData.wallet && priceData.wallet.btc_price_usd) btcPrice = priceData.wallet.btc_price_usd;
     } catch(e) {}

@@ -42,7 +42,7 @@
 <body>
 <aside class="sidebar" id="sidebar-container"></aside>
 <script>
-fetch('https://lcc.satslist.shop/static/sidebar.html')
+fetch('/static/sidebar.html')
   .then(r=>r.text())
   .then(html=>{
     document.getElementById('sidebar-container').outerHTML = html;

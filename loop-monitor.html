@@ -39,7 +39,7 @@
 <script>
 async function loadMonitor() {
   try {
-    const r = await fetch('https://lcc.satslist.shop/api/loop/monitor');
+    const r = await fetch('/api/loop/monitor');
     const data = await r.json();
     const list = document.getElementById('swap-list');
 
