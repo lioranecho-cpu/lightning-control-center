@@ -342,7 +342,14 @@ fetch('/static/sidebar.html')
           </div>
         </div>
 
-        <!-- Routing fee defaults -->
+        <div class="panel-header" id="nostr-login-panel">
+  <h3>&#9889; Nostr Login</h3>
+  <p style="opacity:.8;font-size:14px;margin:6px 0 10px;">Sign in with your Nostr key through a browser extension (Alby, nos2x). Paste your <b>npub</b> (your public key). <b>Never paste your nsec.</b> One npub per line. Leave empty to turn Nostr login off. Your password always keeps working.</p>
+  <textarea id="nostr-npubs" rows="2" placeholder="npub1..." style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;padding:8px;border-radius:8px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;"></textarea>
+  <div style="margin-top:8px;"><button type="button" onclick="saveNostrNpubs()">Save</button> <span id="nostr-npubs-msg" style="margin-left:8px;font-size:13px;"></span></div>
+</div>
+
+<!-- Routing fee defaults -->
         <div class="panel">
           <div class="panel-header"><h3>&#128200; Default Fee Policy</h3></div>
           <div class="panel-body">
@@ -921,6 +928,21 @@ function setAutoReconnect(on){
       if (fb) { fb.textContent = '\u274c Could not save'; fb.className = 'feedback'; }
     });
 }
+</script>
+
+<!-- Nostr login settings -->
+<script>
+function loadNostrNpubs(){fetch('/api/settings/nostr-login').then(function(r){return r.json();}).then(function(d){var el=document.getElementById('nostr-npubs');if(el)el.value=(d.npubs||[]).join('\n');}).catch(function(){});}
+function saveNostrNpubs(){
+  var el=document.getElementById('nostr-npubs'),msg=document.getElementById('nostr-npubs-msg');
+  var list=el.value.split(/[\s,]+/).filter(Boolean);
+  fetch('/api/settings/nostr-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({npubs:list})})
+    .then(async function(r){var d=await r.json().catch(function(){return {};});
+      if(r.ok){msg.style.color='#2ecc71';msg.textContent=list.length?'Saved. Nostr login is on.':'Saved. Nostr login is off.';}
+      else{msg.style.color='#e74c3c';msg.textContent=d.detail||'Could not save.';}})
+    .catch(function(){msg.style.color='#e74c3c';msg.textContent='Could not save.';});
+}
+loadNostrNpubs();
 </script>
 </body>
 </html>

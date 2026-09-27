@@ -59,5 +59,38 @@
       });
     });
   </script>
+
+<!-- Nostr login (NIP-07) -->
+<script>
+(function(){
+  function waitForNostr(ms){return new Promise(function(res){var t=0;(function c(){if(window.nostr)return res(true);t+=100;if(t>=ms)return res(false);setTimeout(c,100);})();});}
+  fetch('/api/nostr/status').then(function(r){return r.json();}).then(function(s){
+    if(!s.enabled) return;
+    var anchor=document.querySelector('form button[type="submit"]')||document.querySelector('form button')||document.querySelector('button');
+    if(!anchor) return;
+    var btn=document.createElement('button');
+    btn.type='button';btn.id='nostr-login-btn';btn.className=anchor.className;
+    btn.textContent='\u26A1 Sign in with Nostr';
+    btn.style.cssText='margin-top:12px;width:100%;background:transparent;border:1px solid #8e44ad;color:#c39bd3;';
+    var msg=document.createElement('div');
+    msg.style.cssText='margin-top:8px;font-size:13px;color:#e74c3c;text-align:center;';
+    anchor.parentNode.insertBefore(msg,anchor.nextSibling);
+    anchor.parentNode.insertBefore(btn,anchor.nextSibling);
+    btn.addEventListener('click',async function(){
+      msg.textContent='';
+      if(!(await waitForNostr(1500))){msg.textContent='No Nostr extension found. Install Alby or nos2x, then reload this page.';return;}
+      btn.disabled=true;
+      try{
+        var c=await (await fetch('/api/nostr/challenge')).json();
+        var ev=await window.nostr.signEvent({kind:22242,created_at:Math.floor(Date.now()/1000),tags:[['challenge',c.challenge]],content:''});
+        var r=await fetch('/api/nostr/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:ev})});
+        if(r.ok){window.location.href='/dashboard';}
+        else{var d=await r.json().catch(function(){return {};});msg.textContent=d.detail||'Nostr sign-in failed.';}
+      }catch(e){msg.textContent='Signing was cancelled or failed.';}
+      finally{btn.disabled=false;}
+    });
+  }).catch(function(){});
+})();
+</script>
 </body>
 </html>

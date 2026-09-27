@@ -1041,7 +1041,7 @@ def _verify_session_token(token):
     except Exception:
         return False
 
-_PUBLIC_AUTH_PATHS = {"/api/login", "/login"}
+_PUBLIC_AUTH_PATHS = {"/api/login", "/login", "/api/nostr/status", "/api/nostr/challenge", "/api/nostr/login"}
 
 @app.middleware("http")
 async def auth_gate(request: Request, call_next):
@@ -1081,6 +1081,132 @@ def api_logout():
     resp = JSONResponse({"status": "ok"})
     resp.delete_cookie("lcc_session")
     return resp
+
+
+# --- Nostr login (NIP-07) ------------------------------------------------------
+# A browser extension (Alby, nos2x...) signs a one-time challenge; the nsec never
+# leaves the extension. Only npubs listed in Settings may sign in. With no npub
+# listed the feature is off and the login page shows no Nostr button.
+_NOSTR_AUTH_KIND = 22242
+_NOSTR_CHALLENGE_TTL = 120
+_nostr_challenges = {}
+
+
+def _npub_to_hex(npub):
+    from nostr_sdk import PublicKey
+    try:
+        return PublicKey.parse(str(npub).strip()).to_hex()
+    except Exception:
+        return None
+
+
+def _nostr_allowed_npubs():
+    try:
+        return list(json.load(open(_DATA_JSON_PATH)).get("nostr_login_npubs", []))
+    except Exception:
+        return []
+
+
+def _nostr_allowed_hex():
+    return {h for h in (_npub_to_hex(n) for n in _nostr_allowed_npubs()) if h}
+
+
+def _nostr_event_id(ev):
+    payload = json.dumps(
+        [0, ev["pubkey"], ev["created_at"], ev["kind"], ev["tags"], ev["content"]],
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    return _hashlib.sha256(payload.encode()).hexdigest()
+
+
+def _nostr_signature_ok(ev):
+    from nostr_sdk import Event
+    try:
+        e = Event.from_json(json.dumps(ev))
+        r = e.verify()
+        return True if r is None else bool(r)
+    except Exception:
+        return False
+
+
+def _session_cookie_response():
+    resp = JSONResponse({"status": "ok"})
+    resp.set_cookie(
+        key="lcc_session",
+        value=_make_session_token(),
+        max_age=_SESSION_MAX_AGE,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    return resp
+
+
+@app.get("/api/nostr/status")
+def nostr_status():
+    return {"enabled": bool(_LCC_SESSION_SECRET) and len(_nostr_allowed_hex()) > 0}
+
+
+@app.get("/api/nostr/challenge")
+def nostr_challenge():
+    now = int(_time_auth.time())
+    for c, exp in list(_nostr_challenges.items()):
+        if exp < now:
+            _nostr_challenges.pop(c, None)
+    if len(_nostr_challenges) > 200:
+        _nostr_challenges.clear()
+    challenge = secrets.token_hex(32)
+    _nostr_challenges[challenge] = now + _NOSTR_CHALLENGE_TTL
+    return {"challenge": challenge}
+
+
+@app.post("/api/nostr/login")
+def nostr_login(body: dict = Body(...)):
+    fail = HTTPException(status_code=401, detail="Nostr sign-in failed")
+    if not _LCC_SESSION_SECRET:
+        raise fail
+    ev = body.get("event")
+    if not isinstance(ev, dict):
+        raise fail
+    try:
+        tags = ev["tags"]
+        challenge = next(t[1] for t in tags if isinstance(t, list) and len(t) > 1 and t[0] == "challenge")
+        exp = _nostr_challenges.pop(challenge, None)
+        now = int(_time_auth.time())
+        if exp is None or exp < now:
+            raise HTTPException(status_code=401, detail="Sign-in request expired, please try again")
+        if ev["kind"] != _NOSTR_AUTH_KIND or abs(now - int(ev["created_at"])) > _NOSTR_CHALLENGE_TTL:
+            raise fail
+        if ev["pubkey"] not in _nostr_allowed_hex():
+            raise HTTPException(status_code=403, detail="This Nostr key is not allowed to sign in")
+        if ev.get("id") != _nostr_event_id(ev) or not _nostr_signature_ok(ev):
+            raise fail
+    except HTTPException:
+        raise
+    except Exception:
+        raise fail
+    return _session_cookie_response()
+
+
+@app.get("/api/settings/nostr-login")
+def get_nostr_login_settings():
+    return {"npubs": _nostr_allowed_npubs()}
+
+
+@app.post("/api/settings/nostr-login")
+def set_nostr_login_settings(body: dict = Body(...)):
+    npubs = [str(n).strip() for n in body.get("npubs", []) if str(n).strip()]
+    for n in npubs:
+        if n.startswith("nsec"):
+            raise HTTPException(status_code=400, detail="That is a secret key (nsec). Never paste it anywhere. Use your npub instead.")
+        if not n.startswith("npub1") or not _npub_to_hex(n):
+            raise HTTPException(status_code=400, detail=f"Not a valid npub: {n[:16]}...")
+    data = json.load(open(_DATA_JSON_PATH))
+    data["nostr_login_npubs"] = npubs
+    with open(_DATA_JSON_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    return {"npubs": npubs}
 
 @app.post("/api/openchannel")
 @limiter.limit("3/minute")
@@ -1728,27 +1854,6 @@ def nwc_delete(conn_id: str):
     save_nwc_data(data)
     return {"status": "deleted"}
 
-@app.post("/api/auth/verify-password")
-def verify_password(body: dict = Body(...)):
-    pw = body.get("password", "")
-    cfg = json.load(open(_DATA_JSON_PATH))
-    correct = cfg.get("lcc_password", "")
-    return {"authorized": pw == correct}
-
-@app.post("/api/nostr/verify-nsec")
-def verify_nsec(body: dict = Body(...)):
-    from nostr_sdk import SecretKey, Keys
-    try:
-        nsec = body.get("nsec", "")
-        sk = SecretKey.parse(nsec)
-        keys = Keys(sk)
-        pubkey_hex = keys.public_key().to_hex()
-        cfg = json.load(open(_DATA_JSON_PATH))
-        node_pubkey = cfg.get("nwc_pubkey_hex", "")
-        authorized = pubkey_hex == node_pubkey
-        return {"authorized": authorized}
-    except Exception as e:
-        return {"authorized": False, "error": str(e)}
 
 
 # ─── Drain & Trap Channel Strategy ───────────────────────────────────────────
