@@ -28,3 +28,11 @@ deploy.sh
 data.json
 nwc_connections.json
 nohup.out
+journal.json
+nwc_connections.json
+*.bak
+*.bak[0-9]
+*.retry
+*.v[0-9]
+*.backup_*
+__pycache__/

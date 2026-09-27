@@ -318,6 +318,9 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
               <button class="btn btn-orange" onclick="saveSessionSettings()">Save Session Settings</button>
               <div class="feedback" id="session-feedback"></div>
             </div>
+            <div style="margin-top:16px;">
+              <button class="btn btn-danger" onclick="logout()">Log Out</button>
+            </div>
           </div>
         </div>
 
@@ -497,14 +500,6 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-(function(){
-  const s = localStorage.getItem('lcc_session');
-  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
-  try{
-    const {expires} = JSON.parse(s);
-    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
-  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
-})();
 const API = 'https://lcc.satslist.shop/api/dashboard';
 const SETTINGS_KEY = 'lcc_settings';
 
@@ -589,6 +584,12 @@ function saveSessionSettings() {
   setTimeout(() => fb.textContent = '', 2000);
 }
 
+function logout() {
+  fetch('/api/logout', { method: 'POST' }).finally(() => {
+    window.location.href = '/login';
+  });
+}
+
 function saveFeeDefaults() {
   const s = getSettings();
   s.def_base_fee = document.getElementById('def-base-fee').value;
@@ -645,8 +646,6 @@ fetch(API).then(r=>r.json()).then(d=>{
 
 loadSettings();
 
-function checkSession(){const s=localStorage.getItem('lcc_session');if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}try{const{expires}=JSON.parse(s);if(Date.now()>expires){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}}catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}}
-checkSession();
 // Load current rebalance schedule
 fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>{
   const hours = d.auto_rebalance_hours !== undefined ? d.auto_rebalance_hours : 24;
@@ -658,7 +657,7 @@ fetch('https://lcc.satslist.shop/api/node').then(r=>r.json()).then(d=>{
 });
 setInterval(checkSession,5*60*1000);
 
-function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
 
   function openDonateModal(){document.getElementById('donate-modal').classList.add('show');}
   function closeDonateModal(){document.getElementById('donate-modal').classList.remove('show');}

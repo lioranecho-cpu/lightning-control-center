@@ -1,4 +1,3 @@
-
 import subprocess
 import threading
 import json
@@ -8,6 +7,8 @@ load_dotenv()
 import time
 from datetime import datetime, timezone
 import time as time_module
+import requests
+import base64
 from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -36,23 +37,360 @@ MOCK = os.environ.get("LCC_MOCK", "false").lower() == "true"
 
 MOCK_DATA = json.load(open(os.path.join(os.path.dirname(__file__), "data.json"))) if MOCK else {}
 
-def run_lncli(*args):
-    try:
-        timeout = 90 if "sendpayment" in args else 10
-        result = subprocess.run(["lncli"] + list(args), capture_output=True, text=True, timeout=timeout)
+# ─── LND REST connection (v0.2.0 — remote node connection) ───────────────────
+# Replaces the old `lncli` subprocess wrapper. Works identically whether LND
+# is co-located (ProDesk, litd on localhost) or remote (e.g. LND packaged on
+# StartOS reached over the network) — same REST API, just a different host.
+# Configure via .env:
+#   LND_REST_HOST=https://127.0.0.1:8080         (default — local litd)
+#   LND_MACAROON_PATH=~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon
+#   LND_TLS_CERT_PATH=~/.lnd/tls.cert
+#   LND_TLS_INSECURE=true                         (only if cert can't be verified, e.g. IP-based remote)
+LND_REST_HOST = os.getenv("LND_REST_HOST", "https://127.0.0.1:8080").rstrip("/")
+LND_MACAROON_PATH = os.path.expanduser(os.getenv(
+    "LND_MACAROON_PATH", "~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon"
+))
+LND_TLS_CERT_PATH = os.path.expanduser(os.getenv("LND_TLS_CERT_PATH", "~/.lnd/tls.cert"))
+LND_TLS_INSECURE = os.getenv("LND_TLS_INSECURE", "false").lower() == "true"
 
-        if result.returncode != 0:
-            if "sendpayment" in args:
-                try:
-                    return json.loads(result.stdout)
-                except:
-                    return {"status": "FAILED", "failure_reason": result.stderr.strip()}
-            raise HTTPException(status_code=500, detail=f"lncli error: {result.stderr.strip()}")
-        return json.loads(result.stdout)
+
+def _lnd_macaroon_hex():
+    try:
+        with open(LND_MACAROON_PATH, "rb") as f:
+            return f.read().hex()
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="lncli not found")
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="lncli timed out")
+        raise HTTPException(status_code=500, detail=f"LND macaroon not found at {LND_MACAROON_PATH}")
+
+
+def _lnd_verify():
+    if LND_TLS_INSECURE:
+        return False
+    if os.path.exists(LND_TLS_CERT_PATH):
+        return LND_TLS_CERT_PATH
+    return True  # fall back to system CA bundle (e.g. behind a reverse proxy with a real cert)
+
+
+def _lnd_rest(method, path, params=None, body=None, timeout=10):
+    """Single (non-streaming) call to LND's REST API. Raises HTTPException on
+    failure — same contract the old subprocess-based run_lncli() had, so every
+    existing caller's try/except HTTPException handling keeps working."""
+    try:
+        resp = requests.request(
+            method, f"{LND_REST_HOST}{path}",
+            headers={"Grpc-Metadata-macaroon": _lnd_macaroon_hex()},
+            params={k: v for k, v in (params or {}).items() if v is not None},
+            json=body, timeout=timeout, verify=_lnd_verify(),
+        )
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="LND REST call timed out")
+    except requests.exceptions.ConnectionError as e:
+        raise HTTPException(status_code=500, detail=f"Can't reach LND at {LND_REST_HOST} — is it running? ({e})")
+    if resp.status_code != 200:
+        try:
+            detail = resp.json().get("message", resp.text)
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=500, detail=f"LND error: {detail.strip()}")
+    try:
+        return resp.json()
+    except ValueError:
+        return {}
+
+
+def _lnd_rest_stream_first(method, path, params=None, body=None, timeout=30):
+    """For LND's streaming endpoints (openchannel, closechannel) where we only
+    need the first update — the point at which the funding/closing txid is
+    known — matching how `lncli openchannel`/`closechannel` used to block."""
+    try:
+        with requests.request(
+            method, f"{LND_REST_HOST}{path}",
+            headers={"Grpc-Metadata-macaroon": _lnd_macaroon_hex()},
+            params={k: v for k, v in (params or {}).items() if v is not None},
+            json=body, timeout=timeout, verify=_lnd_verify(), stream=True,
+        ) as resp:
+            if resp.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"LND error: {resp.text.strip()}")
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                obj = json.loads(line)
+                if "error" in obj:
+                    raise HTTPException(status_code=500, detail=str(obj["error"]))
+                return obj.get("result", obj)
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="LND REST stream timed out")
+    except requests.exceptions.ConnectionError as e:
+        raise HTTPException(status_code=500, detail=f"Can't reach LND at {LND_REST_HOST} ({e})")
+    raise HTTPException(status_code=500, detail="LND returned no data")
+
+
+def _lnd_rest_stream_terminal(method, path, params=None, body=None, timeout=90):
+    """For SendPaymentV2 (/v2/router/send) — read status updates until the
+    payment reaches a terminal state (SUCCEEDED/FAILED), the way
+    `lncli sendpayment` blocks until the payment resolves."""
+    try:
+        with requests.request(
+            method, f"{LND_REST_HOST}{path}",
+            headers={"Grpc-Metadata-macaroon": _lnd_macaroon_hex()},
+            params={k: v for k, v in (params or {}).items() if v is not None},
+            json=body, timeout=timeout, verify=_lnd_verify(), stream=True,
+        ) as resp:
+            if resp.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"LND error: {resp.text.strip()}")
+            last = {}
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                obj = json.loads(line)
+                if "error" in obj:
+                    raise HTTPException(status_code=500, detail=str(obj["error"]))
+                last = obj.get("result", obj)
+                if last.get("status") in ("SUCCEEDED", "FAILED"):
+                    return last
+            return last
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Payment timed out")
+    except requests.exceptions.ConnectionError as e:
+        raise HTTPException(status_code=500, detail=f"Can't reach LND at {LND_REST_HOST} ({e})")
+
+
+def _parse_flags(args):
+    """Mini lncli-style arg parser: turns ('--amt=100', '--force', 'p2wkh')
+    into ({'amt': '100', 'force': True}, ['p2wkh'])."""
+    flags, positional = {}, []
+    for a in args:
+        if a.startswith("--"):
+            if "=" in a:
+                k, v = a[2:].split("=", 1)
+                flags[k] = v
+            else:
+                flags[a[2:]] = True
+        else:
+            positional.append(a)
+    return flags, positional
+
+
+def _resolve_chan_id(chan_point):
+    """getchaninfo only takes a numeric chan_id over REST — some call sites in
+    this file pass --chan_point instead (a pre-existing bug that silently
+    no-op'd under the old lncli subprocess wrapper). Resolve it transparently
+    instead of failing."""
+    channels = _lnd_rest("GET", "/v1/channels").get("channels", [])
+    for ch in channels:
+        if ch.get("channel_point") == chan_point:
+            return ch.get("chan_id")
+    return None
+
+
+def run_lncli(*args):
+    """Drop-in replacement for the old subprocess-based run_lncli() — same
+    call signature (run_lncli("getinfo"), run_lncli("sendpayment", "--pay_req=...", ...)),
+    now translated to LND's REST API instead of shelling out to the `lncli`
+    binary. Every one of this file's ~80 run_lncli(...) call sites is
+    unchanged below this function."""
+    if not args:
+        raise HTTPException(status_code=500, detail="run_lncli called with no command")
+    cmd = args[0]
+    flags, positional = _parse_flags(args[1:])
+
+    try:
+        if cmd == "getinfo":
+            return _lnd_rest("GET", "/v1/getinfo")
+
+        if cmd == "walletbalance":
+            r = _lnd_rest("GET", "/v1/balance/blockchain")
+            return {
+                "total_balance": r.get("total_balance", "0"),
+                "confirmed_balance": r.get("confirmed_balance", "0"),
+                "unconfirmed_balance": r.get("unconfirmed_balance", "0"),
+            }
+
+        if cmd == "channelbalance":
+            r = _lnd_rest("GET", "/v1/balance/channels")
+            return {"balance": r.get("local_balance", {}).get("sat", "0")}
+
+        if cmd == "listchannels":
+            r = _lnd_rest("GET", "/v1/channels", params={"peer_alias_lookup": True})
+            channels = r.get("channels", [])
+            alias_cache = {}
+            for ch in channels:
+                ch.setdefault("scid", ch.get("chan_id"))
+                if not ch.get("peer_alias"):
+                    pubkey = ch.get("remote_pubkey", "")
+                    if pubkey not in alias_cache:
+                        try:
+                            node = _lnd_rest("GET", f"/v1/graph/node/{pubkey}", params={"include_channels": False})
+                            alias_cache[pubkey] = node.get("node", {}).get("alias", "")
+                        except HTTPException:
+                            alias_cache[pubkey] = ""
+                    if alias_cache[pubkey]:
+                        ch["peer_alias"] = alias_cache[pubkey]
+            return r
+
+        if cmd == "pendingchannels":
+            return _lnd_rest("GET", "/v1/channels/pending")
+
+        if cmd == "closedchannels":
+            return _lnd_rest("GET", "/v1/channels/closed")
+
+        if cmd == "feereport":
+            return _lnd_rest("GET", "/v1/fees")
+
+        if cmd == "fwdinghistory":
+            body = {
+                "start_time": str(flags.get("start_time", "0")),
+                "end_time": str(flags.get("end_time", str(int(time.time())))),
+                "num_max_events": int(flags.get("max_events", 100)),
+                "index_offset": int(flags.get("index_offset", 0)),
+                # Ask LND to resolve peer aliases; without this it returns bare
+                # channel IDs and the routing page has no names to show.
+                "peer_alias_lookup": True,
+            }
+            return _lnd_rest("POST", "/v1/switch", body=body)
+
+        if cmd == "listpeers":
+            return _lnd_rest("GET", "/v1/peers")
+
+        if cmd == "listpayments":
+            params = {
+                "max_payments": flags.get("max_payments"),
+                "index_offset": flags.get("index_offset"),
+                "reversed": "paginate-forwards" not in flags and "paginate_forwards" not in flags,
+                "include_incomplete": True,
+            }
+            return _lnd_rest("GET", "/v1/payments", params=params)
+
+        if cmd == "listinvoices":
+            params = {
+                "num_max_invoices": flags.get("max_invoices"),
+                "index_offset": flags.get("index_offset"),
+                "reversed": "paginate-forwards" not in flags,
+            }
+            return _lnd_rest("GET", "/v1/invoices", params=params)
+
+        if cmd == "listchaintxns":
+            return _lnd_rest("GET", "/v1/transactions")
+
+        if cmd == "newaddress":
+            addr_type = "WITNESS_PUBKEY_HASH" if (not positional or positional[0] == "p2wkh") else positional[0]
+            return _lnd_rest("GET", "/v1/newaddress", params={"type": addr_type})
+
+        if cmd == "connect":
+            addr = positional[0] if positional else flags.get("addr")
+            pubkey, _, host = addr.partition("@")
+            body = {"addr": {"pubkey": pubkey, "host": host}, "perm": False}
+            try:
+                return _lnd_rest("POST", "/v1/peers", body=body)
+            except HTTPException as e:
+                if "already connected" in str(e.detail).lower():
+                    return {"status": "already connected"}
+                raise
+
+        if cmd == "getnodeinfo":
+            pubkey = flags.get("pub_key") or (positional[0] if positional else "")
+            return _lnd_rest("GET", f"/v1/graph/node/{pubkey}", params={"include_channels": False})
+
+        if cmd == "getchaninfo":
+            chan_id = flags.get("chan_id")
+            if not chan_id and flags.get("chan_point"):
+                chan_id = _resolve_chan_id(flags["chan_point"])
+            if not chan_id and positional:
+                chan_id = positional[0]
+            if not chan_id:
+                raise HTTPException(status_code=400, detail="getchaninfo needs a chan_id or a matching chan_point")
+            return _lnd_rest("GET", f"/v1/graph/edge/{chan_id}")
+
+        if cmd == "queryroutes":
+            dest = flags.get("dest")
+            amt = flags.get("amt")
+            return _lnd_rest("GET", f"/v1/graph/routes/{dest}/{amt}")
+
+        if cmd == "addinvoice":
+            body = {"value": str(flags.get("amt", "0")), "memo": flags.get("memo", "")}
+            r = _lnd_rest("POST", "/v1/invoices", body=body)
+            return {
+                "payment_request": r.get("payment_request"),
+                "r_hash": r.get("r_hash"),
+                "add_index": r.get("add_index"),
+            }
+
+        if cmd == "sendpayment":
+            timeout_seconds = int(str(flags.get("timeout", "60s")).rstrip("s") or 60)
+            body = {
+                "payment_request": flags.get("pay_req"),
+                "allow_self_payment": "allow_self_payment" in flags,
+                "timeout_seconds": timeout_seconds,
+            }
+            if flags.get("amt"):
+                body["amt"] = str(flags["amt"])
+            if flags.get("fee_limit"):
+                body["fee_limit_sat"] = str(flags["fee_limit"])
+            if flags.get("outgoing_chan_id"):
+                body["outgoing_chan_ids"] = [str(flags["outgoing_chan_id"])]
+            if flags.get("last_hop"):
+                body["last_hop_pubkey"] = base64.b64encode(bytes.fromhex(flags["last_hop"])).decode()
+            payment = _lnd_rest_stream_terminal(
+                "POST", "/v2/router/send", body=body, timeout=timeout_seconds + 15
+            )
+            if payment.get("status") == "SUCCEEDED":
+                fee_msat = int(payment.get("fee_msat", 0) or 0)
+                return {"status": "SUCCEEDED", "fee_sat": fee_msat // 1000, "payment_hash": payment.get("payment_hash")}
+            return {"status": "FAILED", "failure_reason": payment.get("failure_reason", "FAILURE_REASON_ERROR")}
+
+        if cmd == "sendcoins":
+            body = {"addr": flags.get("addr"), "amount": str(flags.get("amt", "0"))}
+            r = _lnd_rest("POST", "/v1/transactions", body=body)
+            return {"txid": r.get("txid")}
+
+        if cmd == "openchannel":
+            node_key = flags.get("node_key")
+            body = {
+                "node_pubkey": base64.b64encode(bytes.fromhex(node_key)).decode(),
+                "local_funding_amount": str(flags.get("local_amt", "0")),
+                "private": "private" in flags,
+            }
+            first = _lnd_rest_stream_first("POST", "/v1/channels", body=body, timeout=60)
+            chan_pending = first.get("chan_pending", {}) or {}
+            txid_b64 = chan_pending.get("txid")
+            txid = base64.b64decode(txid_b64)[::-1].hex() if txid_b64 else ""
+            return {"funding_txid": txid}
+
+        if cmd == "closechannel":
+            txid = flags.get("funding_txid")
+            idx = flags.get("output_index", "0")
+            params = {"force": "force" in flags}
+            first = _lnd_rest_stream_first("DELETE", f"/v1/channels/{txid}/{idx}", params=params, timeout=60)
+            close_pending = first.get("close_pending", {}) or {}
+            txid_b64 = close_pending.get("txid")
+            closing_txid = base64.b64decode(txid_b64)[::-1].hex() if txid_b64 else "pending"
+            return {"closing_txid": closing_txid}
+
+        if cmd == "updatechanpolicy":
+            base_fee = int(flags.get("base_fee_msat", 0))
+            if "fee_rate_ppm" in flags:
+                ppm = int(flags["fee_rate_ppm"])
+            else:
+                ppm = int(round(float(flags.get("fee_rate", 0)) * 1_000_000))
+            body = {
+                "base_fee_msat": str(base_fee),
+                "fee_rate_ppm": ppm,  # LND rejects the request if both this and the legacy `fee_rate` are set
+                "time_lock_delta": int(flags.get("time_lock_delta", 40)),
+            }
+            if flags.get("chan_point"):
+                txid, _, idx = flags["chan_point"].partition(":")
+                body["chan_point"] = {"funding_txid_str": txid, "output_index": int(idx)}
+            else:
+                body["global"] = True
+            r = _lnd_rest("POST", "/v1/chanpolicy", body=body)
+            return {"failed_updates": r.get("failed_updates", [])}
+
+        raise HTTPException(status_code=500, detail=f"lncli command '{cmd}' has no REST translation yet")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LND REST translation error for '{cmd}': {e}")
+
 
 def run_bitcoin_cli(*args):
     try:
@@ -200,10 +538,38 @@ def get_routing(days: int = 30):
     channels = run_lncli("listchannels").get("channels", [])
     chan_map = {}
     for ch in channels:
-        cid = ch.get("scid") or ch.get("chan_id", "")
         alias = ch.get("peer_alias") or ch.get("remote_pubkey", "")[:12] + "..."
-        if cid:
-            chan_map[str(cid)] = alias
+        # Map both numeric chan_id and scid to alias
+        for key in ["chan_id", "scid"]:
+            cid = ch.get(key, "")
+            if cid:
+                chan_map[str(cid)] = alias
+
+    # Add closed channels — forwarding history includes events through channels
+    # that may now be closed, so we need them in the alias map too
+    try:
+        _closed = _lnd_rest("GET", "/v1/channels/closed").get("channels", [])
+        print(f"CLOSED_CHAN_DEBUG: found {len(_closed)} closed channels", flush=True)
+        _watch = {"1057623533383516161","1057766469876318209","1057764270845853697","1058350310578454529"}
+        for _dbg in _closed:
+            if str(_dbg.get("chan_id","")) in _watch:
+                print(f"CLOSED_CHAN_DEBUG: MATCH chan_id={_dbg.get('chan_id')} pk={_dbg.get('remote_pubkey','')[:20]}", flush=True)
+        _pub_alias: dict = {}
+        for _ch in _closed:
+            _cid = str(_ch.get("chan_id", ""))
+            if _cid and _cid not in chan_map:
+                _pk = _ch.get("remote_pubkey", "")
+                if _pk:
+                    if _pk not in _pub_alias:
+                        try:
+                            _n = _lnd_rest("GET", f"/v1/graph/node/{_pk}",
+                                          params={"include_channels": False})
+                            _pub_alias[_pk] = _n.get("node", {}).get("alias", "") or _pk[:12] + "..."
+                        except Exception:
+                            _pub_alias[_pk] = _pk[:12] + "..."
+                    chan_map[_cid] = _pub_alias[_pk]
+    except Exception:
+        pass  # best-effort; must not break the routing page
 
     # Build alias -> current fee policy (base_msat + ppm) of the OUTBOUND channel,
     # since that's the leg that actually charges the fee for a routed payment
@@ -222,8 +588,10 @@ def get_routing(days: int = 30):
         out = []
         for e in evts:
             e2 = dict(e)
-            e2["alias_in"]  = chan_map.get(str(e.get("chan_id_in",  "")), str(e.get("chan_id_in",  ""))[-8:])
-            e2["alias_out"] = chan_map.get(str(e.get("chan_id_out", "")), str(e.get("chan_id_out", ""))[-8:])
+            _cii = str(e.get("chan_id_in",  ""))
+            _cio = str(e.get("chan_id_out", ""))
+            e2["alias_in"]  = chan_map.get(_cii, _cii[-8:] if _cii else "?")
+            e2["alias_out"] = chan_map.get(_cio, _cio[-8:] if _cio else "?")
             out.append(e2)
         return out
 
@@ -1762,7 +2130,7 @@ def loop_out(req: LoopOutRequest):
                     "body": f"Loop Out initiated: {int(req.amt):,} sats via {chan_alias}. Swap ID: {swap_id[:16]}. Conf target: {req.conf_target} blocks.",
                     "tag": "milestone",
                     "block": block_height,
-                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+                    "date": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
                 })
                 json.dump(journal, open(journal_path, "w"))
             except Exception as je:

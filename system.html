@@ -314,14 +314,6 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-(function(){
-  const s = localStorage.getItem('lcc_session');
-  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
-  try{
-    const {expires} = JSON.parse(s);
-    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
-  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
-})();
 const API = 'https://lcc.satslist.shop/api/dashboard';
 const SYS_API = 'https://lcc.satslist.shop/api/system';
 
@@ -413,11 +405,7 @@ function loadSystem() {
 loadSystem();
 setInterval(loadSystem, 30000); // Refresh every 30 seconds
 
-function checkSession(){const s=localStorage.getItem('lcc_session');if(!s){window.location.href='https://lcc.satslist.shop/static/login.html';return;}try{const{expires}=JSON.parse(s);if(Date.now()>expires){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}}catch(e){window.location.href='https://lcc.satslist.shop/static/login.html';}}
-checkSession();
-setInterval(checkSession,5*60*1000);
-
-function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
 
   function openDonateModal(){document.getElementById('donate-modal').classList.add('show');}
   function closeDonateModal(){document.getElementById('donate-modal').classList.remove('show');}

@@ -371,14 +371,6 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-(function(){
-  const s = localStorage.getItem('lcc_session');
-  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
-  try{
-    const {expires} = JSON.parse(s);
-    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
-  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
-})();
 const API = 'https://lcc.satslist.shop/api/dashboard';
 function fmt(n){return Number(n).toLocaleString();}
 
@@ -425,7 +417,7 @@ function loadRouting(){
     const totalPages = Math.ceil(allEvents.length / PAGE_SIZE);
     let html = '<table class="fwd-table"><thead><tr><th>Time</th><th>Amount</th><th>Fee</th><th>In Channel</th><th>Out Channel</th></tr></thead><tbody>';
     pageEvents.forEach(e=>{
-      html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--text)">' + (e.peer_alias_in && !e.peer_alias_in.includes('unable') ? e.peer_alias_in : e.chan_id_in||'?') + '</td><td style="color:var(--text)">' + (e.peer_alias_out && !e.peer_alias_out.includes('unable') ? e.peer_alias_out : e.chan_id_out||'?') + '</td></tr>';
+      html += '<tr><td>' + new Date(e.timestamp*1000).toLocaleString() + '</td><td>' + fmt(e.amt_out) + ' sats</td><td class="fee-earned">+' + fmt(e.fee) + ' sats</td><td style="color:var(--text)">' + (e.alias_in || e.chan_id_in || '?') + '</td><td style="color:var(--text)">' + (e.alias_out || e.chan_id_out || '?') + '</td></tr>';
     });
     html += '</tbody></table>';
     // Pagination controls
@@ -707,7 +699,7 @@ function launchGame(){
 </script>
 
 <script>
-if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
 </script>
 
 

@@ -339,14 +339,6 @@ fetch('https://lcc.satslist.shop/static/sidebar.html')
 
 <script>
 // Session check
-(function(){
-  const s = localStorage.getItem('lcc_session');
-  if(!s){ window.location.href='https://lcc.satslist.shop/static/login.html'; return; }
-  try{
-    const {expires} = JSON.parse(s);
-    if(Date.now() > expires){ localStorage.removeItem('lcc_session'); window.location.href='https://lcc.satslist.shop/static/login.html'; }
-  } catch(e){ window.location.href='https://lcc.satslist.shop/static/login.html'; }
-})();
 const API = 'https://lcc.satslist.shop/api/dashboard';
 const STORAGE_KEY = 'lcc_journal_entries';
 const API_URL = 'https://lcc.satslist.shop/api/journal';
@@ -479,7 +471,7 @@ function renderEntries(search = '') {
   }
 
   list.innerHTML = filtered.map(e => {
-    const date = new Date(e.date).toLocaleString();
+    const date = new Date(e.date || e.timestamp).toLocaleString();
     const bodyPreview = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
     return `<div class="entry-card" onclick="openEntry('${e.id}')" style="cursor:pointer;">
       <div class="entry-header">
@@ -673,7 +665,7 @@ function launchGame(){
 </script>
 
 <script>
-if(typeof logout === 'undefined') function logout(){localStorage.removeItem('lcc_session');window.location.href='https://lcc.satslist.shop/static/login.html';}
+if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method:'POST'}).finally(function(){window.location.href='https://lcc.satslist.shop/static/login.html';});}
 </script>
 
 
@@ -743,7 +735,7 @@ function openEntry(id) {
   if (!e) return;
   _editingId = id;
   document.getElementById('modal-title').value = e.title || '';
-  document.getElementById('modal-meta').textContent = new Date(e.date).toLocaleString();
+  document.getElementById('modal-meta').textContent = new Date(e.date || e.timestamp).toLocaleString();
   document.getElementById('modal-body').value = e.body || '';
   document.getElementById('modal-block').textContent = e.block ? 'Block ' + e.block : '';
   document.getElementById('modal-tag').innerHTML = `<span class="entry-tag ${e.tag}">${e.tag}</span>`;
