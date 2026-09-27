@@ -1021,6 +1021,32 @@ import time as _time_auth
 _LCC_PASSWORD = os.environ.get("LCC_PASSWORD", "")
 _LCC_SESSION_SECRET = os.environ.get("LCC_SESSION_SECRET", "")
 _SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+_SESSION_HOURS_ALLOWED = (1, 2, 4, 8, 24, 168, 720)
+_session_cfg_cache = {"mtime": None, "hours": 720, "browser_only": False}
+
+
+def _session_cfg():
+    """Session length + sign-out-on-browser-close, read from data.json (cached by mtime)."""
+    try:
+        mtime = os.path.getmtime(_DATA_JSON_PATH)
+        if mtime != _session_cfg_cache["mtime"]:
+            data = json.load(open(_DATA_JSON_PATH))
+            hours = data.get("session_hours", 720)
+            _session_cfg_cache["hours"] = hours if hours in _SESSION_HOURS_ALLOWED else 720
+            _session_cfg_cache["browser_only"] = bool(data.get("session_browser_only", False))
+            _session_cfg_cache["mtime"] = mtime
+    except Exception:
+        pass
+    return _session_cfg_cache
+
+
+def _session_max_age():
+    return int(_session_cfg()["hours"]) * 3600
+
+
+def _cookie_max_age():
+    # None = cookie is deleted when the browser closes
+    return None if _session_cfg()["browser_only"] else _session_max_age()
 
 def _make_session_token():
     ts = str(int(_time_auth.time()))
@@ -1035,7 +1061,7 @@ def _verify_session_token(token):
         expected = _hmac.new(_LCC_SESSION_SECRET.encode(), ts.encode(), _hashlib.sha256).hexdigest()
         if not _hmac.compare_digest(sig, expected):
             return False
-        if int(_time_auth.time()) - int(ts) > _SESSION_MAX_AGE:
+        if int(_time_auth.time()) - int(ts) > _session_max_age():
             return False
         return True
     except Exception:
@@ -1069,7 +1095,7 @@ def api_login(body: dict = Body(...)):
     resp.set_cookie(
         key="lcc_session",
         value=token,
-        max_age=_SESSION_MAX_AGE,
+        max_age=_cookie_max_age(),
         httponly=True,
         secure=True,
         samesite="lax",
@@ -1135,7 +1161,7 @@ def _session_cookie_response():
     resp.set_cookie(
         key="lcc_session",
         value=_make_session_token(),
-        max_age=_SESSION_MAX_AGE,
+        max_age=_cookie_max_age(),
         httponly=True,
         secure=True,
         samesite="lax",
@@ -1207,6 +1233,28 @@ def set_nostr_login_settings(body: dict = Body(...)):
     with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
     return {"npubs": npubs}
+
+
+@app.get("/api/settings/session")
+def get_session_settings():
+    cfg = _session_cfg()
+    return {"hours": cfg["hours"], "browser_only": cfg["browser_only"]}
+
+
+@app.post("/api/settings/session")
+def set_session_settings(body: dict = Body(...)):
+    try:
+        hours = int(body.get("hours", 720))
+    except Exception:
+        hours = 0
+    if hours not in _SESSION_HOURS_ALLOWED:
+        raise HTTPException(status_code=400, detail="Invalid session duration")
+    data = json.load(open(_DATA_JSON_PATH))
+    data["session_hours"] = hours
+    data["session_browser_only"] = bool(body.get("browser_only", False))
+    with open(_DATA_JSON_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    return {"hours": hours, "browser_only": data["session_browser_only"]}
 
 @app.post("/api/openchannel")
 @limiter.limit("3/minute")

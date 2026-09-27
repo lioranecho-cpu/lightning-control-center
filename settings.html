@@ -307,18 +307,20 @@ fetch('/static/sidebar.html')
               <select class="form-input" id="session-duration">
                 <option value="1">1 hour</option>
                 <option value="2">2 hours</option>
-                <option value="4" selected>4 hours</option>
+                <option value="4">4 hours</option>
                 <option value="8">8 hours</option>
                 <option value="24">24 hours</option>
+                <option value="168">7 days</option>
+                <option value="720" selected>30 days (default)</option>
               </select>
             </div>
             <div class="toggle-row">
               <div>
                 <div class="toggle-label">Auto-logout on close</div>
-                <div class="toggle-sub">Clear session when browser tab is closed</div>
+                <div class="toggle-sub">Sign out when the browser is closed (closing just the tab is not enough). Applies from your next sign-in.</div>
               </div>
               <label class="toggle">
-                <input type="checkbox" id="auto-logout" onchange="saveSetting('auto_logout', this.checked)">
+                <input type="checkbox" id="auto-logout">
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -540,8 +542,6 @@ function saveSetting(key, val) {
 // Load saved settings
 function loadSettings() {
   const s = getSettings();
-  if(s.session_duration) document.getElementById('session-duration').value = s.session_duration;
-  if(s.auto_logout !== undefined) document.getElementById('auto-logout').checked = s.auto_logout;
   if(s.show_usd !== undefined) document.getElementById('show-usd').checked = s.show_usd;
   if(s.show_mining !== undefined) document.getElementById('show-mining').checked = s.show_mining;
   if(s.alert_notif !== undefined) document.getElementById('alert-notif').checked = s.alert_notif;
@@ -600,15 +600,26 @@ function saveRebalanceSchedule(){
 }
 
 function saveSessionSettings() {
-  const duration = document.getElementById('session-duration').value;
-  const s = getSettings();
-  s.session_duration = duration;
-  saveSettings(s);
   const fb = document.getElementById('session-feedback');
-  fb.innerHTML = '✅ Session settings saved';
-  fb.className = 'feedback ok';
-  setTimeout(() => fb.textContent = '', 2000);
+  const body = {
+    hours: parseInt(document.getElementById('session-duration').value, 10),
+    browser_only: document.getElementById('auto-logout').checked
+  };
+  fetch('/api/settings/session', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+    .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(() => { fb.innerHTML = '\u2705 Session settings saved'; fb.className = 'feedback ok'; setTimeout(() => fb.textContent = '', 2500); })
+    .catch(() => { fb.textContent = '\u274c Could not save'; fb.className = 'feedback err'; });
 }
+
+function loadSessionSettings() {
+  fetch('/api/settings/session').then(r => r.json()).then(d => {
+    const sel = document.getElementById('session-duration');
+    if(sel && d.hours) sel.value = String(d.hours);
+    const tog = document.getElementById('auto-logout');
+    if(tog) tog.checked = !!d.browser_only;
+  }).catch(() => {});
+}
+loadSessionSettings();
 
 function logout() {
   fetch('/api/logout', { method: 'POST' }).finally(() => {
