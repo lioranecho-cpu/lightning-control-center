@@ -385,36 +385,12 @@ fetch('/static/sidebar.html')
         <div class="panel">
           <div class="panel-header"><h3>&#9889; Node Identity</h3></div>
           <div class="panel-body">
-            <div class="info-item">
-              <span class="info-label">Alias</span>
-              <span class="info-val" style="color:var(--orange);font-weight:600">prodeskltn-node</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Pubkey</span>
-              <span class="info-val" style="font-size:10px;">03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1', this)">📋</button>
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Clearnet</span>
-              <span class="info-val">74.45.164.28:9735
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@74.45.164.28:9735', this)">📋</button>
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Tor</span>
-              <span class="info-val" style="font-size:10px;">cp6dqly3w3qpkb4y747v47acljwgffxl5uyoala36ipdjvdzhiyisiyd.onion:9735
-                <button class="copy-btn" onclick="copyText('03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1@cp6dqly3w3qpkb4y747v47acljwgffxl5uyoala36ipdjvdzhiyisiyd.onion:9735', this)">📋</button>
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">LCC URL</span>
-              <span class="info-val">lcc.satslist.shop</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">LND Version</span>
-              <span class="info-val">0.21.1-beta (litd v0.17.0)</span>
-            </div>
+            <div class="info-item"><span class="info-label">Alias</span><span class="info-val" id="ni-alias" style="color:var(--orange);font-weight:600">&#8212;</span></div>
+            <div class="info-item"><span class="info-label">Pubkey</span><span class="info-val" style="font-size:10px;"><span id="ni-pubkey">&#8212;</span> <button class="copy-btn" onclick="copyText(document.getElementById('ni-pubkey').textContent, this)">📋</button></span></div>
+            <div class="info-item" id="ni-clearnet-row"><span class="info-label">Clearnet</span><span class="info-val"><span id="ni-clearnet">&#8212;</span> <button class="copy-btn" id="ni-clearnet-copy" onclick="copyText(this.dataset.uri || '', this)">📋</button></span></div>
+            <div class="info-item" id="ni-tor-row"><span class="info-label">Tor</span><span class="info-val" style="font-size:10px;"><span id="ni-tor">&#8212;</span> <button class="copy-btn" id="ni-tor-copy" onclick="copyText(this.dataset.uri || '', this)">📋</button></span></div>
+            <div class="info-item"><span class="info-label">LCC URL</span><span class="info-val" id="ni-url">&#8212;</span></div>
+            <div class="info-item"><span class="info-label">LND Version</span><span class="info-val" id="ni-version">&#8212;</span></div>
           </div>
         </div>
 
@@ -499,7 +475,7 @@ fetch('/static/sidebar.html')
             <div class="version-card">
               <div class="version-big">v0.1.2</div>
               <div class="version-name">Lightning Control Center</div>
-              <div class="version-sub">Built for prodeskltn-node</div>
+              <div class="version-sub" id="about-built-for">Built for your node</div>
               <div class="edition-badge" id="about-tier-badge">&#9889; Community Edition</div>
             </div>
             <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.8;">
@@ -969,6 +945,26 @@ function saveNostrNpubs(){
     .catch(function(){msg.className='feedback err';msg.textContent='Could not save.';});
 }
 loadNostrNpubs();
+</script>
+<script>
+fetch('/api/node').then(r => r.json()).then(d => {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('ni-alias', d.alias || '\u2014');
+  set('ni-pubkey', d.pubkey || '\u2014');
+  set('ni-version', d.version || '\u2014');
+  set('ni-url', location.host);
+  set('about-built-for', 'Built for ' + (d.alias || 'your node'));
+  const uris = d.uris || [];
+  const show = (key, uri) => {
+    const row = document.getElementById('ni-' + key + '-row');
+    if (!uri) { if (row) row.style.display = 'none'; return; }
+    set('ni-' + key, uri.split('@')[1] || uri);
+    const b = document.getElementById('ni-' + key + '-copy');
+    if (b) b.dataset.uri = uri;
+  };
+  show('clearnet', uris.find(u => !u.includes('.onion')));
+  show('tor', uris.find(u => u.includes('.onion')));
+}).catch(() => {});
 </script>
 </body>
 </html>

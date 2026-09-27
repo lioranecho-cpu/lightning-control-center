@@ -234,6 +234,10 @@ fetch('/static/sidebar.html')
     </div>
   </header>
   <div class="content">
+    <div id="mining-disabled" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-top:8px;line-height:1.7;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;">&#9935; Mining dashboard not enabled</div>
+      <div style="font-size:13px;color:var(--muted);">Live monitoring of your own miners (hashrate, power, temperature) is planned for a future version of Lightning Control Center.</div>
+    </div>
     <div class="page-header">
       <h2>&#9935; Mining Fleet</h2>
       <p>ASIC miner status, hashrate and pool connectivity.</p>
@@ -369,7 +373,7 @@ fetch('/static/sidebar.html')
           <span style="font-size:12px;color:var(--green)">&#9679; Connected</span>
         </div>
         <div class="pool-item"><span class="pool-label">Primary Pool</span><span class="pool-val green">public-pool (local)</span></div>
-        <div class="pool-item"><span class="pool-label">Pool URL</span><span class="pool-val" style="font-family:var(--mono);font-size:11px;">192.168.4.76:3333</span></div>
+        <div class="pool-item"><span class="pool-label">Pool URL</span><span class="pool-val" id="pool-url" style="font-family:var(--mono);font-size:11px;">&#8212;</span></div>
         <div class="pool-item"><span class="pool-label">Alt Pool (NerdQAxe++ &amp; Nano3)</span><span class="pool-val orange">Parasite Pool</span></div>
         <div class="pool-item"><span class="pool-label">Parasite URL</span><span class="pool-val" style="font-family:var(--mono);font-size:11px;">parasite.wtf:42069</span></div>
         <div class="pool-item"><span class="pool-label">Parasite Payout</span><span class="pool-val green">Lightning (WoS)</span></div>
@@ -645,6 +649,17 @@ if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+<script>
+fetch('/api/features').then(r => r.json()).then(f => {
+  const pu = document.getElementById('pool-url');
+  if (pu) pu.textContent = f.pool_url || '\u2014';
+  if (f.mining) return;
+  document.querySelectorAll('.content > *').forEach(el => {
+    if (el.id !== 'mining-disabled') el.style.display = 'none';
+  });
+  document.getElementById('mining-disabled').style.display = 'block';
+}).catch(() => {});
 </script>
 </body>
 </html>

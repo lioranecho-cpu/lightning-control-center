@@ -220,7 +220,7 @@ fetch('/static/sidebar.html')
     <div class="page-header">
       <div>
         <h2>&#128421; System</h2>
-        <p>ProDesk hardware health and service status.</p>
+        <p>Hardware health and service status.</p>
       </div>
       <button class="refresh-btn" onclick="loadSystem()">&#8635; Refresh</button>
     </div>
@@ -288,8 +288,8 @@ fetch('/static/sidebar.html')
           <div class="info-item"><span class="info-label">Architecture</span><span class="info-val" id="arch">&#8212;</span></div>
           <div class="info-item"><span class="info-label">CPU Cores</span><span class="info-val" id="cpu-cores">&#8212;</span></div>
           <div class="info-item"><span class="info-label">Total RAM</span><span class="info-val" id="total-ram">&#8212;</span></div>
-          <div class="info-item"><span class="info-label">Local IP</span><span class="info-val" id="local-ip">192.168.4.76</span></div>
-          <div class="info-item"><span class="info-label">External IP</span><span class="info-val" id="external-ip">74.45.164.28</span></div>
+          <div class="info-item"><span class="info-label">Local IP</span><span class="info-val" id="local-ip">&#8212;</span></div>
+          <div class="info-item"><span class="info-label">External IP</span><span class="info-val" id="external-ip">&#8212;</span></div>
         </div>
       </div>
 
@@ -382,11 +382,18 @@ function loadSystem() {
     document.getElementById('arch').textContent = d.arch;
     document.getElementById('cpu-cores').textContent = d.cpu_cores;
     document.getElementById('total-ram').textContent = d.ram_total_gb + ' GB';
+    const lip = document.getElementById('local-ip');
+    if (lip) { if (d.local_ip) lip.textContent = d.local_ip; else lip.parentElement.style.display = 'none'; }
+    const eip = document.getElementById('external-ip');
+    if (eip) eip.textContent = d.external_ip || '\u2014';
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
     // Services
     const servicesList = document.getElementById('services-list');
+    if (d.services_managed) {
+      servicesList.innerHTML = '<div class="loading">Services are managed by your node operating system (StartOS, Umbrel...). Check their status there.</div>';
+    } else
     servicesList.innerHTML = d.services.map(s => `
       <div class="service-item">
         <div>

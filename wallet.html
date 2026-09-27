@@ -248,7 +248,7 @@ fetch('/static/sidebar.html')
   <div class="content">
     <div class="page-header">
       <h2>Wallet</h2>
-      <p>On-chain and Lightning balances for prodeskltn-node.</p>
+      <p>On-chain and Lightning balances for <span id="wallet-node-alias">your node</span>.</p>
     </div>
 
     <!-- Balance cards -->
@@ -756,6 +756,9 @@ if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+<script>
+fetch('/api/node').then(r => r.json()).then(d => { if (d.alias) document.getElementById('wallet-node-alias').textContent = d.alias; }).catch(() => {});
 </script>
 </body>
 </html>

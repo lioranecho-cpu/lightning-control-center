@@ -935,10 +935,10 @@ document.addEventListener('click', function(e) {
 function showPeerPolicy(scid, alias) {
   fetch('/api/chaninfo?scid=' + scid)
     .then(r=>r.json())
-    .then(data=>{
+    .then(async data=>{
       const p1 = data.node1_policy || {};
       const p2 = data.node2_policy || {};
-      const myPubkey = '03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1';
+      const myPubkey = await fetch('/api/node').then(r=>r.json()).then(d=>d.pubkey || '').catch(()=>'');
       const myPolicy = data.node1_pub === myPubkey ? p1 : p2;
       const theirPolicy = data.node1_pub === myPubkey ? p2 : p1;
       const peerMsg = 
@@ -1083,7 +1083,7 @@ function submitOpenChannel(){
       btn.disabled = false;
       btn.textContent = 'Open Channel';
       status.style.color = '#ef4444';
-      status.textContent = '❌ Connection error — check ProDesk is online';
+      status.textContent = '❌ Connection error — check your node is online';
     });
 }
 

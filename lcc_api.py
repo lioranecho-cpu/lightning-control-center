@@ -402,6 +402,53 @@ def run_lncli(*args):
 # Configurable so a container can point at its own binary, or none at all,
 # instead of assuming the ProDesk's snap install.
 BITCOIN_CLI_PATH = os.getenv("BITCOIN_CLI_PATH", "/snap/bitcoin-core/current/bin/bitcoin-cli")
+
+# --- Optional, machine-specific features: off unless set in .env ------------
+import shutil as _shutil
+import socket as _socket
+import re as _re_ff
+LCC_MINING_ENABLED = os.getenv("LCC_MINING_ENABLED", "") == "1"
+LCC_LIVE_STREAM_URL = os.getenv("LCC_LIVE_STREAM_URL", "").strip()
+LCC_POOL_URL = os.getenv("LCC_POOL_URL", "").strip()
+# Host services (systemctl) exist on bare-metal installs like the ProDesk, not
+# inside a StartOS/Umbrel container, where the node OS manages services.
+_HOST_SERVICES = _shutil.which("systemctl") is not None and os.getenv("LCC_HIDE_HOST_SERVICES", "") != "1"
+_ext_ip_cache = {"t": 0.0, "ip": None}
+
+
+def _local_ip():
+    try:
+        s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        s.connect(("192.0.2.1", 9))  # no packet is sent; just picks the outgoing interface
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
+
+
+def _external_ip():
+    now = time.time()
+    if now - _ext_ip_cache["t"] > 600:
+        try:
+            _ext_ip_cache["ip"] = requests.get("https://api.ipify.org", timeout=5).text.strip() or None
+        except Exception:
+            _ext_ip_cache["ip"] = None
+        _ext_ip_cache["t"] = now
+    return _ext_ip_cache["ip"]
+
+
+def _apply_feature_flags(html):
+    """Drop nav/palette entries for features this machine doesn't have."""
+    out = []
+    for line in html.split("\n"):
+        if ('data-feature="livestream"' in line or "/*lcc:livestream*/" in line) and not LCC_LIVE_STREAM_URL:
+            continue
+        if ('data-feature="mining"' in line or "/*lcc:mining*/" in line) and not LCC_MINING_ENABLED:
+            continue
+        out.append(line)
+    safe_url = _re_ff.sub(r"[^A-Za-z0-9:/._?=&%#-]", "", LCC_LIVE_STREAM_URL)
+    return "\n".join(out).replace("__LCC_LIVE_STREAM_URL__", safe_url)
 _bitcoin_cli_warned = False
 
 
@@ -451,6 +498,7 @@ def get_node_info():
         "alias": info.get("alias"),
         "pubkey": info.get("identity_pubkey"),
         "version": info.get("version"),
+        "uris": info.get("uris", []),
         "status": "online",
         "synced_to_chain": info.get("synced_to_chain"),
         "synced_to_graph": info.get("synced_to_graph"),
@@ -709,7 +757,17 @@ def get_mempool():
     if MOCK:
         return MOCK_DATA["mempool"]
     info = run_bitcoin_cli("getmempoolinfo")
-    size_mb = round(info.get("bytes", 0) / 1_000_000, 1)
+    if info and "bytes" in info:
+        size_mb = round(info.get("bytes", 0) / 1_000_000, 1)
+    else:
+        # No Bitcoin Core connection (e.g. StartOS/Umbrel) - use mempool.space,
+        # which this endpoint already relies on for fee rates.
+        size_mb = None
+        try:
+            _mp = requests.get("https://mempool.space/api/mempool", timeout=5).json()
+            size_mb = round(int(_mp.get("vsize", 0)) / 1_000_000, 1)
+        except Exception:
+            pass
     
     # Use mempool.space API for accurate real-time fee rates
     try:
@@ -722,6 +780,8 @@ def get_mempool():
         fee_info = run_bitcoin_cli("estimatesmartfee", "6")
         fee_sat_vbyte = round(fee_info.get("feerate", 0.00001) * 100_000_000 / 1000, 1)
     
+    if size_mb is None:
+        return {"size_mb": 0, "fee_sat_vbyte": fee_sat_vbyte, "congestion": "Unknown"}
     congestion = "Low" if size_mb < 5 else "Medium" if size_mb < 50 else "High"
     return {"size_mb": size_mb, "fee_sat_vbyte": fee_sat_vbyte, "congestion": congestion}
 
@@ -730,6 +790,15 @@ def get_mining():
     if MOCK:
         return MOCK_DATA["mining"]
     return {"miners": [], "total_hashrate": 0, "status": "not configured"}
+
+@app.get("/api/features")
+def get_features():
+    return {
+        "mining": LCC_MINING_ENABLED,
+        "live_stream_url": LCC_LIVE_STREAM_URL,
+        "pool_url": LCC_POOL_URL,
+        "host_services": _HOST_SERVICES,
+    }
 
 @app.get("/api/dashboard")
 def get_dashboard():
@@ -786,7 +855,7 @@ def get_transactions(limit: int = 10):
     # Get sent payments
     try:
         payments = run_lncli("listpayments", f"--max_payments={max(limit*10, 200) if limit > 0 else 2000}")
-        NODE_PUBKEY = "03ee97ebe8b3e50c6272c3b33c7d730ad6722016ecb2d5fbfe9b0b7595383307d1"
+        NODE_PUBKEY = (run_lncli("getinfo") or {}).get("identity_pubkey", "")
         # Build pubkey to alias map
         alias_map = {ch.get("remote_pubkey",""): ch.get("peer_alias","") for ch in run_lncli("listchannels").get("channels", [])}
         for p in payments.get("payments", []):
@@ -966,6 +1035,8 @@ def get_system():
         {"name": "Caddy", "desc": "Reverse proxy and HTTPS server", "unit": "caddy"},
     ]
     
+    if not _HOST_SERVICES:
+        services = []
     for svc in services:
         try:
             if svc["unit"] == "bitcoin-core-rpc":
@@ -1005,14 +1076,25 @@ def get_system():
         "kernel": kernel,
         "arch": arch,
         "services": services,
+        "services_managed": not _HOST_SERVICES,
+        "local_ip": _local_ip() if _HOST_SERVICES else None,
+        "external_ip": _external_ip(),
     }
+
+from fastapi.responses import HTMLResponse as _HTMLResponse
+
+
+@app.get("/static/sidebar.html")
+def sidebar_html():
+    return _HTMLResponse(_apply_feature_flags(open("sidebar.html", encoding="utf-8").read()))
+
 
 app.mount("/static", StaticFiles(directory="."), name="static")
 app.mount("/icons", StaticFiles(directory="icons"), name="icons")
 
 @app.get("/dashboard")
 def dashboard():
-    return FileResponse("index.html")
+    return _HTMLResponse(_apply_feature_flags(open("index.html", encoding="utf-8").read()))
 
 import hmac as _hmac
 import hashlib as _hashlib

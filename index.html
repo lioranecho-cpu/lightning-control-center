@@ -222,11 +222,11 @@
     <div class="nav-item" onclick="location.href='/static/journal.html'"><span class="icon"><img src="/icons/nodejournal.png" class="nav-icon" alt="nodejournal"><span class="nav-icon-emoji">&#128221;</span></span><span class="nav-label"> Node Journal</span></div>
     <div class="nav-item" onclick="location.href='/static/alerts.html'"><span class="icon"><img src="/icons/alerts.png" class="nav-icon" alt="alerts"><span class="nav-icon-emoji">&#128276;</span></span><span class="nav-label"> Alerts</span></div>
     <div class="nav-item" onclick="location.href='/static/treasury.html'"><span class="icon"><img src="/icons/treasury.png" class="nav-icon" alt="treasury"><span class="nav-icon-emoji">&#128176;</span></span><span class="nav-label"> Treasury</span></div>
-    <div class="nav-item" onclick="window.open('http://192.168.4.76:8001','LiveStream','width=1000,height=650,menubar=no,toolbar=no,location=no')" style="color:var(--green);"><span class="icon"><img src="/icons/livestream.png" class="nav-icon" alt="livestream"><span class="nav-icon-emoji">📡</span></span><span class="nav-label"> Live Stream</span></div>
+    <div class="nav-item" data-feature="livestream" onclick="window.open('__LCC_LIVE_STREAM_URL__','LiveStream','width=1000,height=650,menubar=no,toolbar=no,location=no')" style="color:var(--green);"><span class="icon"><img src="/icons/livestream.png" class="nav-icon" alt="livestream"><span class="nav-icon-emoji">📡</span></span><span class="nav-label"> Live Stream</span></div>
     <div class="nav-item" onclick="window.open('/static/strategy.html','lcc-strategy','width=900,height=650,resizable=yes')"><span class="icon"><img src="/icons/strategy.png" class="nav-icon" alt="strategy"><span class="nav-icon-emoji">📋</span></span><span class="nav-label"> Strategy</span></div>
     <div class="nav-item" onclick="location.href='/static/nwc.html'"><span class="icon"><img src="/icons/nwc.png" class="nav-icon" alt="nwc"><span class="nav-icon-emoji">&#128279;</span></span><span class="nav-label"> NWC <span style='font-size:9px;background:var(--orange-dim);border:1px solid var(--orange);color:var(--orange);padding:1px 5px;border-radius:10px;margin-left:4px;'>PRO</span></span></div>
     <div class="nav-section">System</div>
-    <div class="nav-item" onclick="location.href='/static/mining.html'"><span class="icon"><img src="/icons/mining.png" class="nav-icon" alt="mining"><span class="nav-icon-emoji">&#9935;</span></span><span class="nav-label"> Mining</span></div>
+    <div class="nav-item" data-feature="mining" onclick="location.href='/static/mining.html'"><span class="icon"><img src="/icons/mining.png" class="nav-icon" alt="mining"><span class="nav-icon-emoji">&#9935;</span></span><span class="nav-label"> Mining</span></div>
     <div class="nav-item" onclick="location.href='/static/system.html'"><span class="icon"><img src="/icons/system.png" class="nav-icon" alt="system"><span class="nav-icon-emoji">&#128421;</span></span><span class="nav-label"> System</span></div>
     <div class="nav-item" onclick="location.href='/static/integrations.html'"><span class="icon"><img src="/icons/integrations.png" class="nav-icon" alt="integrations"><span class="nav-icon-emoji">&#128279;</span></span><span class="nav-label"> Integrations</span></div>
     <div class="nav-item" onclick="window.open('https://satslist.shop','_blank')"><span class="icon"><img src="/icons/satslist.png" class="nav-icon" alt="satslist"><span class="nav-icon-emoji">&#128279;</span></span><span class="nav-label"> SatsList</span></div>
@@ -296,14 +296,14 @@
             <div class="health-score-label" id="health-score-label">Calculating...</div>
           </div>
           <div class="health-list">
-            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions">Bitcoin Core</span></span></span></span><span class="health-val ok">&#10003; Synced</span></div>
-            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments">LND / litd</span></span></span></span><span class="health-val ok">&#10003; Running</span></div>
-            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services">Lightning Terminal</span></span></span></span><span class="health-val ok">&#10003; Connected</span></div>
-            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Ride The Lightning — web interface for managing your LND node">RTL</span></span><span class="health-val ok">&#10003; Running</span></div>
-            <div class="health-item"><span class="health-label"><span class="tip" data-tip="Open source Lightning wallet platform running on your node">LNbits</span></span><span class="health-val ok">&#10003; Running</span></div>
-            <div class="health-item"><span class="health-label">Mining Pool</span><span class="health-val ok">&#10003; Active</span></div>
-            <div class="health-item"><span class="health-label">Uptime</span><span class="health-val ok" id="uptime-val">&#8212;</span></div>
-            <div class="health-item"><span class="health-label">Network IP</span><span class="health-val ok" id="ip-check-val">&#8212;</span></div>
+            <div class="health-item" data-hkey="bitcoin" data-points="20"><span class="health-label"><span class="tip" data-tip="Bitcoin Core is the full node that validates blocks and transactions">Bitcoin Core</span></span><span class="health-val" id="hv-bitcoin">&#8230;</span></div>
+            <div class="health-item" data-hkey="lnd" data-points="25"><span class="health-label"><span class="tip" data-tip="Lightning Network Daemon — manages your payment channels and routes Lightning payments">LND</span></span><span class="health-val" id="hv-lnd">&#8230;</span></div>
+            <div class="health-item" data-hkey="terminal" data-points="15"><span class="health-label"><span class="tip" data-tip="Lightning Terminal (litd) — combines LND with Loop, Pool and Faraday services">Lightning Terminal</span></span><span class="health-val" id="hv-terminal">&#8230;</span></div>
+            <div class="health-item" data-hkey="rtl" data-points="10"><span class="health-label"><span class="tip" data-tip="Ride The Lightning — web interface for managing your LND node">RTL</span></span><span class="health-val" id="hv-rtl">&#8230;</span></div>
+            <div class="health-item" data-hkey="lnbits" data-points="10"><span class="health-label"><span class="tip" data-tip="Open source Lightning wallet platform running on your node">LNbits</span></span><span class="health-val" id="hv-lnbits">&#8230;</span></div>
+            <div class="health-item" data-hkey="pool" data-points="10"><span class="health-label">Mining Pool</span><span class="health-val" id="hv-pool">&#8230;</span></div>
+            <div class="health-item" data-hkey="uptime" data-points="10"><span class="health-label">Uptime</span><span class="health-val ok" id="uptime-val">&#8212;</span></div>
+            <div class="health-item" data-hkey="netip"><span class="health-label">Network IP</span><span class="health-val ok" id="ip-check-val">&#8212;</span></div>
           </div>
         </div>
         <div class="panel">
@@ -312,7 +312,7 @@
         </div>
       </div>
     </div>
-    <div class="panel" style="margin-bottom:20px;">
+    <div class="panel" id="mining-panel" style="margin-bottom:20px;display:none;">
       <div class="panel-header"><h3>Mining Fleet</h3><span class="panel-meta" id="total-hashrate">&#8212;</span></div>
       <div class="mining-grid" id="mining-grid"></div>
     </div>
@@ -372,7 +372,8 @@ fetch(API).then(r=>r.json()).then(d=>{
   d.mining.miners.forEach(m=>{
     mg.innerHTML+='<div class="miner-card"><div class="miner-name">'+m.name+'</div><div class="miner-stat"><span>Hashrate</span><span>'+m.hashrate_th+' TH/s</span></div><div class="miner-stat"><span>Power</span><span>'+m.power_w+'W</span></div><div class="miner-stat"><span>IP</span><span>'+m.ip+'</span></div><div class="miner-stat"><span>Status</span><span style="color:var(--green)">Online</span></div></div>';
   });
-  document.getElementById('total-hashrate').textContent=d.mining.total_hashrate_th+' TH/s total';
+  document.getElementById('total-hashrate').textContent=(d.mining.total_hashrate_th ?? d.mining.total_hashrate ?? 0)+' TH/s total';
+  lccHealth(d.node);
 }).catch(e=>console.error('API error:',e));
 
   function openDonateModal(){document.getElementById('donate-modal').classList.add('show');}
@@ -464,7 +465,7 @@ const CMD_COMMANDS = [
   {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='/static/routing.html'},
   {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
   {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
-  {icon:'📡', label:'Live Stream', hint:'Open LCC Live HTLC Stream monitor', action:()=>window.open('http://192.168.4.76:8001','LiveStream','width=1000,height=650,menubar=no,toolbar=no')},
+  /*lcc:livestream*/{icon:'📡', label:'Live Stream', hint:'Open LCC Live HTLC Stream monitor', action:()=>window.open('__LCC_LIVE_STREAM_URL__','LiveStream','width=1000,height=650,menubar=no,toolbar=no')},
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
 
   // Shortcuts reference
@@ -561,21 +562,15 @@ function calcHealthScore(){
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community') return;
 
-  const checks = [
-    {label:'Bitcoin Core', selector:'.health-item:nth-child(1) .health-val', points:20},
-    {label:'LND / litd',   selector:'.health-item:nth-child(2) .health-val', points:25},
-    {label:'Lightning Terminal', selector:'.health-item:nth-child(3) .health-val', points:15},
-    {label:'RTL',          selector:'.health-item:nth-child(4) .health-val', points:10},
-    {label:'LNbits',       selector:'.health-item:nth-child(5) .health-val', points:10},
-    {label:'Mining Pool',  selector:'.health-item:nth-child(6) .health-val', points:10},
-    {label:'Uptime',       selector:'#uptime-val', points:10},
-  ];
-
-  let score = 0;
-  checks.forEach(c=>{
-    const el = document.querySelector(c.selector);
-    if(el && el.classList.contains('ok')) score += c.points;
+  let earned = 0, possible = 0;
+  document.querySelectorAll('.health-item[data-points]').forEach(row=>{
+    if(row.style.display === 'none') return;
+    const pts = parseInt(row.dataset.points, 10) || 0;
+    possible += pts;
+    const val = row.querySelector('.health-val');
+    if(val && val.classList.contains('ok')) earned += pts;
   });
+  const score = possible ? Math.round(earned / possible * 100) : 0;
 
   const wrap = document.getElementById('health-score-wrap');
   const num = document.getElementById('health-score-num');
@@ -605,9 +600,28 @@ function calcHealthScore(){
   badge.style.border = '1px solid ' + color + '44';
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
-  setTimeout(calcHealthScore, 800);
-});
+function lccHealth(node){
+  Promise.all([
+    fetch('/api/system').then(r=>r.json()).catch(()=>null),
+    fetch('/api/features').then(r=>r.json()).catch(()=>({}))
+  ]).then(([sys, feat])=>{
+    const set=(k,ok,text)=>{const el=document.getElementById('hv-'+k); if(!el) return; el.textContent=(ok?'\u2713 ':'\u2717 ')+text; el.className='health-val '+(ok?'ok':'bad'); el.style.color=ok?'':'var(--red)';};
+    const hide=k=>{const row=document.querySelector('.health-item[data-hkey="'+k+'"]'); if(row) row.style.display='none';};
+    set('lnd', !!(node && node.synced_to_chain), (node && node.synced_to_chain) ? 'Synced' : 'Not synced');
+    const svc=name=>((sys && sys.services) || []).find(s=>s.name===name);
+    if(sys && !sys.services_managed){
+      const b=svc('Bitcoin Core'); b ? set('bitcoin', b.active, b.active?'Running':'Stopped') : hide('bitcoin');
+      const l=svc('LND / litd'); l ? set('terminal', l.active, l.active?'Connected':'Stopped') : hide('terminal');
+      const r=svc('RTL'); r ? set('rtl', r.active, r.active?'Running':'Stopped') : hide('rtl');
+      const n=svc('LNbits'); n ? set('lnbits', n.active, n.active?'Running':'Stopped') : hide('lnbits');
+    } else {
+      ['bitcoin','terminal','rtl','lnbits','netip'].forEach(hide);
+    }
+    if(feat && feat.mining){ set('pool', true, 'Configured'); const mp=document.getElementById('mining-panel'); if(mp) mp.style.display=''; }
+    else hide('pool');
+    calcHealthScore();
+  });
+}
 </script>
 
 
