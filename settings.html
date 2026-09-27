@@ -324,6 +324,24 @@ fetch('/static/sidebar.html')
           </div>
         </div>
 
+        <!-- Channel peer auto-reconnect -->
+        <div class="panel">
+          <div class="panel-header"><h3>&#128279; Peer Connections</h3></div>
+          <div class="panel-body">
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Auto-reconnect channel peers <span style="color:var(--orange);font-size:11px;margin-left:6px;">Recommended for routing nodes</span></div>
+                <div class="toggle-sub">Every 30 minutes, reconnect to any channel peer that has gone offline. LND also retries on its own, but can back off for up to an hour between attempts. Off by default.</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="auto-reconnect" onchange="setAutoReconnect(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="feedback" id="reconnect-feedback"></div>
+          </div>
+        </div>
+
         <!-- Routing fee defaults -->
         <div class="panel">
           <div class="panel-header"><h3>&#128200; Default Fee Policy</h3></div>
@@ -882,6 +900,27 @@ function launchGame(){
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
   });
 })();
+</script>
+<script>
+(function(){
+  fetch('/api/settings/reconnect').then(function(r){return r.json();}).then(function(d){
+    var el = document.getElementById('auto-reconnect');
+    if (el) el.checked = !!d.enabled;
+  }).catch(function(){});
+})();
+function setAutoReconnect(on){
+  var fb = document.getElementById('reconnect-feedback');
+  fetch('/api/settings/reconnect', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({enabled:on})})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(d){
+      if (fb) { fb.textContent = d.enabled ? '\u2705 Auto-reconnect on' : 'Auto-reconnect off'; fb.className = 'feedback ok'; setTimeout(function(){ fb.textContent=''; }, 2000); }
+    })
+    .catch(function(){
+      var el = document.getElementById('auto-reconnect');
+      if (el) el.checked = !on;
+      if (fb) { fb.textContent = '\u274c Could not save'; fb.className = 'feedback'; }
+    });
+}
 </script>
 </body>
 </html>

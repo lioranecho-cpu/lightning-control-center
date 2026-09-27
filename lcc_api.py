@@ -1511,6 +1511,23 @@ def set_rebalance_schedule(hours: int = 24, amount: int = 50000):
         json.dump(data, f, indent=2)
     return {"auto_rebalance_hours": hours, "rebalance_amount": amount, "status": "updated"}
 
+
+@app.get("/api/settings/reconnect")
+def get_reconnect_setting():
+    return {"enabled": _auto_reconnect_enabled()}
+
+
+@app.post("/api/settings/reconnect")
+def set_reconnect_setting(body: dict = Body(...)):
+    try:
+        data = json.load(open(_DATA_JSON_PATH))
+    except Exception:
+        data = {}
+    data["auto_reconnect_enabled"] = bool(body.get("enabled", False))
+    with open(_DATA_JSON_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    return {"enabled": data["auto_reconnect_enabled"], "status": "updated"}
+
 @app.get("/api/journal")
 def get_journal():
     import os
@@ -2549,12 +2566,23 @@ roi_thread = threading.Thread(target=roi_tracker_worker, daemon=True)
 roi_thread.start()
 
 
+def _auto_reconnect_enabled():
+    """Off unless the user turns it on. LND already retries channel peers
+    by itself; this is an optional, faster nudge for routing nodes."""
+    try:
+        return bool(json.load(open(_DATA_JSON_PATH)).get("auto_reconnect_enabled", False))
+    except Exception:
+        return False
+
+
 def auto_reconnect_worker():
-    """Reconnect disconnected channel peers every 30 minutes"""
+    """Reconnect disconnected channel peers every 30 minutes, when enabled"""
     import time
     while True:
         try:
             threading.Event().wait(1800)  # Wait 30 minutes
+            if not _auto_reconnect_enabled():
+                continue
             channels = run_lncli("listchannels")
             peers = run_lncli("listpeers")
             connected_pubkeys = set(p.get("pub_key", "") for p in peers.get("peers", []))
