@@ -245,6 +245,7 @@ fetch('/static/sidebar.html')
 </div>
 <div class="panel-header"><h3>&#128274; Security</h3></div>
           <div class="panel-body">
+<div id="pw-change-section">
             <div class="form-group">
               <label class="form-label">Current Password</label>
               <input class="form-input" type="password" id="current-pw" placeholder="Enter current password" />
@@ -259,6 +260,8 @@ fetch('/static/sidebar.html')
             </div>
             <button class="btn btn-orange" onclick="changePassword()">Update Password</button>
             <div class="feedback" id="pw-feedback"></div>
+            </div>
+            <div id="pw-managed-note" class="toggle-sub" style="display:none;line-height:1.6;">Your password is managed by your server. On StartOS use <b>Actions &rarr; Show Login Password</b> or <b>Reset Login Password</b>.</div>
             <div style="border-top:1px solid var(--border);margin:20px 0 16px;"></div>
             <div class="form-group" id="nostr-login-panel">
               <label class="form-label">&#9889; Nostr Login (npub)</label>
@@ -558,18 +561,29 @@ function changePassword() {
   const newPw = document.getElementById('new-pw').value;
   const confirm = document.getElementById('confirm-pw').value;
   const fb = document.getElementById('pw-feedback');
+  fb.style.height = 'auto';
 
   if(!current || !newPw || !confirm) { fb.textContent = 'All fields required'; fb.className = 'feedback err'; return; }
   if(newPw !== confirm) { fb.textContent = 'Passwords do not match'; fb.className = 'feedback err'; return; }
-  if(newPw.length < 6) { fb.textContent = 'Password must be at least 6 characters'; fb.className = 'feedback err'; return; }
+  if(newPw.length < 8) { fb.textContent = 'Password must be at least 8 characters'; fb.className = 'feedback err'; return; }
 
-  // Phase 2: verify current password via backend
-  // For now: remind user to update login.html manually
-  fb.innerHTML = '&#9888; Update <code>LCC_PASSWORD_HASH</code> in login.html and restart. Phase 2 will automate this.';
-  fb.className = 'feedback err';
-  fb.style.color = 'var(--yellow)';
-  fb.style.height = 'auto';
+  fetch('/api/settings/password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({current: current, new: newPw})})
+    .then(async r => { const d = await r.json().catch(() => ({})); if(!r.ok) throw new Error(d.detail || 'Could not change password'); return d; })
+    .then(() => {
+      ['current-pw','new-pw','confirm-pw'].forEach(id => document.getElementById(id).value = '');
+      fb.textContent = '\u2705 Password updated. Other devices have been signed out.';
+      fb.className = 'feedback ok';
+    })
+    .catch(err => { fb.textContent = '\u274c ' + err.message; fb.className = 'feedback err'; });
 }
+
+fetch('/api/settings/password').then(r => r.json()).then(d => {
+  if(!d.managed) return;
+  const sec = document.getElementById('pw-change-section');
+  const note = document.getElementById('pw-managed-note');
+  if(sec) sec.style.display = 'none';
+  if(note) note.style.display = 'block';
+}).catch(() => {});
 
 function saveRebalanceSchedule(){
   const tier = window.LCC_TIER || 'community';

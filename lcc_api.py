@@ -1022,7 +1022,7 @@ _LCC_PASSWORD = os.environ.get("LCC_PASSWORD", "")
 _LCC_SESSION_SECRET = os.environ.get("LCC_SESSION_SECRET", "")
 _SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 _SESSION_HOURS_ALLOWED = (1, 2, 4, 8, 24, 168, 720)
-_session_cfg_cache = {"mtime": None, "hours": 720, "browser_only": False}
+_session_cfg_cache = {"mtime": None, "hours": 720, "browser_only": False, "valid_after": 0}
 
 
 def _session_cfg():
@@ -1034,6 +1034,7 @@ def _session_cfg():
             hours = data.get("session_hours", 720)
             _session_cfg_cache["hours"] = hours if hours in _SESSION_HOURS_ALLOWED else 720
             _session_cfg_cache["browser_only"] = bool(data.get("session_browser_only", False))
+            _session_cfg_cache["valid_after"] = int(data.get("sessions_valid_after", 0) or 0)
             _session_cfg_cache["mtime"] = mtime
     except Exception:
         pass
@@ -1063,9 +1064,55 @@ def _verify_session_token(token):
             return False
         if int(_time_auth.time()) - int(ts) > _session_max_age():
             return False
+        if int(ts) < _session_cfg()["valid_after"]:
+            return False
         return True
     except Exception:
         return False
+
+_PW_ITERATIONS = 200_000
+_PASSWORD_MANAGED = os.environ.get("LCC_PASSWORD_MANAGED", "") == "1"
+
+
+def _env_pw_fingerprint():
+    return _hashlib.sha256(_LCC_PASSWORD.encode()).hexdigest() if _LCC_PASSWORD else ""
+
+
+def _hash_password(pw):
+    salt = secrets.token_hex(16)
+    dk = _hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), _PW_ITERATIONS).hex()
+    return f"pbkdf2_sha256${_PW_ITERATIONS}${salt}${dk}"
+
+
+def _check_password_hash(pw, stored):
+    try:
+        _, iters, salt, dk = stored.split("$")
+        test = _hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), int(iters)).hex()
+        return _hmac.compare_digest(test, dk)
+    except Exception:
+        return False
+
+
+def _stored_password_hash():
+    if _PASSWORD_MANAGED:
+        return None
+    try:
+        data = json.load(open(_DATA_JSON_PATH))
+    except Exception:
+        return None
+    h = data.get("lcc_password_hash")
+    if h and data.get("lcc_password_env_fp") == _env_pw_fingerprint():
+        return h
+    return None
+
+
+def _password_ok(pw):
+    pw = str(pw or "")
+    stored = _stored_password_hash()
+    if stored:
+        return _check_password_hash(pw, stored)
+    return bool(_LCC_PASSWORD) and _hmac.compare_digest(pw.encode(), _LCC_PASSWORD.encode())
+
 
 _PUBLIC_AUTH_PATHS = {"/api/login", "/login", "/api/nostr/status", "/api/nostr/challenge", "/api/nostr/login"}
 
@@ -1088,7 +1135,7 @@ def login_page():
 @app.post("/api/login")
 def api_login(body: dict = Body(...)):
     password = body.get("password", "")
-    if not _LCC_PASSWORD or not _hmac.compare_digest(password, _LCC_PASSWORD):
+    if not _password_ok(password):
         raise HTTPException(status_code=401, detail="Invalid password")
     token = _make_session_token()
     resp = JSONResponse({"status": "ok"})
@@ -1255,6 +1302,32 @@ def set_session_settings(body: dict = Body(...)):
     with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
     return {"hours": hours, "browser_only": data["session_browser_only"]}
+
+
+@app.get("/api/settings/password")
+def get_password_settings():
+    return {"managed": _PASSWORD_MANAGED}
+
+
+@app.post("/api/settings/password")
+def change_password(body: dict = Body(...)):
+    if _PASSWORD_MANAGED:
+        raise HTTPException(status_code=403, detail="The password is managed by your server (use its Reset Login Password action)")
+    current = str(body.get("current", ""))
+    new = str(body.get("new", ""))
+    if not _password_ok(current):
+        raise HTTPException(status_code=401, detail="Current password is wrong")
+    if len(new) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    data = json.load(open(_DATA_JSON_PATH))
+    data["lcc_password_hash"] = _hash_password(new)
+    data["lcc_password_env_fp"] = _env_pw_fingerprint()
+    data["sessions_valid_after"] = int(_time_auth.time())
+    data.pop("lcc_password", None)
+    data.pop("first_boot_password", None)
+    with open(_DATA_JSON_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    return _session_cookie_response()
 
 @app.post("/api/openchannel")
 @limiter.limit("3/minute")
