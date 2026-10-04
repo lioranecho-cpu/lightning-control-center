@@ -11,6 +11,15 @@ load_dotenv()
 # used. Unset means identical behaviour to before.
 LCC_DATA_DIR = os.environ.get("LCC_DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
 _DATA_JSON_PATH = os.path.join(LCC_DATA_DIR, "data.json")
+# A fresh install has no data.json yet; create an empty one so every place
+# that reads it works from the very first start (StartOS, Umbrel, Docker).
+try:
+    os.makedirs(LCC_DATA_DIR, exist_ok=True)
+    if not os.path.exists(_DATA_JSON_PATH):
+        with open(_DATA_JSON_PATH, "w") as _f:
+            _f.write("{}")
+except Exception as _e:
+    print(f"[lcc] warning: could not create {_DATA_JSON_PATH}: {_e}")
 import time
 from datetime import datetime, timezone
 import time as time_module
