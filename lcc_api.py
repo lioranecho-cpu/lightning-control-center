@@ -1403,7 +1403,7 @@ def get_password_settings():
 @app.post("/api/settings/password")
 def change_password(body: dict = Body(...)):
     if _PASSWORD_MANAGED:
-        raise HTTPException(status_code=403, detail="The password is managed by your server (use its Reset Login Password action)")
+        raise HTTPException(status_code=403, detail="The password is managed by your node's operating system. On StartOS, use Actions → Set Login Password.")
     current = str(body.get("current", ""))
     new = str(body.get("new", ""))
     if not _password_ok(current):
