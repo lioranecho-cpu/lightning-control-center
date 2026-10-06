@@ -306,6 +306,10 @@
             <div class="health-item" data-hkey="netip"><span class="health-label">Network IP</span><span class="health-val ok" id="ip-check-val">&#8212;</span></div>
           </div>
         </div>
+        <div class="panel" id="inbound-panel">
+          <div class="panel-header"><h3><span class="tip" data-tip="How easily others can pay you: how much room your peers have to send to you, and what they charge.">Inbound Health</span></h3><span id="ib-badge" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;">…</span></div>
+          <div id="ib-body" style="padding:12px 16px;font-size:12px;color:var(--muted);">Loading…</div>
+        </div>
         <div class="panel">
           <div class="panel-header"><h3>Recent Activity</h3><a class="view-all" href="/static/journal.html">View All &#8594;</a></div>
           <div class="activity-list" id="activity-list"></div>
@@ -807,6 +811,42 @@ if(typeof logout === 'undefined') function logout(){fetch('/api/logout', {method
     else if(onclick.includes('system') && path.includes('system')) item.classList.add('active');
     else if(onclick.includes('settings') && path.includes('settings')) item.classList.add('active');
     else if(onclick.includes('journal') && path.includes('journal')) item.classList.add('active');
+  });
+})();
+</script>
+<script>
+// Inbound Health
+(function(){
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const short = n => { n = Number(n || 0); return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n); };
+  fetch('/api/inbound-health').then(r => r.json()).then(d => {
+    const body = document.getElementById('ib-body');
+    const badge = document.getElementById('ib-badge');
+    if(!body || !badge) return;
+    const col = {green:'#22c55e', yellow:'#eab308', red:'#ef4444'}[d.status] || '#888';
+    const dot = {green:'🟢', yellow:'🟡', red:'🔴'}[d.status] || '';
+    badge.textContent = dot + ' ' + (d.label || '');
+    badge.style.background = col + '22'; badge.style.color = col; badge.style.border = '1px solid ' + col + '44';
+    let html = '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Room to receive</span><span style="color:var(--text);font-family:var(--mono);">' + short(d.total_room) + ' sats (' + (d.room_pct || 0) + '%)</span></div>';
+    if(d.top_peer) html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Largest share</span><span style="color:var(--text);">' + esc(d.top_peer) + ' · ' + d.top_share + '%</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:10px;"><span>Senders (7d) nearly full</span><span style="color:' + (d.low_senders ? '#ef4444' : 'var(--text)') + ';">' + d.low_senders + ' of ' + d.senders + '</span></div>';
+    const rows = (d.channels || []).slice(0, 6);
+    html += rows.map(r => {
+      const pct = Math.max(0, Math.min(100, r.room_pct || 0));
+      const warn = r.sent_7d > 0 && pct < 10;
+      const barCol = pct < 10 ? '#ef4444' : pct < 30 ? '#eab308' : '#22c55e';
+      return '<div style="margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;"><span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (warn ? '⚠️ ' : '') + esc(r.alias) + '</span>' +
+        '<span style="font-family:var(--mono);white-space:nowrap;">' + short(r.room) + (r.peer_ppm != null ? ' · ' + r.peer_ppm + ' ppm' : '') + '</span></div>' +
+        '<div style="height:5px;border-radius:3px;background:var(--surface2);margin-top:3px;"><div style="height:100%;width:' + pct + '%;border-radius:3px;background:' + barCol + ';"></div></div>' +
+      '</div>';
+    }).join('');
+    html += '<div style="font-size:10.5px;line-height:1.5;margin-top:6px;">Bar = room that peer has to send to you · ppm = what it charges you. Busiest senders first.</div>';
+    html += (d.hints || []).map(h => '<div style="margin-top:8px;font-size:11.5px;line-height:1.5;color:var(--text);">💡 ' + esc(h) + '</div>').join('');
+    body.innerHTML = html;
+  }).catch(() => {
+    const body = document.getElementById('ib-body');
+    if(body) body.textContent = 'Could not load inbound health.';
   });
 })();
 </script>

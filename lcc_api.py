@@ -1664,6 +1664,96 @@ def get_strategy():
     return {"channels": results, "fee_rate": fee_rate, "watch_days": _STRAT_WATCH_DAYS}
 
 
+@app.get("/api/inbound-health")
+def inbound_health():
+    """How easily this node can be paid: room each peer has to send to us, what they charge, who sends."""
+    channels = run_lncli("listchannels").get("channels", [])
+    try:
+        my_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
+    except Exception:
+        my_pubkey = ""
+    in_7d = {}
+    try:
+        start_7d = int(time.time()) - 7 * 86400
+        fwd = run_lncli("fwdinghistory", f"--start_time={start_7d}", "--max_events=50000")
+        for ev in fwd.get("forwarding_events", []):
+            ci = str(ev.get("chan_id_in", ""))
+            in_7d[ci] = in_7d.get(ci, 0) + int(ev.get("amt_in", 0) or 0)
+    except Exception as e:
+        print(f"[inbound] fwdinghistory failed: {e}")
+
+    rows, by_peer = [], {}
+    total_cap = total_room = cheap_room = 0
+    for ch in channels:
+        if not ch.get("active", True):
+            continue
+        cap = int(ch.get("capacity", 0) or 0)
+        room = int(ch.get("remote_balance", 0) or 0)
+        scid = str(ch.get("scid") or ch.get("chan_id", ""))
+        pk = ch.get("remote_pubkey", "")
+        peer_ppm, peer_base = None, None
+        try:
+            info = run_lncli("getchaninfo", f"--chan_id={scid}")
+            pol = info.get("node2_policy", {}) if info.get("node1_pub") == my_pubkey else info.get("node1_policy", {})
+            peer_ppm = int(pol.get("fee_rate_milli_msat", 0) or 0)
+            peer_base = int(pol.get("fee_base_msat", 0) or 0)
+        except Exception:
+            pass
+        sent = in_7d.get(scid, 0)
+        total_cap += cap
+        total_room += room
+        if peer_ppm is not None and peer_ppm <= 200:
+            cheap_room += room
+        p = by_peer.setdefault(pk, {"alias": ch.get("peer_alias", pk[:12]), "room": 0})
+        p["room"] += room
+        rows.append({
+            "alias": ch.get("peer_alias", pk[:12]),
+            "capacity": cap,
+            "room": room,
+            "room_pct": round(room / cap * 100) if cap else 0,
+            "peer_ppm": peer_ppm,
+            "peer_base_msat": peer_base,
+            "sent_7d": sent,
+        })
+
+    senders = sorted([r for r in rows if r["sent_7d"] > 0], key=lambda r: -r["sent_7d"])
+    low_senders = [r for r in senders if r["room_pct"] < 10]
+    top_peer = max(by_peer.values(), key=lambda p: p["room"]) if by_peer else None
+    top_share = round(top_peer["room"] / total_room * 100) if (top_peer and total_room) else 0
+
+    if senders and len(low_senders) >= max(1, (len(senders) + 1) // 2) or top_share >= 60:
+        status, label = "red", "Hard to reach"
+    elif low_senders or top_share >= 40:
+        status, label = "yellow", "Tight"
+    else:
+        status, label = "green", "Easy to reach"
+
+    hints = []
+    if low_senders:
+        names = ", ".join(r["alias"] for r in low_senders[:3])
+        hints.append(f"Busy senders nearly full ({names}): give them a low fee (Drain & Trap) so traffic leaves through them and frees room.")
+    if top_share >= 40 and top_peer:
+        hints.append(f"{top_share}% of your room to receive sits with {top_peer['alias']}. Inbound from more peers (channels opened to you) makes you easier to pay.")
+    if not hints:
+        hints.append("Room to receive is spread well across your senders.")
+
+    rows.sort(key=lambda r: (-r["sent_7d"], -r["room"]))
+    return {
+        "status": status,
+        "label": label,
+        "total_room": total_room,
+        "total_capacity": total_cap,
+        "room_pct": round(total_room / total_cap * 100) if total_cap else 0,
+        "cheap_room": cheap_room,
+        "top_peer": top_peer["alias"] if top_peer else "",
+        "top_share": top_share,
+        "senders": len(senders),
+        "low_senders": len(low_senders),
+        "hints": hints,
+        "channels": rows,
+    }
+
+
 @app.post("/api/rebalance-targeted")
 def rebalance_targeted(body: dict = Body(...)):
     if MOCK:
