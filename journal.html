@@ -115,6 +115,31 @@
     .search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;margin-bottom:16px;}
     .search-input:focus{border-color:var(--orange-dim);}
 
+    /* Journal clean-up: filter chips, days, bundles */
+    .jchips{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 16px;}
+    .jchip{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-family:var(--font);cursor:pointer;transition:all .15s;}
+    .jchip span{opacity:.7;font-family:var(--mono);font-size:11px;margin-left:2px;}
+    .jchip:hover{color:var(--text);border-color:var(--orange-dim);}
+    .jchip.on{background:rgba(247,147,26,.12);border-color:var(--orange-dim);color:var(--orange);}
+    .jday{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .jday>summary{list-style:none;cursor:pointer;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .jday>summary::-webkit-details-marker{display:none;}
+    .jday>summary::before{content:'\25B8';color:var(--muted);transition:transform .15s;}
+    .jday[open]>summary::before{transform:rotate(90deg);}
+    .jday-date{font-weight:600;font-size:13px;}
+    .jday-sum{font-size:12px;color:var(--muted);}
+    .jday-body{display:flex;flex-direction:column;gap:10px;padding:0 12px 12px;}
+    .jbundle{border:1px dashed var(--border);border-radius:8px;}
+    .jbundle>summary{cursor:pointer;padding:9px 12px;font-size:12.5px;color:var(--muted);list-style:none;}
+    .jbundle>summary::-webkit-details-marker{display:none;}
+    .jbundle[open]>summary{color:var(--text);}
+    .jbundle-body{display:flex;flex-direction:column;gap:8px;padding:0 8px 8px;}
+    .entry-card.compact{padding:10px 12px;}
+    .entry-card.compact .entry-title{font-size:13px;}
+    .entry-card.compact .entry-body{margin-bottom:6px;font-size:12px;}
+    .jmore{width:100%;padding:10px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;}
+    .jmore:hover{color:var(--orange);border-color:var(--orange-dim);}
+
     .empty-journal{padding:40px;text-align:center;color:var(--muted);font-size:13px;line-height:1.8;}
 
     /* Status bar */
@@ -295,6 +320,7 @@ fetch('/static/sidebar.html')
 
         <!-- Search -->
         <input class="search-input" id="search-input" placeholder="&#128269; Search journal..." oninput="filterEntries()" />
+        <div class="jchips" id="journal-chips"></div>
 
         <!-- Entries -->
         <div class="entries-list" id="entries-list">
@@ -434,7 +460,7 @@ function clearForm() {
 }
 
 function deleteEntry(id) {
-  const entries = getEntries().filter(e => e.id !== id);
+  const entries = getEntries().filter(e => String(e.id) !== String(id));
   saveEntries(entries);
   renderEntries();
 }
@@ -450,13 +476,111 @@ function filterEntries() {
   renderEntries(document.getElementById('search-input').value.toLowerCase());
 }
 
+// ── Journal clean-up: categories, days, bundles ──
+let _jFilter = 'all';
+let _jDays = 7;
+const _jOpen = {};
+const _J_CATS = [['all','All'],['notes','📝 My notes'],['rebalance','🔀 Rebalance'],['fees','💰 Fees'],['loop','🔄 Loop'],['alerts','⚠️ Alerts']];
+const _J_ROBOT = {'auto-fee':'💰 Auto Fee adjusted', 'auto-rebalance':'🔀 Auto-rebalance', 'roi-tracker':'📊 ROI checks'};
+
+function _esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function _jCat(e){
+  const title = e.title || '', tag = e.tag || 'note';
+  if(/loop/i.test(title)) return 'loop';
+  if(tag === 'auto-fee') return 'fees';
+  if(tag === 'auto-rebalance' || tag === 'roi-tracker' || /rebalanc/i.test(title)) return 'rebalance';
+  if(tag === 'warning' || tag === 'incident' || tag === 'system') return 'alerts';
+  return 'notes';
+}
+
+function _jTime(e){ const d = new Date(e.date || e.timestamp || 0); return isNaN(d) ? 0 : d.getTime(); }
+function _jDayKey(ms){ const d = new Date(ms); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _jDayLabel(key){
+  const today = _jDayKey(Date.now()), yest = _jDayKey(Date.now() - 86400000);
+  if(key === today) return 'Today';
+  if(key === yest) return 'Yesterday';
+  const p = key.split('-');
+  return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+}
+
+function _jSummary(list){
+  let rebal = 0, rebalFee = 0, rebalFail = 0, fees = 0, loops = 0, notes = 0, alerts = 0;
+  list.forEach(e => {
+    const c = _jCat(e), title = e.title || '';
+    if(c === 'fees') fees++;
+    else if(c === 'loop') loops++;
+    else if(c === 'alerts') alerts++;
+    else if(c === 'notes') notes++;
+    else if(e.tag === 'auto-rebalance' && /fail/i.test(title)) rebalFail++;
+    else if(c === 'rebalance' && e.tag !== 'roi-tracker'){
+      rebal++;
+      const m = String(e.body || '').match(/Fee:\s*([\d,]+)\s*sats/i);
+      if(m) rebalFee += parseInt(m[1].replace(/,/g,''), 10);
+    }
+  });
+  const parts = [list.length + (list.length === 1 ? ' entry' : ' entries')];
+  if(rebal) parts.push(rebal + ' rebalance' + (rebal === 1 ? '' : 's') + (rebalFee ? ' (−' + rebalFee.toLocaleString() + ' sats)' : ''));
+  if(rebalFail) parts.push(rebalFail + ' failed');
+  if(fees) parts.push(fees + ' fee change' + (fees === 1 ? '' : 's'));
+  if(loops) parts.push(loops + ' Loop');
+  if(alerts) parts.push(alerts + ' alert' + (alerts === 1 ? '' : 's'));
+  if(notes) parts.push(notes + ' note' + (notes === 1 ? '' : 's'));
+  return parts.join(' · ');
+}
+
+function _jCard(e, compact){
+  const when = new Date(_jTime(e));
+  const time = compact ? when.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : when.toLocaleString();
+  const body = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
+  const tag = String(e.tag || 'note').replace(/[^a-z0-9-]/gi, '');
+  const blk = e.block && e.block !== '—' && e.block !== 0 ? 'Block ' + _esc(e.block) : '';
+  return `<div class="entry-card${compact ? ' compact' : ''}" data-id="${_esc(e.id)}" onclick="openEntry(this.dataset.id)" style="cursor:pointer;">
+    <div class="entry-header">
+      <div>
+        <div class="entry-title">${_esc(e.title)}</div>
+        <div class="entry-meta">${_esc(time)}</div>
+      </div>
+      <button class="delete-btn" onclick="event.stopPropagation();deleteEntry(this.closest('.entry-card').dataset.id)" title="Delete entry">&#128465;</button>
+    </div>
+    ${body ? `<div class="entry-body">${_esc(body)}</div>` : ''}
+    <div class="entry-footer">
+      <span class="entry-tag ${tag}">${_esc(e.tag || 'note')}</span>
+      <span class="entry-block">${blk}</span>
+    </div>
+  </div>`;
+}
+
+function _jDayBody(dayKey, list){
+  // Bundle runs of 3+ robot entries of the same kind into one expandable row
+  let html = '', i = 0;
+  while(i < list.length){
+    const tag = list[i].tag;
+    let j = i;
+    while(j < list.length && list[j].tag === tag) j++;
+    const run = list.slice(i, j);
+    if(_J_ROBOT[tag] && run.length >= 3){
+      const key = dayKey + ':' + tag + ':' + i;
+      const open = _jOpen[key] ? ' open' : '';
+      html += `<details class="jbundle"${open} ontoggle="_jOpen['${key}']=this.open">
+        <summary>${_J_ROBOT[tag]} · ${run.length} entries · ${_esc(_jSummary(run).split(' · ').slice(1).join(' · ') || 'details')}</summary>
+        <div class="jbundle-body">${run.map(e => _jCard(e, true)).join('')}</div>
+      </details>`;
+    } else {
+      html += run.map(e => _jCard(e, !!_J_ROBOT[e.tag])).join('');
+    }
+    i = j;
+  }
+  return html;
+}
+
+function setJournalFilter(c){
+  _jFilter = c;
+  filterEntries();
+}
+
 function renderEntries(search = '') {
   const entries = getEntries();
-  const filtered = search
-    ? entries.filter(e => e.title.toLowerCase().includes(search) || e.body.toLowerCase().includes(search) || e.tag.includes(search))
-    : entries;
-
-  const list = document.getElementById('entries-list');
 
   // Update stats
   document.getElementById('stat-total').textContent = entries.length;
@@ -465,29 +589,47 @@ function renderEntries(search = '') {
   document.getElementById('stat-milestone').textContent = entries.filter(e=>e.tag==='milestone').length;
   document.getElementById('stat-incident').textContent = entries.filter(e=>e.tag==='incident').length;
 
+  // Filter chips with counts (hide empty categories)
+  const counts = {};
+  entries.forEach(e => { const c = _jCat(e); counts[c] = (counts[c] || 0) + 1; });
+  const chips = document.getElementById('journal-chips');
+  if(chips) chips.innerHTML = _J_CATS.map(([k, label]) => {
+    const n = k === 'all' ? entries.length : (counts[k] || 0);
+    if(k !== 'all' && !n) return '';
+    return `<button class="jchip${_jFilter === k ? ' on' : ''}" onclick="setJournalFilter('${k}')">${label} <span>${n}</span></button>`;
+  }).join('');
+
+  let filtered = entries.filter(e => _jFilter === 'all' || _jCat(e) === _jFilter);
+  if(search) filtered = filtered.filter(e => ((e.title||'') + ' ' + (e.body||'') + ' ' + (e.tag||'')).toLowerCase().includes(search));
+
+  const list = document.getElementById('entries-list');
   if(filtered.length === 0) {
-    list.innerHTML = '<div class="empty-journal">' + (search ? '&#128269; No entries match your search.' : '&#128221; No journal entries yet.<br>Start logging your node journey above!') + '</div>';
+    list.innerHTML = '<div class="empty-journal">' + (search || _jFilter !== 'all' ? '&#128269; No entries match.' : '&#128221; No journal entries yet.<br>Start logging your node journey above!') + '</div>';
     return;
   }
 
-  list.innerHTML = filtered.map(e => {
-    const date = new Date(e.date || e.timestamp).toLocaleString();
-    const bodyPreview = e.body ? e.body.slice(0, 200) + (e.body.length > 200 ? '...' : '') : '';
-    return `<div class="entry-card" onclick="openEntry('${e.id}')" style="cursor:pointer;">
-      <div class="entry-header">
-        <div>
-          <div class="entry-title">${e.title}</div>
-          <div class="entry-meta">${date}</div>
-        </div>
-        <button class="delete-btn" onclick="event.stopPropagation();deleteEntry(${e.id})" title="Delete entry">&#128465;</button>
-      </div>
-      ${bodyPreview ? `<div class="entry-body">${bodyPreview}</div>` : ''}
-      <div class="entry-footer">
-        <span class="entry-tag ${e.tag}">${e.tag}</span>
-        <span class="entry-block">Block ${e.block}</span>
-      </div>
-    </div>`;
+  // Group by day, newest first
+  const sorted = filtered.slice().sort((a, b) => _jTime(b) - _jTime(a));
+  const days = [], byDay = {};
+  sorted.forEach(e => {
+    const k = _jDayKey(_jTime(e));
+    if(!byDay[k]){ byDay[k] = []; days.push(k); }
+    byDay[k].push(e);
+  });
+
+  const today = _jDayKey(Date.now());
+  const shown = search ? days : days.slice(0, _jDays);
+  let html = shown.map(k => {
+    const open = (k in _jOpen) ? _jOpen[k] : (k === today || !!search || shown.length === 1);
+    return `<details class="jday"${open ? ' open' : ''} ontoggle="_jOpen['${k}']=this.open">
+      <summary><span class="jday-date">${_jDayLabel(k)}</span><span class="jday-sum">${_esc(_jSummary(byDay[k]))}</span></summary>
+      <div class="jday-body">${_jDayBody(k, byDay[k])}</div>
+    </details>`;
   }).join('');
+  if(shown.length < days.length) {
+    html += `<button class="jmore" onclick="_jDays += 7; filterEntries();">Show older days (${days.length - shown.length} more)</button>`;
+  }
+  list.innerHTML = html;
 }
 
 // Initial render
