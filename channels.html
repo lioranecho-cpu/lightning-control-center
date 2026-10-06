@@ -281,7 +281,7 @@ fetch('/static/sidebar.html')
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
       <button onclick="openTargetedRebalance()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">&#127919; Targeted Rebalance</button>
       <button onclick="rebalanceNow()" id="rebalance-btn" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">⚖️ Rebalance All Channels</button>
-      <button onclick="window.open('/static/loop-monitor.html','lcc-loop-monitor','width=700,height=500,resizable=yes')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">🔄 Loop Monitor</button>
+      <button data-loop="1" onclick="window.open('/static/loop-monitor.html','lcc-loop-monitor','width=700,height=500,resizable=yes')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">🔄 Loop Monitor</button>
       <span id="rebalance-status" style="margin-left:12px;font-size:11px;color:var(--muted);align-self:center;"></span>
     </div>
     <div class="tabs">
@@ -448,7 +448,8 @@ fetch(API).then(r=>r.json()).then(d=>{
           <button class="action-btn" onclick="rebalanceChannel('${ch.remote_pubkey}','${ch.peer_alias}')">Rebalance</button>
           <button class="action-btn" onclick="showPeerPolicy('${ch.scid}','${ch.peer_alias}')">Peer Policy</button>
           <button class="action-btn" onclick="openStrategyModal('${ch.channel_point}','${ch.peer_alias}')">⚡ Strategy</button>
-          <button class="action-btn" onclick="openLoopOut('${ch.scid}','${ch.peer_alias}',${ch.local_balance})">🔄 Loop Out</button>
+          <button class="action-btn" data-loop="1" onclick="openLoopOut('${ch.scid}','${ch.peer_alias}',${ch.local_balance})">🔄 Loop Out</button>
+          <button class="action-btn" data-loop="1" onclick="openLoopIn('${ch.remote_pubkey}','${ch.peer_alias}',${ch.local_balance},${ch.fee_ppm})">⬇️ Loop In</button>
           <button class="action-btn danger" onclick="closeChannelConfirm('${ch.channel_point}','${ch.peer_alias}')">Close Channel</button>
         </div>
       </div>`;
@@ -846,7 +847,8 @@ function sortChannels() {
       '</div>' +
       '<div class="ch-actions">' +
       '<button class="action-btn" onclick="openFeeModal(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\',' + ch.fee_ppm + ',' + ch.base_fee + ')">Update Fees</button>' +
-      '<button class="action-btn" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
+      '<button class="action-btn" data-loop="1" onclick="openLoopOut(\'' + (ch.scid||ch.chan_id) + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ')">🔄 Loop Out</button>' +
+      '<button class="action-btn" data-loop="1" onclick="openLoopIn(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\',' + ch.local_balance + ',' + (ch.fee_ppm||0) + ')">⬇️ Loop In</button>' +
       '<button class="action-btn" onclick="toggleAutoRebalance(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">🔁 Auto Rebalance</button>' +
       '<button class="action-btn" onclick="toggleAutoFee(\'' + ch.channel_point + '\',\'' + ch.peer_alias + '\')">💰 Auto Fee</button>' +
       '<button class="action-btn" onclick="rebalanceChannel(\'' + ch.remote_pubkey + '\',\'' + ch.peer_alias + '\')">Rebalance</button>' +
@@ -1158,38 +1160,42 @@ function executeTargetedRebalance() {
 }
 </script>
 
-<!-- Loop Out Modal -->
+<!-- Loop Modal (Out + In) -->
 <div id="loop-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:400px;width:90%;position:relative;">
+  <div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:420px;width:90%;max-height:90vh;overflow-y:auto;position:relative;">
     <button onclick="closeLoopModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">🔄 Loop Out</h3>
-    <p id="loop-channel-name" style="font-size:12px;color:#888;margin-bottom:20px;"></p>
+    <h3 id="loop-title" style="font-size:16px;font-weight:700;margin-bottom:4px;">🔄 Loop Out</h3>
+    <p id="loop-channel-name" style="font-size:12px;color:#888;margin-bottom:6px;"></p>
+    <p id="loop-help" style="font-size:11px;color:#666;line-height:1.5;margin-bottom:18px;"></p>
 
     <div style="margin-bottom:14px;">
       <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;">Amount (sats)</label>
-      <input id="loop-amt" type="number" placeholder="e.g. 500000"
+      <input id="loop-amt" type="number" placeholder="e.g. 1000000"
         style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;font-family:inherit;"
         oninput="clearLoopQuote()">
-      <div style="font-size:10px;color:#555;margin-top:4px;">Available: <span id="loop-max">—</span> sats</div>
+      <div style="font-size:10px;color:#555;margin-top:4px;"><span id="loop-avail-label">Available:</span> <span id="loop-max">—</span> sats</div>
     </div>
 
     <div style="margin-bottom:14px;">
       <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;">Conf Target (blocks)</label>
-      <input id="loop-conf" type="number" value="10" min="1" max="100"
+      <input id="loop-conf" type="number" value="10" min="1" max="1000"
         style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;font-family:inherit;">
+    </div>
+
+    <div id="loop-cap-row" style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:6px;">Max routing fee (sats)</label>
+      <input id="loop-cap" type="number" min="0" placeholder="filled in after the quote"
+        style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-size:13px;font-family:inherit;">
+      <div style="font-size:10px;color:#555;margin-top:4px;line-height:1.5;">Fees paid to other nodes to reach Loop. The swap stops instead of paying more. Too low and it may not go through.</div>
     </div>
 
     <button onclick="fetchLoopQuote()" style="width:100%;padding:10px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#3b82f6;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;margin-bottom:14px;">
       Get Fee Quote
     </button>
 
-    <div id="loop-quote-box" style="display:none;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:14px;margin-bottom:14px;font-size:12px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Send off-chain</span><span id="lq-send">—</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#888;">Receive on-chain</span><span id="lq-receive" style="color:#22c55e;">—</span></div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid #252d3d;padding-top:6px;margin-top:6px;"><span style="color:#888;">Total fee</span><span id="lq-fee" style="color:#f7931a;">—</span></div>
-    </div>
+    <div id="loop-quote-box" style="display:none;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:14px;margin-bottom:14px;font-size:12px;"></div>
 
-    <div id="loop-error" style="display:none;color:#ef4444;font-size:11px;margin-bottom:12px;"></div>
+    <div id="loop-error" style="display:none;color:#ef4444;font-size:11px;margin-bottom:12px;word-break:break-word;"></div>
 
     <button id="loop-confirm-btn" onclick="confirmLoopOut()" disabled
       style="width:100%;padding:10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);color:#3b82f6;border-radius:8px;cursor:not-allowed;font-size:13px;font-weight:700;font-family:inherit;opacity:0.5;">
@@ -1201,94 +1207,143 @@ function executeTargetedRebalance() {
 </div>
 
 <script>
-let _loopScid = '', _loopAlias = '';
-
-function openLoopOut(scid, alias, localBal) {
-  _loopScid = scid;
-  _loopAlias = alias;
-  document.getElementById('loop-channel-name').textContent = alias + ' — ' + Number(localBal).toLocaleString() + ' sats local';
-  document.getElementById('loop-max').textContent = Number(localBal).toLocaleString();
-  document.getElementById('loop-amt').value = '';
-  document.getElementById('loop-conf').value = '10';
-  document.getElementById('loop-quote-box').style.display = 'none';
-  document.getElementById('loop-error').style.display = 'none';
-  document.getElementById('loop-success').style.display = 'none';
-  document.getElementById('loop-confirm-btn').disabled = true;
-  document.getElementById('loop-confirm-btn').style.opacity = '0.5';
-  document.getElementById('loop-confirm-btn').style.cursor = 'not-allowed';
-  document.getElementById('loop-modal').style.display = 'flex';
+let _loopScid = '', _loopAlias = '', _loopMode = 'out', _loopPeer = '', _loopFeePpm = 0, _loopQuote = null;
+function _lq(id){ return document.getElementById(id); }
+function _lfmt(n){ return Number(n || 0).toLocaleString(); }
+function _lesc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _lrow(label, val, color){
+  return '<div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;"><span style="color:#888;">' + label + '</span><span' + (color ? ' style="color:' + color + ';"' : '') + '>' + val + '</span></div>';
 }
-
-function closeLoopModal() {
-  document.getElementById('loop-modal').style.display = 'none';
+function _loopBtn(on){
+  const b = _lq('loop-confirm-btn');
+  b.disabled = !on; b.style.opacity = on ? '1' : '0.5'; b.style.cursor = on ? 'pointer' : 'not-allowed';
 }
+function _loopErr(msg){ _lq('loop-error').textContent = msg; _lq('loop-error').style.display = 'block'; }
 
-function clearLoopQuote() {
-  document.getElementById('loop-quote-box').style.display = 'none';
-  document.getElementById('loop-confirm-btn').disabled = true;
-  document.getElementById('loop-confirm-btn').style.opacity = '0.5';
-  document.getElementById('loop-confirm-btn').style.cursor = 'not-allowed';
+function _openLoop(mode, alias, localBal){
+  _loopMode = mode; _loopAlias = alias; _loopQuote = null;
+  _lq('loop-title').textContent = mode === 'out' ? '🔄 Loop Out' : '⬇️ Loop In';
+  _lq('loop-help').textContent = mode === 'out'
+    ? 'Moves sats out of this channel to your on-chain wallet. Use it when a channel is too full. Loop Outs are expensive, so check the real cost.'
+    : 'Moves on-chain sats into this channel, arriving through this peer. Use it to refill a drained channel that sells well.';
+  _lq('loop-channel-name').textContent = alias + ' — ' + _lfmt(localBal) + ' sats local' + (mode === 'in' && _loopFeePpm ? ' · you charge ' + _lfmt(_loopFeePpm) + ' ppm' : '');
+  _lq('loop-avail-label').textContent = mode === 'out' ? 'Available in channel:' : 'On-chain available:';
+  _lq('loop-max').textContent = mode === 'out' ? _lfmt(localBal) : '— (shown with the quote)';
+  _lq('loop-amt').value = '';
+  _lq('loop-conf').value = mode === 'out' ? '10' : '';
+  _lq('loop-conf').placeholder = mode === 'out' ? '10' : 'Loop default';
+  _lq('loop-cap-row').style.display = mode === 'out' ? 'block' : 'none';
+  _lq('loop-cap').value = '';
+  _lq('loop-quote-box').style.display = 'none';
+  _lq('loop-error').style.display = 'none';
+  _lq('loop-success').style.display = 'none';
+  _lq('loop-confirm-btn').textContent = mode === 'out' ? 'Confirm Loop Out' : 'Confirm Loop In';
+  _loopBtn(false);
+  _lq('loop-modal').style.display = 'flex';
 }
+function openLoopOut(scid, alias, localBal){ _loopScid = scid; _loopFeePpm = 0; _openLoop('out', alias, localBal); }
+function openLoopIn(pubkey, alias, localBal, feePpm){ _loopPeer = pubkey; _loopFeePpm = Number(feePpm) || 0; _openLoop('in', alias, localBal); }
+function closeLoopModal(){ _lq('loop-modal').style.display = 'none'; }
+function clearLoopQuote(){ _lq('loop-quote-box').style.display = 'none'; _loopQuote = null; _loopBtn(false); }
 
-async function fetchLoopQuote() {
-  const amt = parseInt(document.getElementById('loop-amt').value);
-  if (!amt || amt < 50000) {
-    document.getElementById('loop-error').textContent = 'Minimum amount is 50,000 sats';
-    document.getElementById('loop-error').style.display = 'block';
-    return;
-  }
-  document.getElementById('loop-error').style.display = 'none';
+async function fetchLoopQuote(){
+  const amt = parseInt(_lq('loop-amt').value);
+  if(!amt || amt < 50000){ _loopErr('Minimum amount is 50,000 sats'); return; }
+  _lq('loop-error').style.display = 'none';
+  const qb = _lq('loop-quote-box');
+  qb.innerHTML = '<div style="color:#888;">Getting quote…</div>';
+  qb.style.display = 'block';
   try {
-    const r = await fetch('/api/loop/quote?amt=' + amt);
-    const q = await r.json();
-    if (q.error) {
-      document.getElementById('loop-error').textContent = q.error;
-      document.getElementById('loop-error').style.display = 'block';
-      return;
+    const url = _loopMode === 'out'
+      ? '/api/loop/quote?amt=' + amt + '&scid=' + encodeURIComponent(_loopScid)
+      : '/api/loop/quote-in?amt=' + amt + '&last_hop=' + encodeURIComponent(_loopPeer);
+    const q = await (await fetch(url)).json();
+    if(q.error){ qb.style.display = 'none'; _loopErr(q.error); return; }
+    _loopQuote = q;
+    let html = '';
+    if(_loopMode === 'out'){
+      const route = q.routing_estimate;
+      const real = (q.total_fee || 0) + (route || 0);
+      const ppm = Math.round(real / amt * 1e6);
+      html += _lrow('Send off-chain', _lfmt(q.send_sats) + ' sats');
+      html += _lrow('Receive on-chain', _lfmt(q.receive_sats) + ' sats', '#22c55e');
+      if(q.service_fee != null) html += _lrow('Loop service fee', _lfmt(q.service_fee) + ' sats');
+      if(q.onchain_fee != null) html += _lrow('On-chain fee', _lfmt(q.onchain_fee) + ' sats');
+      html += _lrow('Routing to Loop (estimate)', route == null ? 'unknown' : _lfmt(route) + ' sats');
+      html += '<div style="border-top:1px solid #252d3d;margin:6px 0;"></div>';
+      html += _lrow('<b>Real cost</b>', '<b>' + _lfmt(real) + ' sats · ' + _lfmt(ppm) + ' ppm</b>', '#f7931a');
+      html += '<div style="font-size:10.5px;color:#888;line-height:1.5;margin-top:6px;">Loop\'s own quote leaves out the routing fees to reach Loop' + (route == null ? ', and no route estimate was available, so the real cost will be higher than shown.' : '. The estimate above adds them back.') + '</div>';
+      const cap = _lq('loop-cap');
+      if(!cap.value) cap.value = Math.max(route ? Math.ceil(route * 1.25) : 0, Math.round(amt * 0.002));
+    } else {
+      const ppm = Math.round((q.total_fee || 0) / amt * 1e6);
+      html += _lrow('Send on-chain', _lfmt(q.send_sats) + ' sats');
+      html += _lrow('Arrives in this channel', _lfmt(q.receive_sats) + ' sats', '#22c55e');
+      if(q.service_fee != null) html += _lrow('Loop service fee', _lfmt(q.service_fee) + ' sats');
+      if(q.onchain_fee != null) html += _lrow('On-chain fee', _lfmt(q.onchain_fee) + ' sats');
+      html += '<div style="border-top:1px solid #252d3d;margin:6px 0;"></div>';
+      html += _lrow('<b>Total cost</b>', '<b>' + _lfmt(q.total_fee) + ' sats · ' + _lfmt(ppm) + ' ppm</b>', '#f7931a');
+      if(_loopFeePpm > 0){
+        let v;
+        if(ppm <= _loopFeePpm * 0.5) v = '✅ Worth it: costs ' + _lfmt(ppm) + ' ppm, this channel charges ' + _lfmt(_loopFeePpm) + ' ppm. About +' + _lfmt(Math.round(amt * (_loopFeePpm - ppm) / 1e6)) + ' sats if it all routes out.';
+        else if(ppm < _loopFeePpm) v = '⚠️ Thin margin: costs ' + _lfmt(ppm) + ' ppm vs ' + _lfmt(_loopFeePpm) + ' ppm charged. Only worth it if it sells quickly.';
+        else v = '❌ Costs more than this channel earns (' + _lfmt(ppm) + ' vs ' + _lfmt(_loopFeePpm) + ' ppm). Raise the channel fee first, or skip.';
+        html += '<div style="margin-top:8px;font-size:12px;line-height:1.5;">' + v + '</div>';
+      }
+      if(q.onchain_confirmed != null){
+        _lq('loop-max').textContent = _lfmt(q.onchain_confirmed);
+        const left = q.onchain_confirmed - amt;
+        if(left < (q.reserve || 0)) html += '<div style="margin-top:8px;font-size:11.5px;color:#ef4444;line-height:1.5;">On-chain left after: ' + _lfmt(left) + ' sats, below your ' + _lfmt(q.reserve) + ' sat reserve. LCC will refuse this swap.</div>';
+        else html += '<div style="margin-top:6px;font-size:11px;color:#888;">On-chain left after: about ' + _lfmt(left) + ' sats</div>';
+      }
     }
-    document.getElementById('lq-send').textContent = Number(q.send_sats).toLocaleString() + ' sats';
-    document.getElementById('lq-receive').textContent = Number(q.receive_sats).toLocaleString() + ' sats';
-    document.getElementById('lq-fee').textContent = Number(q.total_fee).toLocaleString() + ' sats';
-    document.getElementById('loop-quote-box').style.display = 'block';
-    document.getElementById('loop-confirm-btn').disabled = false;
-    document.getElementById('loop-confirm-btn').style.opacity = '1';
-    document.getElementById('loop-confirm-btn').style.cursor = 'pointer';
+    qb.innerHTML = html;
+    _loopBtn(true);
   } catch(e) {
-    document.getElementById('loop-error').textContent = 'Quote failed: ' + e.message;
-    document.getElementById('loop-error').style.display = 'block';
+    qb.style.display = 'none';
+    _loopErr('Quote failed: ' + e.message);
   }
 }
 
-async function confirmLoopOut() {
-  const amt = parseInt(document.getElementById('loop-amt').value);
-  const conf = parseInt(document.getElementById('loop-conf').value) || 10;
-  const btn = document.getElementById('loop-confirm-btn');
+async function confirmLoopOut(){
+  const amt = parseInt(_lq('loop-amt').value);
+  const conf = parseInt(_lq('loop-conf').value) || 0;
+  const btn = _lq('loop-confirm-btn');
+  const label = _loopMode === 'out' ? 'Confirm Loop Out' : 'Confirm Loop In';
   btn.textContent = '⏳ Connecting to Loop server...';
   btn.disabled = true;
+  const quoted = _loopQuote ? ((_loopQuote.total_fee || 0) + (_loopMode === 'out' ? (_loopQuote.routing_estimate || 0) : 0)) : 0;
   try {
-    const r = await fetch('/api/loop/out', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({amt, scid: _loopScid, conf_target: conf})
+    const body = _loopMode === 'out'
+      ? {amt, scid: _loopScid, conf_target: conf || 10, max_routing_fee: parseInt(_lq('loop-cap').value) || 0, quoted_fee: quoted}
+      : {amt, last_hop: _loopPeer, alias: _loopAlias, conf_target: conf, quoted_fee: quoted};
+    const r = await fetch(_loopMode === 'out' ? '/api/loop/out' : '/api/loop/in', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
     });
     const res = await r.json();
-    if (res.success) {
-      document.getElementById('loop-success').innerHTML = '✅ Swap initiated!<br>ID: ' + res.swap_id + '<br><a onclick="window.open(\'/static/loop-monitor.html\',\'lcc-loop-monitor\',\'width=700,height=500,resizable=yes\')" style="color:var(--orange);cursor:pointer;font-size:11px;">▶ Run loop monitor to track progress</a>';
-      document.getElementById('loop-success').style.display = 'block';
-      btn.textContent = '✅ Swap Initiated';
+    if(res.success){
+      _lq('loop-success').innerHTML = '✅ Swap started!<br>ID: ' + _lesc(res.swap_id) + '<br><a onclick="window.open(\'/static/loop-monitor.html\',\'lcc-loop-monitor\',\'width=700,height=500,resizable=yes\')" style="color:var(--orange);cursor:pointer;font-size:11px;">▶ Open Loop Monitor to track progress</a>';
+      _lq('loop-success').style.display = 'block';
+      btn.textContent = '✅ Swap Started';
     } else {
-      document.getElementById('loop-error').textContent = res.error || 'Swap failed';
-      document.getElementById('loop-error').style.display = 'block';
-      btn.textContent = 'Confirm Loop Out';
+      _loopErr(res.error || 'Swap failed');
+      btn.textContent = label;
       btn.disabled = false;
     }
   } catch(e) {
-    document.getElementById('loop-error').textContent = 'Error: ' + e.message;
-    document.getElementById('loop-error').style.display = 'block';
-    btn.textContent = 'Confirm Loop Out';
+    _loopErr('Error: ' + e.message);
+    btn.textContent = label;
     btn.disabled = false;
   }
 }
+
+fetch('/api/loop/status').then(r => r.json()).then(d => {
+  if(d && d.available === false){
+    const st = document.createElement('style');
+    st.textContent = '[data-loop]{display:none !important;}';
+    document.head.appendChild(st);
+  }
+}).catch(() => {});
 
 function toggleAutoRebalance(chanPoint, alias) {
   const tier = window.LCC_TIER || 'community';

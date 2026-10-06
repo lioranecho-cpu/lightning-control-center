@@ -44,7 +44,7 @@ async function loadMonitor() {
     const list = document.getElementById('swap-list');
 
     if (!data.swaps || data.swaps.length === 0) {
-      list.innerHTML = '<div class="empty">No swaps found</div>';
+      list.innerHTML = '<div class="empty">' + (data.error ? 'Loop is not available on this node' : 'No swaps found') + '</div>';
       return;
     }
 
@@ -59,12 +59,19 @@ async function loadMonitor() {
       let html = '<div class="swap-row">';
       html += '<span class="badge ' + badgeClass + '">' + status + '</span>';
       html += '<span style="color:var(--muted);font-size:11px;">' + s.type + '</span>';
-      html += '<span style="color:var(--orange);font-size:11px;font-weight:600;">' + (s.channel || s.id) + '</span>';
+      html += '<span style="color:var(--orange);font-size:11px;font-weight:600;">' + String(s.channel || s.id).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) + '</span>';
       if (s.time) html += '<span style="color:var(--muted);font-size:10px;">' + s.time + '</span>';
       html += '<span style="color:var(--text);">' + s.amount.toLocaleString() + ' sats</span>';
-      if (s.total_cost > 0) {
-        html += '<span style="color:var(--orange);">fee: ' + s.total_cost.toLocaleString() + ' sats</span>';
+      if (s.state === 'SUCCESS' && s.total_cost > 0) {
+        const ppm = s.amount ? Math.round(s.total_cost / s.amount * 1e6) : 0;
+        html += '<span style="color:var(--orange);">fee: ' + s.total_cost.toLocaleString() + ' sats \u00B7 ' + ppm.toLocaleString() + ' ppm</span>';
         html += '<span style="color:var(--muted);font-size:10px;">(server ' + s.cost_server + ' + onchain ' + s.cost_onchain + ' + offchain ' + s.cost_offchain + ')</span>';
+        if (s.quoted_fee) html += '<span style="color:var(--muted);font-size:10px;">quoted ' + s.quoted_fee.toLocaleString() + '</span>';
+      } else if (s.state !== 'FAILED' && s.quoted_fee) {
+        html += '<span style="color:var(--orange);">quoted fee: ~' + s.quoted_fee.toLocaleString() + ' sats</span>';
+        html += '<span style="color:var(--muted);font-size:10px;">(final fee shows at SUCCESS)</span>';
+      } else if (s.state !== 'FAILED' && s.total_cost > 0) {
+        html += '<span style="color:var(--muted);font-size:10px;">so far: ' + s.total_cost.toLocaleString() + ' sats (final fee shows at SUCCESS)</span>';
       }
       html += '</div>';
       return html;

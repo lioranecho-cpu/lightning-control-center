@@ -2329,12 +2329,64 @@ drain_trap_thread.start()
 
 
 # ── Loop Out ──────────────────────────────────────────────────────────────────
-def run_loop(cmd, *args, input_text=None):
+def _find_loop_bin():
+    """Where the `loop` program lives: LCC_LOOP_PATH, then PATH, then the usual places."""
+    import shutil as _sh
+    for c in (os.environ.get("LCC_LOOP_PATH", ""), _sh.which("loop") or "",
+              os.path.expanduser("~/go/bin/loop"), "/usr/local/bin/loop"):
+        if c and os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return None
+
+
+_LOOP_BIN = _find_loop_bin()
+LOOP_NODE_PUBKEY = "021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d"
+LCC_ONCHAIN_RESERVE = int(os.environ.get("LCC_ONCHAIN_RESERVE", "1000000") or 0)
+
+
+def run_loop(cmd, *args, input_text=None, timeout=90):
     """Run loop CLI command"""
     import subprocess
-    full_cmd = ['/home/luca/go/bin/loop', cmd] + list(args)
-    result = subprocess.run(full_cmd, capture_output=True, text=True, input=input_text)
+    if not _LOOP_BIN:
+        return "loop is not installed on this node"
+    result = subprocess.run([_LOOP_BIN, cmd] + list(args), capture_output=True, text=True,
+                            input=input_text, timeout=timeout)
     return result.stdout + result.stderr
+
+
+def _parse_loop_quote(output):
+    """Read the numbers out of `loop quote in|out --verbose`."""
+    labels = {
+        "Send off-chain": "send_sats", "Receive on-chain": "receive_sats",
+        "Send on-chain": "send_sats", "Receive off-chain": "receive_sats",
+        "Estimated on-chain fee": "onchain_fee", "Loop service fee": "service_fee",
+        "Estimated total fee": "total_fee", "No show penalty (prepay)": "prepay",
+    }
+    data = {}
+    for line in output.splitlines():
+        if ":" not in line:
+            continue
+        label, val = line.split(":", 1)
+        key = labels.get(label.strip())
+        if key:
+            digits = "".join(c for c in val if c.isdigit())
+            if digits:
+                data[key] = int(digits)
+    return data
+
+
+def _loop_route_estimate(amt, scid):
+    """Routing fee to reach the Loop node from one channel (the part Loop's quote leaves out)."""
+    try:
+        r = _lnd_rest("GET", f"/v1/graph/routes/{LOOP_NODE_PUBKEY}/{int(amt)}",
+                      params={"outgoing_chan_id": scid, "use_mission_control": "true",
+                              "fee_limit.fixed": max(5000, int(amt) // 50)}, timeout=15)
+        routes = r.get("routes") or []
+        if routes:
+            return int(routes[0].get("total_fees", 0))
+    except Exception:
+        pass
+    return None
 
 @app.put("/api/journal/{entry_id}")
 def update_journal_entry(entry_id: str, body: dict = Body(...)):
@@ -2356,9 +2408,11 @@ def update_journal_entry(entry_id: str, body: dict = Body(...)):
 @app.get("/api/loop/monitor")
 def loop_monitor():
     """Get recent loop swap history"""
+    if not _LOOP_BIN:
+        return {"swaps": [], "error": "Loop is not installed on this node"}
     import subprocess, json as _json
     result = subprocess.run(
-        ['/home/luca/go/bin/loop', 'listswaps'],
+        [_LOOP_BIN, 'listswaps'],
         capture_output=True, text=True, timeout=10
     )
     try:
@@ -2394,6 +2448,7 @@ def loop_monitor():
                 "cost_offchain": cost_offchain,
                 "total_cost": total_cost,
                 "channel": chan_alias,
+                "quoted_fee": int(data.get("loop_quotes", {}).get(swap_id, 0) or 0),
                 "time": time_str,
             })
         return {"swaps": swaps}
@@ -2428,22 +2483,17 @@ def get_pending_channels():
     }
 
 @app.get("/api/loop/quote")
-def loop_quote(amt: int):
+def loop_quote(amt: int, scid: str = ""):
+    if not _LOOP_BIN:
+        return {"error": "Loop is not installed on this node"}
     try:
-        output = run_loop('quote', 'out', str(amt))
-        lines = output.strip().split('\n')
-        data = {}
-        for line in lines:
-            if 'Send off-chain' in line:
-                data['send_sats'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
-            elif 'Receive on-chain' in line:
-                data['receive_sats'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
-            elif 'Estimated total fee' in line:
-                data['total_fee'] = int(line.split(':')[-1].strip().replace(' sat','').replace(',',''))
-        if not data:
+        output = run_loop('quote', 'out', str(int(amt)), '--verbose')
+        data = _parse_loop_quote(output)
+        if "total_fee" not in data:
             if "below min" in output.lower() or "amount must be" in output.lower():
-                return {"error": "Minimum Loop Out amount is 250,000 sats"}
-            return {"error": "Could not parse quote. Min: 250,000 sats", "raw": output}
+                return {"error": "Amount is below the Loop Out minimum"}
+            return {"error": "Could not read the Loop quote", "raw": output[-400:]}
+        data["routing_estimate"] = _loop_route_estimate(amt, scid) if scid else None
         return data
     except Exception as e:
         return {"error": str(e)}
@@ -2453,9 +2503,13 @@ class LoopOutRequest(LoopBaseModel):
     amt: int
     scid: str
     conf_target: int = 10
+    max_routing_fee: int = 0
+    quoted_fee: int = 0
 
 @app.post("/api/loop/out")
 def loop_out(req: LoopOutRequest):
+    if not _LOOP_BIN:
+        return {"success": False, "error": "Loop is not installed on this node"}
     try:
         # Look up channel alias before initiating
         chan_alias = req.scid
@@ -2471,6 +2525,7 @@ def loop_out(req: LoopOutRequest):
             f'--amt={req.amt}',
             f'--conf_target={req.conf_target}',
             f'--channel={req.scid}',
+            *([f'--max_swap_routing_fee={int(req.max_routing_fee)}'] if req.max_routing_fee and req.max_routing_fee > 0 else []),
             '--verbose',
             input_text='y\n')
         if 'Swap initiated' in output or 'ID:' in output:
@@ -2483,6 +2538,8 @@ def loop_out(req: LoopOutRequest):
             if "loop_swaps" not in data:
                 data["loop_swaps"] = {}
             data["loop_swaps"][swap_id[:12]] = chan_alias
+            if req.quoted_fee:
+                data.setdefault("loop_quotes", {})[swap_id[:12]] = int(req.quoted_fee)
             json.dump(data, open(_DATA_JSON_PATH, "w"))
             # Auto-journal entry
             try:
@@ -2505,6 +2562,92 @@ def loop_out(req: LoopOutRequest):
             return {"success": True, "swap_id": swap_id, "raw": output}
         else:
             return {"success": False, "error": output}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/loop/status")
+def loop_status():
+    return {"available": bool(_LOOP_BIN), "reserve": LCC_ONCHAIN_RESERVE}
+
+
+def _valid_pubkey(pk):
+    return bool(_re_ff.fullmatch(r"[0-9a-fA-F]{66}", pk or ""))
+
+
+@app.get("/api/loop/quote-in")
+def loop_quote_in(amt: int, last_hop: str = ""):
+    if not _LOOP_BIN:
+        return {"error": "Loop is not installed on this node"}
+    if last_hop and not _valid_pubkey(last_hop):
+        return {"error": "Invalid peer pubkey"}
+    try:
+        extra = ['--last_hop', last_hop] if last_hop else []
+        output = run_loop('quote', 'in', str(int(amt)), *extra, '--verbose')
+        data = _parse_loop_quote(output)
+        if "total_fee" not in data:
+            if "below min" in output.lower() or "amount must be" in output.lower():
+                return {"error": "Amount is below the Loop In minimum"}
+            return {"error": "Could not read the Loop quote", "raw": output[-400:]}
+        try:
+            data["onchain_confirmed"] = int(run_lncli("walletbalance").get("confirmed_balance", 0))
+        except Exception:
+            data["onchain_confirmed"] = None
+        data["reserve"] = LCC_ONCHAIN_RESERVE
+        return data
+    except Exception as e:
+        return {"error": str(e)}
+
+
+class LoopInRequest(LoopBaseModel):
+    amt: int
+    last_hop: str = ""
+    alias: str = ""
+    conf_target: int = 0
+    quoted_fee: int = 0
+
+
+@app.post("/api/loop/in")
+def loop_in(req: LoopInRequest):
+    if not _LOOP_BIN:
+        return {"success": False, "error": "Loop is not installed on this node"}
+    if req.last_hop and not _valid_pubkey(req.last_hop):
+        return {"success": False, "error": "Invalid peer pubkey"}
+    try:
+        try:
+            confirmed = int(run_lncli("walletbalance").get("confirmed_balance", 0))
+            left = confirmed - int(req.amt)
+            if left < LCC_ONCHAIN_RESERVE:
+                return {"success": False, "error": f"This would leave {left:,} sats on-chain, below your {LCC_ONCHAIN_RESERVE:,} sat reserve (LCC_ONCHAIN_RESERVE)."}
+        except HTTPException:
+            pass
+        args = [f'--amt={int(req.amt)}']
+        if req.last_hop:
+            args.append(f'--last_hop={req.last_hop}')
+        if req.conf_target and req.conf_target > 0:
+            args.append(f'--conf_target={int(req.conf_target)}')
+        output = run_loop('in', *args, input_text='y\n', timeout=120)
+        if 'Swap initiated' in output or 'ID:' in output:
+            swap_id = ''
+            for line in output.split('\n'):
+                if line.strip().startswith('ID:'):
+                    swap_id = line.split('ID:')[-1].strip()
+            alias = (req.alias or "Loop In")[:60]
+            data = json.load(open(_DATA_JSON_PATH))
+            data.setdefault("loop_swaps", {})[swap_id[:12]] = alias
+            if req.quoted_fee:
+                data.setdefault("loop_quotes", {})[swap_id[:12]] = int(req.quoted_fee)
+            with open(_DATA_JSON_PATH, "w") as f:
+                json.dump(data, f, indent=2)
+            try:
+                _log_journal(f"\U0001F504 Loop In \u2014 {alias}",
+                             f"Loop In started: {int(req.amt):,} sats arriving via {alias}. "
+                             f"Quoted fee: {int(req.quoted_fee):,} sats. Swap ID: {swap_id[:16]}.",
+                             "milestone")
+            except Exception as je:
+                print(f"[LOOP] Journal write failed: {je}")
+            return {"success": True, "swap_id": swap_id, "raw": output}
+        return {"success": False, "error": output[-600:]}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
