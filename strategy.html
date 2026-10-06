@@ -71,6 +71,7 @@
         <th>Local</th>
         <th>Your Fee</th>
         <th>Peer Fee</th>
+        <th>Routed 7d (out / in)</th>
         <th>Assessment</th>
         <th>Action / Target Fee</th>
       </tr>
@@ -82,14 +83,16 @@
 <div class="legend">
   <div class="legend-item"><span class="color-dot green"></span> Drain Aggressively (10-25 ppm)</div>
   <div class="legend-item"><span class="color-dot orange"></span> Moderate / Monitor (25-100 ppm)</div>
-  <div class="legend-item"><span class="color-dot red"></span> Close / Loop Out</div>
+  <div class="legend-item"><span class="color-dot red"></span> Recycle / Close (stuck full or dead)</div>
   <div class="legend-item"><span class="color-dot blue"></span> Keep as-is (inbound lifeline)</div>
 </div>
-<div class="strategy-note">Strategy: Drain channels with peer fees &lt; 100 ppm aggressively. Close channels with peer fees &gt; 500 ppm. Monitor unknowns via LCC Peer Policy tab.</div>
-<div class="strategy-note" style="margin-top:10px;padding:10px 14px;background:rgba(247,147,26,.06);border:1px solid var(--orange-dim);border-radius:8px;color:var(--text);font-style:normal;">⚠️ <strong>CLOSE / Loop Out</strong> flags channels where your peer's fee is high (&gt;500 PPM), meaning payments routing through them cost more than average. This does NOT mean the channel is broken — if it's actively routing, consider raising your own fee instead of closing. Close or Loop Out only if the channel has been inactive for several days.</div>
+<div class="strategy-note">Strategy: full channels get a low fee first so traffic can leave. A channel that stays full at a low fee (&le;50 ppm) for 7 days with nothing routed out is a recycle candidate: a cooperative close returns your sats for just the on-chain fee, far cheaper than a Loop Out (~0.35%). Channels with a high peer fee are only flagged for closing when they had no traffic in 7 days.</div>
+<div class="strategy-note" style="margin-top:10px;padding:10px 14px;background:rgba(247,147,26,.06);border:1px solid var(--orange-dim);border-radius:8px;color:var(--text);font-style:normal;">⚠️ Closing is permanent and loses that peer. Before recycling, check the channel is not a sender you still need, and that you have a better use for the sats (a Loop In into a busy exit, or a channel to a peer that sends you traffic). LCC never closes channels by itself.</div>
 
 <script>
 function fmt(n){return Number(n).toLocaleString();}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function short(n){n=Number(n||0);return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'k':String(n);}
 
 async function loadStrategy(){
   try {
@@ -107,20 +110,21 @@ async function loadStrategy(){
       '<div class="summary-card"><div class="label">Keep (Inbound)</div><div class="value blue">' + counts.blue + '</div></div>' +
       '<div class="summary-card"><div class="label">Drain</div><div class="value green">' + counts.green + '</div></div>' +
       '<div class="summary-card"><div class="label">Monitor</div><div class="value orange">' + counts.orange + '</div></div>' +
-      '<div class="summary-card"><div class="label">Close Candidates</div><div class="value red">' + counts.red + '</div></div>';
+      '<div class="summary-card"><div class="label">Recycle / Close</div><div class="value red">' + counts.red + '</div></div>';
 
     const tbody = document.getElementById('strategy-body');
     tbody.innerHTML = '';
     channels.forEach(c => {
       tbody.innerHTML += '<tr>' +
         '<td><span class="color-dot ' + c.color + '"></span></td>' +
-        '<td><strong>' + c.alias + '</strong><div style="font-size:10px;color:var(--muted)">' + (c.initiator ? 'You opened' : 'Peer opened') + '</div></td>' +
+        '<td><strong>' + esc(c.alias) + '</strong><div style="font-size:10px;color:var(--muted)">' + (c.initiator ? 'You opened' : 'Peer opened') + '</div></td>' +
         '<td>' + fmt(c.capacity) + '</td>' +
         '<td>' + c.local_pct + '%</td>' +
         '<td>' + c.my_fee + '</td>' +
         '<td>' + c.peer_fee + '</td>' +
-        '<td>' + c.assessment + '</td>' +
-        '<td><span class="action-text ' + c.color + '">' + c.action + '</span></td>' +
+        '<td style="font-family:var(--mono);font-size:11px;">' + short(c.out_7d) + ' / ' + short(c.in_7d) + '</td>' +
+        '<td>' + esc(c.assessment) + '</td>' +
+        '<td><span class="action-text ' + c.color + '">' + esc(c.action) + '</span></td>' +
       '</tr>';
     });
 

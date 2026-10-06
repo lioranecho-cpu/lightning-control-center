@@ -1494,21 +1494,72 @@ def send_payment(request: Request, body: dict = Body(...)):
 
 
 
+_STRAT_FULL_PCT = 95        # "full" for the recycle check
+_STRAT_LOW_FEE = 50         # ppm: fee already low enough that price is not the problem
+_STRAT_WATCH_DAYS = 7       # days full at a low fee with no traffic before suggesting a close
+_STRAT_CLOSE_VBYTES = 200   # rough size of a cooperative close
+_STRAT_LOOPOUT_RATE = 0.0035  # ~0.35% real Loop Out cost seen in practice (fees + routing)
+_strat_fee_cache = {"t": 0, "rate": 2}
+
+
+def _strategy_fee_rate():
+    """sat/vB for a close that confirms within an hour or so (cached 10 min)."""
+    now = time.time()
+    if now - _strat_fee_cache["t"] < 600:
+        return _strat_fee_cache["rate"]
+    rate = _strat_fee_cache["rate"]
+    try:
+        r = requests.get("https://mempool.space/api/v1/fees/recommended", timeout=5).json()
+        rate = max(1, int(r.get("hourFee") or r.get("halfHourFee") or 2))
+    except Exception:
+        pass
+    _strat_fee_cache.update(t=now, rate=rate)
+    return rate
+
+
 @app.get("/api/strategy")
 def get_strategy():
     channels = run_lncli("listchannels")
+    try:
+        my_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
+    except Exception:
+        my_pubkey = ""
+
+    # Traffic per channel over the last 7 days
+    out_7d, in_7d = {}, {}
+    try:
+        start_7d = int(time.time()) - 7 * 86400
+        fwd = run_lncli("fwdinghistory", f"--start_time={start_7d}", "--max_events=50000")
+        for ev in fwd.get("forwarding_events", []):
+            co, ci = str(ev.get("chan_id_out", "")), str(ev.get("chan_id_in", ""))
+            out_7d[co] = out_7d.get(co, 0) + int(ev.get("amt_out", 0) or 0)
+            in_7d[ci] = in_7d.get(ci, 0) + int(ev.get("amt_in", 0) or 0)
+    except Exception as e:
+        print(f"[strategy] fwdinghistory failed: {e}")
+
+    try:
+        data = json.load(open(_DATA_JSON_PATH))
+    except Exception:
+        data = {}
+    watch = dict(data.get("strategy_watch", {}))
+    watch_changed = False
+    now = int(time.time())
+    fee_rate = _strategy_fee_rate()
+
     results = []
+    seen = set()
     for ch in channels.get("channels", []):
         cap = int(ch.get("capacity", 0))
         local = int(ch.get("local_balance", 0))
         local_pct = round(local / cap * 100) if cap > 0 else 0
         alias = ch.get("peer_alias", "Unknown")
+        cp = ch.get("channel_point", "")
+        scid = str(ch.get("scid") or ch.get("chan_id", ""))
+        seen.add(cp)
         my_fee = 0
         peer_fee = 0
         try:
-            scid = str(ch.get("scid") or ch.get("chan_id", ""))
             info = run_lncli("getchaninfo", f"--chan_id={scid}")
-            my_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
             if info.get("node1_pub") == my_pubkey:
                 my_fee = int(info.get("node1_policy", {}).get("fee_rate_milli_msat", 0))
                 peer_fee = int(info.get("node2_policy", {}).get("fee_rate_milli_msat", 0))
@@ -1518,30 +1569,63 @@ def get_strategy():
         except Exception as e:
             print(f"[strategy] getchaninfo failed: {e}")
         initiator = ch.get("initiator", False)
-        if not initiator:
-            assessment = "Inbound lifeline"
+        sats_out = out_7d.get(scid, 0)
+        sats_in = in_7d.get(scid, 0)
+
+        # How long has this channel been full at a low fee with nothing going out?
+        stuck = local_pct >= _STRAT_FULL_PCT and my_fee <= _STRAT_LOW_FEE and sats_out == 0
+        if stuck:
+            if cp not in watch:
+                watch[cp] = now
+                watch_changed = True
+            stuck_days = (now - int(watch[cp])) / 86400
+        else:
+            if cp in watch:
+                watch.pop(cp)
+                watch_changed = True
+            stuck_days = 0
+
+        recycle = None
+        if stuck:
+            close_cost = _STRAT_CLOSE_VBYTES * fee_rate
+            recycle = {
+                "local": local,
+                "close_cost": close_cost,
+                "close_paid_by": "you" if initiator else "peer",
+                "loopout_cost": int(local * _STRAT_LOOPOUT_RATE),
+            }
+
+        if stuck and stuck_days >= _STRAT_WATCH_DAYS:
+            assessment = (f"Full at {my_fee} ppm for {int(stuck_days)} days, nothing routed out. "
+                          f"Recycle {local:,} sats: closing costs about {recycle['close_cost']:,} sats"
+                          f"{' (paid by peer)' if not initiator else ''}, a Loop Out about {recycle['loopout_cost']:,}.")
+            action = "Recycle: cooperative close"
+            color = "red"
+        elif stuck:
+            assessment = f"Full at a low fee, nothing routed out in 7 days. Watching: day {int(stuck_days) + 1} of {_STRAT_WATCH_DAYS}."
+            action = "Wait, then recycle if still stuck"
+            color = "orange"
+        elif local_pct >= 90 and my_fee > _STRAT_LOW_FEE:
+            assessment = "Full, fee still high: lower it first so traffic can leave"
+            action = (f"Drain {peer_fee + 10}-{peer_fee + 25} ppm" if peer_fee < 100
+                      else f"{max(25, peer_fee // 4)}-{max(50, peer_fee // 2)} ppm")
+            color = "green"
+        elif not initiator and local_pct < 90:
+            assessment = "Inbound lifeline (peer opened)"
             action = "Keep as-is"
             color = "blue"
-        elif peer_fee > 500:
-            assessment = "Peer fee too high"
+        elif peer_fee > 500 and sats_out == 0 and sats_in == 0:
+            assessment = "Peer fee too high and no traffic in 7 days"
             action = "CLOSE / Loop Out"
             color = "red"
         elif peer_fee > 300:
-            assessment = "High peer fee"
+            assessment = "High peer fee" + (" (but routing, keep)" if (sats_out or sats_in) else "")
             action = "Monitor"
             color = "orange"
-        elif local_pct > 90 and peer_fee < 100:
-            assessment = "Low peer fee"
-            action = f"Drain {peer_fee + 10}-{peer_fee + 25} ppm"
-            color = "green"
-        elif local_pct > 90:
-            assessment = "Moderate drain"
-            action = f"{max(25, peer_fee // 4)}-{max(50, peer_fee // 2)} ppm"
-            color = "green"
         elif local_pct < 20:
-            assessment = "Trapped + high fee" if my_fee > 300 else "Nearly empty"
-            action = "CLOSE" if my_fee > 300 and peer_fee > 300 else "Monitor"
-            color = "red" if my_fee > 300 and peer_fee > 300 else "orange"
+            assessment = "Nearly empty" + (": selling well, refill if it pays" if sats_out else "")
+            action = "Monitor / refill (Loop In)" if sats_out else "Monitor"
+            color = "orange"
         else:
             assessment = "Balanced"
             action = f"Monitor / {max(25, peer_fee // 4)} ppm"
@@ -1553,13 +1637,31 @@ def get_strategy():
             "my_fee": my_fee,
             "peer_fee": peer_fee,
             "initiator": initiator,
+            "out_7d": sats_out,
+            "in_7d": sats_in,
+            "stuck_days": round(stuck_days, 1),
+            "recycle": recycle,
             "assessment": assessment,
             "action": action,
             "color": color,
-            "channel_point": ch.get("channel_point", "")
+            "channel_point": cp,
         })
-    results.sort(key=lambda x: {"blue": 0, "green": 1, "orange": 2, "red": 3}.get(x["color"], 4))
-    return {"channels": results}
+
+    for cp in list(watch):
+        if cp not in seen:
+            watch.pop(cp)
+            watch_changed = True
+    if watch_changed:
+        try:
+            data = json.load(open(_DATA_JSON_PATH))
+            data["strategy_watch"] = watch
+            with open(_DATA_JSON_PATH, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"[strategy] could not save watch list: {e}")
+
+    results.sort(key=lambda x: {"red": 0, "green": 1, "orange": 2, "blue": 3}.get(x["color"], 4))
+    return {"channels": results, "fee_rate": fee_rate, "watch_days": _STRAT_WATCH_DAYS}
 
 
 @app.post("/api/rebalance-targeted")
