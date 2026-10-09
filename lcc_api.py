@@ -1645,6 +1645,7 @@ def get_strategy():
             "action": action,
             "color": color,
             "channel_point": cp,
+            "remote_pubkey": ch.get("remote_pubkey", ""),
         })
 
     for cp in list(watch):
@@ -1919,22 +1920,36 @@ def get_fee_policy():
         return {"base_fee_msat": 0, "fee_rate_ppm": 0, "time_lock_delta": 40}
 
 @app.post("/api/updatefees")
-def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_delta: int = 40, chan_point: str = None):
+def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_delta: int = 40, chan_point: str = None, peer_pubkey: str = None):
     if MOCK:
         return {"status": "mock"}
     try:
         fee_rate = fee_rate_ppm / 1_000_000
-        args = [
+        base_args = [
             "updatechanpolicy",
             f"--base_fee_msat={base_fee_msat}",
             f"--fee_rate={fee_rate}",
             f"--time_lock_delta={time_lock_delta}"
         ]
+        if peer_pubkey:
+            points = [c.get("channel_point", "") for c in run_lncli("listchannels").get("channels", [])
+                      if c.get("remote_pubkey") == peer_pubkey]
+            if not points:
+                raise HTTPException(status_code=404, detail="No channels with that peer")
+            failed = 0
+            for cp in points:
+                result = run_lncli(*base_args, f"--chan_point={cp}")
+                failed += len(result.get("failed_updates", []))
+            return {"status": "done", "updated": len(points) - failed, "failed": failed,
+                    "message": f"Updated {len(points) - failed} of {len(points)} channels with this peer"}
+        args = list(base_args)
         if chan_point:
             args.append(f"--chan_point={chan_point}")
         result = run_lncli(*args)
         failed = result.get("failed_updates", [])
         return {"status": "done", "failed": len(failed), "message": f"Updated all channels — {len(failed)} failed"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2928,7 +2943,9 @@ def set_channel_auto_fee(body: dict = Body(...)):
     """Set per-channel auto-fee-by-liquidity settings. Fee drifts between
     a min and max based on current local balance ratio - high local balance
     (channel not draining) -> fee toward min to attract routing; low local
-    balance (already draining) -> fee toward max to slow it down."""
+    balance (already draining) -> fee toward max to slow it down.
+    apply_to_peer + peer_pubkey: same settings on every channel with that peer,
+    and the fee follows their combined balance (LND forwards over any of them)."""
     chan_point = body.get("chan_point", "")
     enabled = body.get("enabled", False)
     min_base = int(body.get("min_base", 0))
@@ -2936,42 +2953,52 @@ def set_channel_auto_fee(body: dict = Body(...)):
     min_ppm = int(body.get("min_ppm", 50))
     max_ppm = int(body.get("max_ppm", 500))
     hours = int(body.get("hours", 6))
+    peer_pubkey = body.get("peer_pubkey", "") if body.get("apply_to_peer") else ""
 
-    if not chan_point:
+    if not chan_point and not peer_pubkey:
         raise HTTPException(status_code=400, detail="chan_point required")
 
     data = json.load(open(_DATA_JSON_PATH))
     if "channel_auto_fee" not in data:
         data["channel_auto_fee"] = {}
 
-    alias = chan_point[:16]
     try:
         channels = run_lncli("listchannels")["channels"]
+    except Exception:
+        channels = []
+    if peer_pubkey:
+        targets = [(c.get("channel_point", ""), c.get("peer_alias", peer_pubkey[:16]))
+                   for c in channels if c.get("remote_pubkey") == peer_pubkey]
+        if not targets:
+            raise HTTPException(status_code=404, detail="No channels with that peer")
+    else:
+        alias = chan_point[:16]
         for c in channels:
             if c.get("channel_point") == chan_point:
                 alias = c.get("peer_alias", chan_point[:16])
                 break
-    except:
-        pass
+        targets = [(chan_point, alias)]
 
-    prev = data.get("channel_auto_fee", {}).get(chan_point, {})
-    data["channel_auto_fee"][chan_point] = {
-        "enabled": enabled,
-        "min_base": min_base,
-        "max_base": max_base,
-        "min_ppm": min_ppm,
-        "max_ppm": max_ppm,
-        "hours": hours,
-        "alias": alias,
-        "last_run": prev.get("last_run", 0),
-        "last_base": prev.get("last_base"),
-        "last_ppm": prev.get("last_ppm"),
-    }
+    for cp, alias in targets:
+        prev = data.get("channel_auto_fee", {}).get(cp, {})
+        data["channel_auto_fee"][cp] = {
+            "enabled": enabled,
+            "min_base": min_base,
+            "max_base": max_base,
+            "min_ppm": min_ppm,
+            "max_ppm": max_ppm,
+            "hours": hours,
+            "alias": alias,
+            "peer_group": bool(peer_pubkey),
+            "last_run": 0 if peer_pubkey else prev.get("last_run", 0),
+            "last_base": prev.get("last_base"),
+            "last_ppm": prev.get("last_ppm"),
+        }
 
     with open(_DATA_JSON_PATH, "w") as f:
         json.dump(data, f, indent=2)
 
-    return {"status": "success", "channel": alias, "enabled": enabled}
+    return {"status": "success", "channel": targets[0][1], "channels": len(targets), "enabled": enabled}
 
 
 @app.get("/api/channel-auto-fee")
@@ -3089,6 +3116,12 @@ def auto_fee_job():
             if per_channel and not MOCK:
                 channels = run_lncli("listchannels")["channels"]
                 chan_by_point = {c.get("channel_point", ""): c for c in channels}
+                peer_tot = {}
+                for _c in channels:
+                    _t = peer_tot.setdefault(_c.get("remote_pubkey", ""), [0, 0, 0])
+                    _t[0] += int(_c.get("local_balance", 0) or 0)
+                    _t[1] += int(_c.get("capacity", 0) or 0)
+                    _t[2] += 1
                 fee_report = run_lncli("feereport").get("channel_fees", [])
                 own_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
 
@@ -3108,6 +3141,9 @@ def auto_fee_job():
                     cap = int(ch.get("capacity", 1))
                     local = int(ch.get("local_balance", 0))
                     ratio = (local / cap) if cap > 0 else 0.5  # 1.0 = fully local, 0.0 = fully drained
+                    _pt = peer_tot.get(ch.get("remote_pubkey", ""), [0, 0, 0])
+                    if settings.get("peer_group") and _pt[2] > 1 and _pt[1] > 0:
+                        ratio = _pt[0] / _pt[1]  # all channels with this peer act as one pipe
 
                     min_base = int(settings.get("min_base", 0))
                     max_base = int(settings.get("max_base", 1000))

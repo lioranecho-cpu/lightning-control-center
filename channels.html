@@ -774,6 +774,7 @@ function openFeeModal(chanPoint, alias, ppm, base){
     return;
   }
   currentChanPoint = chanPoint;
+  currentPeerPubkey = '';
   document.getElementById('fee-modal-peer').textContent = alias;
   document.getElementById('fee-modal-ppm').value = ppm || 100;
   document.getElementById('fee-modal-base').value = base || 1000;
@@ -791,9 +792,10 @@ function applyFees(){
   const status = document.getElementById('fee-modal-status');
   status.textContent = '⏳ Updating...';
   status.style.color = 'var(--muted)';
-  fetch('/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40&chan_point='+encodeURIComponent(currentChanPoint), {method:'POST'})
+  fetch('/api/updatefees?base_fee_msat='+base+'&fee_rate_ppm='+ppm+'&time_lock_delta=40' + (currentPeerPubkey ? '&peer_pubkey='+encodeURIComponent(currentPeerPubkey) : '&chan_point='+encodeURIComponent(currentChanPoint)), {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
+      if(d.detail){ status.textContent = '❌ ' + d.detail; status.style.color = '#ef4444'; return; }
       status.textContent = '✅ Fees updated for ' + document.getElementById('fee-modal-peer').textContent;
       status.style.color = 'var(--green)';
       setTimeout(()=>{ closeFeeModal(); location.reload(); }, 1500);
@@ -802,6 +804,66 @@ function applyFees(){
 }
 
 let cachedChannels = [];
+let currentPeerPubkey = '';
+
+function _pgEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _pgShort(n){ n = Number(n || 0); return n >= 1e6 ? (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n); }
+function _peerMembers(pk){ return cachedChannels.filter(c => c.remote_pubkey === pk); }
+
+function _peerGroupCard(members){
+  const first = members[0];
+  const pk = first.remote_pubkey;
+  const cap = members.reduce((s, c) => s + c.capacity, 0);
+  const local = members.reduce((s, c) => s + c.local_balance, 0);
+  const pct = cap ? Math.round(local / cap * 100) : 0;
+  const fees = members.map(c => (c.fee_ppm || 0) + ' ppm / ' + (c.base_fee || 0) + ' msat');
+  const same = fees.every(f => f === fees[0]);
+  const af = members.map(c => (window._autoFeeData || {})[c.channel_point]);
+  const afOn = af.filter(a => a && a.enabled);
+  let afLine = 'Auto Fee: <span style="color:var(--muted)">OFF</span>';
+  if(afOn.length === members.length && afOn.every(a => a.peer_group && a.min_ppm === afOn[0].min_ppm && a.max_ppm === afOn[0].max_ppm)){
+    afLine = 'Auto Fee: <span style="color:var(--green)">💰 ' + afOn[0].min_ppm + '-' + afOn[0].max_ppm + ' ppm on all, follows combined balance</span>';
+  } else if(afOn.length){
+    afLine = 'Auto Fee: <span style="color:#eab308">⚠️ set on ' + afOn.length + ' of ' + members.length + ' separately</span>';
+  }
+  return '<div class="channel-card" style="border:1px solid var(--orange-dim);background:rgba(247,147,26,.04);">' +
+    '<div class="ch-top"><div class="ch-peer"><div class="ch-avatar">🔗</div><div>' +
+    '<div class="ch-alias">' + _pgEsc(first.peer_alias) + ' <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">' + members.length + ' channels · one peer</span></div>' +
+    '<div class="ch-pubkey">Combined: ' + fmt(cap) + ' sats · LND forwards over whichever channel has room, so these act as one ' + _pgShort(cap) + ' pipe</div>' +
+    '</div></div><div class="ch-right"></div></div>' +
+    '<div class="balance-bar-wrap"><div class="balance-bar-labels">' +
+    '<span>Local (all): ' + fmt(local) + ' sats (' + pct + '%)</span>' +
+    '<span>Remote (all): ' + fmt(cap - local) + ' sats (' + (100 - pct) + '%)</span></div>' +
+    '<div class="balance-bar"><div class="balance-bar-fill" style="width:' + pct + '%"></div></div></div>' +
+    '<div class="ch-stats">' +
+    '<div class="ch-stat">Fees: ' + (same ? '<span style="color:var(--green)">' + fees[0] + ' on all ✓</span>' : '<span style="color:#eab308">⚠️ mixed (' + fees.map(f => f.split(' / ')[0]).join(' · ') + '). Use one fee so routing is predictable</span>') + '</div>' +
+    '<div class="ch-stat">' + afLine + '</div>' +
+    '</div>' +
+    '<div class="ch-actions">' +
+    '<button class="action-btn" onclick="openPeerFeeModal(\'' + pk + '\')">⚡ Set fee for all ' + members.length + '</button>' +
+    '<button class="action-btn" onclick="peerAutoFee(\'' + pk + '\')">💰 Auto Fee for all ' + members.length + '</button>' +
+    '</div></div>';
+}
+
+function openPeerFeeModal(pk){
+  const tier = window.LCC_TIER || 'community';
+  if(tier === 'community'){ alert('Per-channel fee updates are a Personal feature. Upgrade at satslist.shop'); return; }
+  const m = _peerMembers(pk);
+  if(!m.length) return;
+  currentChanPoint = '';
+  currentPeerPubkey = pk;
+  document.getElementById('fee-modal-peer').textContent = m[0].peer_alias + ' · all ' + m.length + ' channels';
+  document.getElementById('fee-modal-ppm').value = m[0].fee_ppm || 100;
+  document.getElementById('fee-modal-base').value = m[0].base_fee || 0;
+  document.getElementById('fee-modal-status').textContent = '';
+  document.getElementById('fee-modal').style.display = 'flex';
+}
+
+function peerAutoFee(pk){
+  const m = _peerMembers(pk);
+  if(!m.length) return;
+  toggleAutoFee(m[0].channel_point, m[0].peer_alias + ' (all ' + m.length + ' channels)', pk);
+}
 
 function sortChannels() {
   if(!cachedChannels.length) return;
@@ -816,10 +878,22 @@ function sortChannels() {
   else if(sortBy === 'local_pct_asc') channels.sort((a,b) => (a.local_balance/a.capacity) - (b.local_balance/b.capacity));
   else if(sortBy === 'fee') channels.sort((a,b) => b.fee_ppm - a.fee_ppm);
   else if(sortBy === 'name') channels.sort((a,b) => a.peer_alias.localeCompare(b.peer_alias));
-  channels.forEach(ch => {
+  const _pc = {};
+  channels.forEach(c => { _pc[c.remote_pubkey] = (_pc[c.remote_pubkey] || 0) + 1; });
+  const _ordered = [], _done = {};
+  channels.forEach(c => {
+    if(_pc[c.remote_pubkey] < 2){ _ordered.push(c); return; }
+    if(_done[c.remote_pubkey]) return;
+    _done[c.remote_pubkey] = 1;
+    const members = channels.filter(x => x.remote_pubkey === c.remote_pubkey);
+    _ordered.push({_peerGroup: true, members: members});
+    members.forEach(m => _ordered.push(Object.assign({}, m, {_inGroup: true})));
+  });
+  _ordered.forEach(ch => {
+    if(ch._peerGroup){ activeEl.innerHTML += _peerGroupCard(ch.members); return; }
     const init = ch.peer_alias.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const localPct = Math.round((ch.local_balance / ch.capacity) * 100);
-    activeEl.innerHTML += '<div class="channel-card">' +
+    activeEl.innerHTML += '<div class="channel-card"' + (ch._inGroup ? ' style="margin-left:22px;border-left:3px solid var(--orange-dim);"' : '') + '>' +
       '<div class="ch-top"><div class="ch-peer">' +
       '<div class="ch-avatar">' + init + '</div><div>' +
       '<div class="ch-alias">' + ch.peer_alias + ' <span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;' + (ch.initiator ? 'background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);' : 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);') + '">' + (ch.initiator ? '🔓 You opened (outbound)' : '🔑 Peer opened (inbound)') + '</span>' + (()=>{const s=window._strategies&&window._strategies[ch.channel_point];if(!s||s.strategy==='none')return '';const trapped=ch.fee_ppm>=s.trap_ppm;return trapped?'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#ef4444;">🪤 Trapped</span>':'<span style="font-size:9px;padding:1px 6px;border-radius:10px;margin-left:6px;background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);">🌊 Draining</span>';})() + '</div>' +
@@ -1440,7 +1514,11 @@ function toggleAutoRebalance(chanPoint, alias) {
   }).catch(()=>alert('Failed to set auto rebalance'));
 }
 
-function toggleAutoFee(chanPoint, alias) {
+function sortChannelsReload(){
+  fetch('/api/channel-auto-fee').then(r=>r.json()).then(d=>{ window._autoFeeData = d.channels || {}; sortChannels(); }).catch(()=>{});
+}
+
+function toggleAutoFee(chanPoint, alias, peerPubkey) {
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){ alert('Auto Fee is a Pro feature. Upgrade at satslist.shop'); return; }
   var minBase = prompt('💰 Auto Fee (by liquidity) for ' + alias + '\n\nMin base fee, msat (used when channel is FULL of your local sats — attracts routing):\n(Enter -1 to disable)', '0');
@@ -1450,9 +1528,10 @@ function toggleAutoFee(chanPoint, alias) {
     fetch('/api/channel-auto-fee', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({chan_point: chanPoint, enabled: false})
+      body: JSON.stringify({chan_point: chanPoint, enabled: false, apply_to_peer: !!peerPubkey, peer_pubkey: peerPubkey || ''})
     }).then(r=>r.json()).then(d=>{
       alert('Auto Fee DISABLED for ' + alias);
+      sortChannelsReload();
     });
     return;
   }
@@ -1471,14 +1550,17 @@ function toggleAutoFee(chanPoint, alias) {
     max_base: parseInt(maxBase),
     min_ppm: parseInt(minPpm),
     max_ppm: parseInt(maxPpm),
-    hours: parseInt(hours)
+    hours: parseInt(hours),
+    apply_to_peer: !!peerPubkey,
+    peer_pubkey: peerPubkey || ''
   };
   fetch('/api/channel-auto-fee', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
   }).then(r=>r.json()).then(d=>{
-    alert('Auto Fee ENABLED for ' + alias + '\nBase: ' + minBase + '-' + maxBase + ' msat\nPPM: ' + minPpm + '-' + maxPpm + '\nChecked every ' + hours + 'h');
+    alert('Auto Fee ENABLED for ' + alias + '\nBase: ' + minBase + '-' + maxBase + ' msat\nPPM: ' + minPpm + '-' + maxPpm + '\nChecked every ' + hours + 'h' + (peerPubkey ? '\n\nSame band on every channel with this peer. The fee follows their combined balance, so they always show one price.' : ''));
+    sortChannelsReload();
   }).catch(()=>alert('Failed to set auto fee'));
 }
 

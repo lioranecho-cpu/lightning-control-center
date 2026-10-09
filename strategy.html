@@ -114,10 +114,39 @@ async function loadStrategy(){
 
     const tbody = document.getElementById('strategy-body');
     tbody.innerHTML = '';
+    const pc = {};
+    channels.forEach(c => { if(c.remote_pubkey) pc[c.remote_pubkey] = (pc[c.remote_pubkey] || 0) + 1; });
+    const ordered = [], done = {};
     channels.forEach(c => {
+      if(!c.remote_pubkey || pc[c.remote_pubkey] < 2){ ordered.push(c); return; }
+      if(done[c.remote_pubkey]) return;
+      done[c.remote_pubkey] = 1;
+      const m = channels.filter(x => x.remote_pubkey === c.remote_pubkey);
+      ordered.push({_group: m});
+      m.forEach(x => ordered.push(Object.assign({}, x, {_inGroup: true})));
+    });
+    ordered.forEach(c => {
+      if(c._group){
+        const m = c._group;
+        const cap = m.reduce((s, x) => s + x.capacity, 0);
+        const local = m.reduce((s, x) => s + x.capacity * x.local_pct / 100, 0);
+        const fees = m.map(x => x.my_fee);
+        const same = fees.every(f => f === fees[0]);
+        tbody.innerHTML += '<tr style="background:rgba(247,147,26,.05);">' +
+          '<td>🔗</td>' +
+          '<td><strong>' + esc(m[0].alias) + '</strong><div style="font-size:10px;color:var(--orange)">' + m.length + ' channels, one peer: they act as one pipe</div></td>' +
+          '<td>' + fmt(cap) + '</td>' +
+          '<td>' + (cap ? Math.round(local / cap * 100) : 0) + '%</td>' +
+          '<td style="color:' + (same ? 'var(--green)' : 'var(--yellow)') + '">' + (same ? fees[0] : fees.join(' / ') + ' ⚠️') + '</td>' +
+          '<td>' + m.map(x => x.peer_fee).join(' / ') + '</td>' +
+          '<td style="font-family:var(--mono);font-size:11px;">' + short(m.reduce((s, x) => s + x.out_7d, 0)) + ' / ' + short(m.reduce((s, x) => s + x.in_7d, 0)) + '</td>' +
+          '<td colspan="2" style="color:var(--muted);font-size:11px;">' + (same ? 'Combined view. Judge this peer as a whole: LND forwards over whichever channel has room.' : 'Mixed fees on one peer make routing unpredictable. Set one fee for all (Channels page).') + '</td>' +
+        '</tr>';
+        return;
+      }
       tbody.innerHTML += '<tr>' +
         '<td><span class="color-dot ' + c.color + '"></span></td>' +
-        '<td><strong>' + esc(c.alias) + '</strong><div style="font-size:10px;color:var(--muted)">' + (c.initiator ? 'You opened' : 'Peer opened') + '</div></td>' +
+        '<td>' + (c._inGroup ? '<span style="color:var(--muted);margin-right:4px;">↳</span>' : '') + '<strong>' + esc(c.alias) + '</strong><div style="font-size:10px;color:var(--muted)">' + (c.initiator ? 'You opened' : 'Peer opened') + '</div></td>' +
         '<td>' + fmt(c.capacity) + '</td>' +
         '<td>' + c.local_pct + '%</td>' +
         '<td>' + c.my_fee + '</td>' +
