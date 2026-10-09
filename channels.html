@@ -493,18 +493,21 @@ function rebalanceNow(){
   fetch('/api/rebalance', {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
-      const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
-      const failed = d.results ? d.results.filter(r=>r.status==='failed').length : 0;
+      const s = d.summary || {};
       if(d.status === 'balanced'){
         status.textContent = '✅ Already balanced!';
         status.style.color = 'var(--green)';
       } else {
-        status.textContent = '✅ ' + success + ' rebalanced, ' + failed + ' skipped';
-        status.style.color = success > 0 ? 'var(--green)' : 'var(--muted)';
+        const parts = [(s.moved || 0) + ' moved' + (s.moved ? ' (' + fmt(s.sats_moved) + ' sats, \u2212' + fmt(s.fees) + ' sats fees)' : '')];
+        if(s.no_route) parts.push(s.no_route + ' found no route under the fee cap');
+        if(s.skipped) parts.push(s.skipped + ' skipped');
+        status.textContent = (s.moved ? '✅ ' : 'ℹ️ ') + parts.join(' · ');
+        status.title = (d.results || []).map(r => r.from + ' \u2192 ' + r.to + ': ' + r.status + (r.fee_cap ? ' (cap ' + r.fee_cap + ' sats)' : '') + (r.reason ? ' \u2014 ' + r.reason : '')).join('\n');
+        status.style.color = s.moved ? 'var(--green)' : 'var(--muted)';
       }
       btn.disabled = false;
       btn.textContent = '⚖️ Rebalance All Channels';
-      setTimeout(()=>location.reload(), 3000);
+      if(s.moved) setTimeout(()=>location.reload(), 5000);
     })
     .catch(()=>{
       status.textContent = '❌ Rebalance failed';

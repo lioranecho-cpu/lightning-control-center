@@ -1938,97 +1938,118 @@ def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_de
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+_REBAL_COST_SHARE = 0.5   # pay at most half of what the receiving channel earns per sat
+_REBAL_MAX_ATTEMPTS = 10  # per "Rebalance All" press
+
+
+def _rebal_my_fee(ch, my_pubkey):
+    """(our fee ppm on this channel, numeric channel id)."""
+    try:
+        info = run_lncli("getchaninfo", f"--chan_point={ch.get('channel_point', '')}")
+        pol = info.get("node1_policy", {}) if info.get("node1_pub") == my_pubkey else info.get("node2_policy", {})
+        return int(pol.get("fee_rate_milli_msat", 0) or 0), info.get("channel_id")
+    except Exception:
+        return 0, None
+
+
 @app.post("/api/rebalance")
 def rebalance_channels(target_pubkey: str = None):
     if MOCK:
         return {"status": "mock", "message": "Rebalance simulated"}
     try:
-        # Get all channels
         channels = run_lncli("listchannels")["channels"]
-        results = []
-        
-        # Find overfull (>80%) and underfull (<20%) channels
-        overfull = [c for c in channels if int(c["capacity"]) > 0 and 
-                    int(c["local_balance"]) / int(c["capacity"]) > 0.80]
-        underfull = [c for c in channels if int(c["capacity"]) > 0 and 
-                     int(c["local_balance"]) / int(c["capacity"]) < 0.20]
-        
-        # If target_pubkey specified, only rebalance that channel
+        pct = lambda c: int(c["local_balance"]) / int(c["capacity"]) if int(c["capacity"]) > 0 else 0
+        overfull = [c for c in channels if int(c["capacity"]) > 0 and pct(c) > 0.80]
+        underfull = [c for c in channels if int(c["capacity"]) > 0 and pct(c) < 0.20]
+
         if target_pubkey:
             target = [c for c in channels if c["remote_pubkey"] == target_pubkey]
             if target:
-                ch = target[0]
-                pct = int(ch["local_balance"]) / int(ch["capacity"])
-                if pct > 0.50:
-                    overfull = [ch]
+                if pct(target[0]) > 0.50:
+                    overfull = [target[0]]
                 else:
-                    underfull = [ch]
-        
+                    underfull = [target[0]]
+
         if not overfull or not underfull:
-            return {"status": "balanced", "message": "No rebalancing needed", "results": []}
-        
-        for src in overfull:
-            for dst in underfull:
-                src_cap = int(src["capacity"])
-                src_local = int(src["local_balance"])
-                dst_cap = int(dst["capacity"])
-                dst_local = int(dst["local_balance"])
-                
-                # Calculate amount to rebalance (move toward 50%)
-                settings = json.load(open(_DATA_JSON_PATH))
-                amount = min(
-                    src_local - int(src_cap * 0.50),  # excess in source
-                    int(dst_cap * 0.50) - dst_local,  # deficit in destination
-                    int(settings.get("rebalance_amount", 50000))  # max per rebalance
-                )
-                
+            return {"status": "balanced", "message": "No rebalancing needed", "results": [],
+                    "summary": {"moved": 0, "sats_moved": 0, "fees": 0, "no_route": 0, "skipped": 0}}
+
+        try:
+            my_pubkey = run_lncli("getinfo").get("identity_pubkey", "")
+        except Exception:
+            my_pubkey = ""
+        settings = json.load(open(_DATA_JSON_PATH))
+        max_amount = int(settings.get("rebalance_amount", 50000))
+
+        src_info = {c.get("channel_point"): _rebal_my_fee(c, my_pubkey) for c in overfull}
+        dst_info = {c.get("channel_point"): _rebal_my_fee(c, my_pubkey) for c in underfull}
+        overfull.sort(key=lambda c: -pct(c))                                  # fullest sources first
+        underfull.sort(key=lambda c: -dst_info[c.get("channel_point")][0])   # best-earning exits first
+
+        results, attempts = [], 0
+        for dst in underfull:
+            dst_ppm = dst_info[dst.get("channel_point")][0]
+            dst_alias = dst.get("peer_alias", dst["remote_pubkey"][:16])
+            moved = False
+            for src in overfull:
+                if moved:
+                    break
+                src_alias = src.get("peer_alias", src["remote_pubkey"][:16])
+                amount = min(int(src["local_balance"]) - int(int(src["capacity"]) * 0.50),
+                             int(int(dst["capacity"]) * 0.50) - int(dst["local_balance"]),
+                             max_amount)
                 if amount < 1000:
                     continue
-                
+                fee_cap = int(amount * dst_ppm * _REBAL_COST_SHARE / 1_000_000)
+                if fee_cap < 1:
+                    results.append({"from": "any", "to": dst_alias, "amount": amount, "status": "skipped",
+                                    "reason": f"{dst_alias} charges {dst_ppm} ppm, too little to pay for a rebalance"})
+                    break
+                if attempts >= _REBAL_MAX_ATTEMPTS:
+                    results.append({"from": src_alias, "to": dst_alias, "amount": amount, "status": "skipped",
+                                    "reason": "attempt limit reached for this run"})
+                    continue
+                attempts += 1
                 try:
-                    # Get numeric chan_id for source channel via getchaninfo
-                    src_chan_point = src.get("channel_point", "")
-                    src_chan_id = None
-                    if src_chan_point:
-                        chan_info = run_lncli("getchaninfo", f"--chan_point={src_chan_point}")
-                        src_chan_id = chan_info.get("channel_id")
-
-                    # Create invoice to self
-                    invoice = run_lncli("addinvoice", f"--amt={amount}", "--memo=LCC Auto-Rebalance")
-                    payment_request = invoice.get("payment_request")
-
-                    # Build sendpayment args with both source and destination control
+                    invoice = run_lncli("addinvoice", f"--amt={amount}", "--memo=LCC Rebalance: " + src_alias[:20] + " -> " + dst_alias[:20])
                     pay_args = [
                         "sendpayment",
-                        "--pay_req=" + payment_request,
+                        "--pay_req=" + invoice.get("payment_request"),
                         "--last_hop=" + dst["remote_pubkey"],
                         "--allow_self_payment",
                         "--force",
+                        f"--fee_limit={fee_cap}",
                         "--timeout=30s",
-                        "--json"
+                        "--json",
                     ]
-                    if src_chan_id:
-                        pay_args.append(f"--outgoing_chan_id={src_chan_id}")
-
+                    src_id = src_info[src.get("channel_point")][1]
+                    if src_id:
+                        pay_args.append(f"--outgoing_chan_id={src_id}")
                     result = run_lncli(*pay_args)
-                    fee = int(result.get("fee_sat", 0)) if result.get("fee_sat") else 0
-                    results.append({
-                        "from": src.get("peer_alias", src["remote_pubkey"][:16]),
-                        "to": dst.get("peer_alias", dst["remote_pubkey"][:16]),
-                        "amount": amount,
-                        "fee": fee,
-                        "status": "success"
-                    })
-                except Exception as e:
-                    results.append({
-                        "from": src.get("peer_alias", src["remote_pubkey"][:16]),
-                        "to": dst.get("peer_alias", dst["remote_pubkey"][:16]),
-                        "amount": amount,
-                        "status": "failed",
-                        "error": str(e)
-                    })
-        
-        return {"status": "done", "results": results}
+                    if result.get("status") == "SUCCEEDED":
+                        fee = int(result.get("fee_sat", 0) or 0)
+                        results.append({"from": src_alias, "to": dst_alias, "amount": amount, "fee": fee,
+                                        "fee_cap": fee_cap, "status": "success"})
+                        _log_journal(f"Rebalance: {src_alias} \u2192 {dst_alias}",
+                                     f"Moved {amount:,} sats | Fee: {fee} sats (cap {fee_cap}, {dst_alias} earns {dst_ppm} ppm)",
+                                     "auto-rebalance")
+                        moved = True
+                    else:
+                        results.append({"from": src_alias, "to": dst_alias, "amount": amount, "fee_cap": fee_cap,
+                                        "status": "no_route", "reason": result.get("failure_reason", "FAILED")})
+                except Exception as ex:
+                    results.append({"from": src_alias, "to": dst_alias, "amount": amount,
+                                    "status": "no_route", "reason": str(ex)[:200]})
+
+        ok = [r for r in results if r["status"] == "success"]
+        summary = {
+            "moved": len(ok),
+            "sats_moved": sum(r["amount"] for r in ok),
+            "fees": sum(r.get("fee", 0) for r in ok),
+            "no_route": len([r for r in results if r["status"] == "no_route"]),
+            "skipped": len([r for r in results if r["status"] == "skipped"]),
+        }
+        return {"status": "done", "results": results, "summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2371,6 +2392,8 @@ def auto_rebalance_job():
                         src_chan_id = chan_info.get("channel_id")
                         
                         dst = underfull[0]
+                        _dst_ppm, _ = _rebal_my_fee(dst, run_lncli("getinfo").get("identity_pubkey", ""))
+                        _fee_cap = max(1, min(int(max_fee), int(amount * _dst_ppm * _REBAL_COST_SHARE / 1_000_000)))
                         invoice = run_lncli("addinvoice", f"--amt={amount}", f"--memo=Auto-Rebalance: {alias}")
                         payment_request = invoice.get("payment_request")
                         
@@ -2380,7 +2403,7 @@ def auto_rebalance_job():
                             "--last_hop=" + dst["remote_pubkey"],
                             "--allow_self_payment",
                             "--force",
-                            "--fee_limit=" + str(max_fee),
+                            "--fee_limit=" + str(_fee_cap),
                             "--timeout=30s",
                             "--json"
                         ]
