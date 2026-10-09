@@ -1793,7 +1793,7 @@ def rebalance_targeted(body: dict = Body(...)):
         else:
             reason = result.get("failure_reason", "UNKNOWN")
             friendly = {
-                "FAILURE_REASON_NO_ROUTE": "No route found. Try increasing max fee, reducing amount, or try different channels",
+                "FAILURE_REASON_NO_ROUTE": f"No profitable route right now: nothing reaches this channel for {max_fee} sats or less ({round(max_fee * 1_000_000 / max(amount, 1)):,} ppm). Nothing was paid. Raising the max fee above what this channel earns would lose money; for busy sinks like LNBiG a Loop In is usually far cheaper.",
                 "FAILURE_REASON_TIMEOUT": "Payment timed out. Peer may be offline — try again later or try different channels",
                 "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel. Try a smaller amount",
                 "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired — try again",
