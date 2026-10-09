@@ -6,10 +6,13 @@
 > 💡 **Quick Help:** Paste this into any AI (Claude, ChatGPT, Grok) for interactive support:
 > *"Read https://github.com/lioranecho-cpu/lightning-control-center and help me with [your question]"*
 
+*Manual for LCC v0.2.2*
+
 ---
 
 ## Table of Contents
 
+**Pages**
 1. [Getting Started](#getting-started)
 2. [Dashboard](#dashboard)
 3. [Channels](#channels)
@@ -20,27 +23,45 @@
 8. [Mining](#mining)
 9. [System Monitor](#system-monitor)
 10. [Node Journal](#node-journal)
-11. [Alerts](#alerts)
-12. [Settings](#settings)
-13. [Integrations](#integrations)
-14. [NWC — Nostr Wallet Connect (Pro)](#nwc--nostr-wallet-connect-pro)
-15. [Treasury (Pro)](#treasury-pro)
-16. [Drain and Trap Strategy (Pro)](#drain-and-trap-strategy-pro)
-17. [Live HTLC Stream (Pro)](#live-htlc-stream-pro)
-18. [Fee Recommendations (Pro)](#fee-recommendations-pro)
-19. [Channel Strategy (Pro)](#channel-strategy-pro)
-21. [Themes](#themes)
-21. [Command Palette (Personal+)](#command-palette-personal)
-22. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
-23. [Channel Management Tips](#channel-management-tips)
-24. [Fee Optimization Guide](#fee-optimization-guide)
-25. [Channel Strategy Page](#channel-strategy-page-pro)
-26. [Targeted Rebalance](#targeted-rebalance-pro)
+11. [Node P&L (Treasury Page)](#node-pl-treasury-page)
+12. [Alerts](#alerts)
+13. [Settings](#settings)
+14. [Integrations](#integrations)
+15. [NWC — Nostr Wallet Connect (Pro)](#nwc--nostr-wallet-connect-pro)
+16. [Treasury (Pro)](#treasury-pro)
+17. [Umbrel Installation](#umbrel-installation)
+
+**Liquidity and fee tools**
+
+18. [Inbound Health](#inbound-health)
+19. [Channels With the Same Peer (Peer Groups)](#channels-with-the-same-peer-peer-groups)
+20. [Drain and Trap Strategy (Pro)](#drain-and-trap-strategy-pro)
+21. [Auto Fee by Liquidity (Pro)](#auto-fee-by-liquidity-pro)
+22. [Fee Recommendations (Pro)](#fee-recommendations-pro)
+23. [Channel Strategy (Pro)](#channel-strategy-pro)
+24. [Rebalancing (Pro)](#rebalancing-pro)
+25. [Loop In and Loop Out (Pro)](#loop-in-and-loop-out-pro)
+26. [Live HTLC Stream (Pro)](#live-htlc-stream-pro)
 27. [Auto-Reconnect](#auto-reconnect-background-worker)
-28. [Tax Accounting Export](#tax-accounting-export-pro)
-29. [Loop Out (Pro)](#loop-out-pro)
-30. [Troubleshooting](#troubleshooting)
-31. [Auto Fee by Liquidity (Pro)](#auto-fee-by-liquidity-pro)
+28. [Tax Accounting Export (Pro)](#tax-accounting-export-pro)
+
+**Guides**
+
+29. [How Lightning Routing Works (Tutorial)](#how-lightning-routing-works-tutorial)
+30. [Liquidity Playbook: Refill, Rebalance or Recycle?](#liquidity-playbook-refill-rebalance-or-recycle)
+31. [Channel Management Tips](#channel-management-tips)
+32. [Fee Optimization Guide](#fee-optimization-guide)
+33. [Routing Pattern Analysis](#routing-pattern-analysis)
+
+**Other**
+
+34. [Themes](#themes)
+35. [Command Palette (Personal+)](#command-palette-personal)
+36. [Troubleshooting](#troubleshooting)
+37. [Remote Access Options](#remote-access-options)
+38. [Security Notes](#security-notes)
+39. [Subscription Tiers](#subscription-tiers)
+
 ---
 
 ## Getting Started
@@ -50,17 +71,21 @@
 - LND node with lncli access, synced and running
 - Bitcoin Core running and synced
 - Python 3.9+
+- Optional: Lightning Loop (built into litd) for Loop In / Loop Out
 
 ### Installation
 ```bash
 curl -sSL https://raw.githubusercontent.com/lioranecho-cpu/lightning-control-center/main/install.sh | bash
 ```
 
-After installation, open your browser and navigate to http://your-server-ip:8765
+After installation, open your browser and go to http://your-server-ip:8765
 
 ### First Login
-- Default login uses a password stored in data.json
+- The login password is stored in data.json — change it in Settings after the first login
 - Pro tier supports Nostr login via NIP-07 (Alby, nos2x) or nsec key
+
+### Automations are off by default
+Auto Rebalance, Auto Fee, Drain & Trap and fee changes never run until you switch them on for a channel. LCC never opens or closes a channel by itself.
 
 ---
 
@@ -74,6 +99,8 @@ Your command center — everything at a glance.
 
 **Active Channels Table:** Peer name, capacity, local/remote balance, fee PPM, status — sorted by capacity
 
+**Inbound Health card:** how easy it is for others to pay through you. See [Inbound Health](#inbound-health).
+
 **Node Health:** Bitcoin Core, LND, RTL, LNbits, Mining Pool status and uptime
 
 **Status Bar:** Bitcoin price, mempool size, fee rate, peer count, UTC time
@@ -82,21 +109,34 @@ Your command center — everything at a glance.
 
 ## Channels
 
-Manage your Lightning channels — open, close, update fees, rebalance.
+Manage your Lightning channels — open, close, update fees, rebalance, Loop.
 
-- **Inbound/Outbound labels** — every channel shows Outbound (you opened) or Inbound (they opened to you)
-- **Balance bar** — visual local vs remote balance percentage
-- **Sort dropdown** — Capacity, Inbound first, Outbound first, Most full, Most empty, Fee PPM
+- **Inbound/Outbound labels** — "🔓 You opened (outbound)" or "🔑 Peer opened (inbound)"
+- **Balance bar** — local vs remote balance as a percentage
+- **Sort dropdown** — Capacity, Inbound first, Outbound first, Most full, Most empty, Fee PPM, Name
 - **Tabs** — Active, Pending, All
+- **Peer groups** — when you have 2 or more channels with the same peer, they are shown together under one 🔗 peer card. See [Peer Groups](#channels-with-the-same-peer-peer-groups).
+
+**Top buttons:**
+- **🎯 Targeted Rebalance** — you pick the source and destination
+- **⚖️ Rebalance All Channels** — moves sats from full channels to empty ones, with a profit-based fee cap
+- **🔄 Loop Monitor** — swap history in a popup
 
 **Per-channel actions:**
-- **Update Fees** — change base fee and fee PPM per channel
-- **Rebalance** — manual circular rebalance
-- **Peer Policy** — view your fees vs your peer fees side by side
-- **Strategy** — set Drain and Trap automation (Pro)
-- **🌊 Draining badge** — shown when Drain & Trap is active and channel is draining at low PPM
-- **🪤 Trapped badge** — shown when fee has spiked to trap PPM because local balance hit the floor
-- **Close Channel** — cooperative close with double confirmation
+- **Update Fees** — change base fee and fee PPM
+- **🔄 Loop Out** — move sats from this channel to your on-chain wallet
+- **⬇️ Loop In** — refill this channel from your on-chain wallet
+- **🔁 Auto Rebalance** — scheduled rebalancing for this channel (Pro)
+- **💰 Auto Fee** — fee follows the channel's balance (Pro)
+- **Rebalance** — one rebalance run for this channel
+- **Peer Policy** — your fees vs your peer's fees side by side
+- **⚡ Strategy** — set Drain and Trap (Pro)
+- **Close Channel** — cooperative close with double confirmation (never a force close)
+
+**Badges and status lines:**
+- **🌊 Draining** — Drain & Trap is active and the channel is draining at low PPM
+- **🪤 Trapped** — fee has jumped to the trap PPM because local balance hit the floor
+- **Auto Rebal / Auto Fee** — shows the current settings, or OFF
 
 ---
 
@@ -104,53 +144,52 @@ Manage your Lightning channels — open, close, update fees, rebalance.
 
 Manage your network connections.
 
-- **Connected Peers** — list of all nodes you are connected to
-- **Connect New Peer** — enter pubkey@host:port to connect
-- **Disconnect** — drop connection (channel stays open, reconnects automatically)
+- **Connected Peers** — every node you are connected to
+- **Connect New Peer** — enter pubkey@host:port
+- **Disconnect** — drops the connection (the channel stays open and reconnects automatically)
 
 ---
 
 ## Routing
 
-Full forwarding history with detailed analytics.
+Full forwarding history.
 
 - **Forwarding History table** — timestamp, amount, fee earned, in channel, out channel
-- **Pagination** — 25 events per page with Prev/Next
-- **Sort** — Newest first or Oldest first
-- **Time filters** — Last 1 day, 7 days, 30 days, All
+- **Pagination** — 25 events per page
+- **Sort** — Newest or Oldest first
+- **Time filters** — 1 day, 7 days, 30 days, All
 - **Export CSV** — download routing data (Personal+)
 
 ---
 
 ## Wallet
 
-Full Bitcoin wallet — send and receive, on-chain and Lightning.
+Send and receive, on-chain and Lightning.
 
-**Receive On-chain:** Click New Address to generate a fresh bc1 address with QR code
+**Receive On-chain:** New Address creates a fresh bc1 address with QR code
 
-**Receive Lightning:** Lightning Address shown with QR code
+**Receive Lightning:** Lightning Address with QR code
 
-**Send Payment:** Paste a Lightning invoice (lnbc...) or on-chain address (bc1...), set amount and fee limit, confirmation dialog before sending
+**Send Payment:** Paste a Lightning invoice (lnbc...) or on-chain address (bc1...), set amount and fee limit, confirm before sending
 
-**Recent Transactions:** Filter by type (All, Received, Sent, Forwarded, On-chain, Rebalances only), Hide Rebalances checkbox, rebalance fees shown inline
+**Recent Transactions:** Filter by type (All, Received, Sent, Forwarded, On-chain, Rebalances only), Hide Rebalances checkbox. Rebalances show named pairs, e.g. "Rebalance: block-iad-1 → LNBiG [Hub-3]", with the fee inline.
 
 ---
 
 ## Analytics
 
-Deep insights into your routing performance.
-
-- **Routing Fees Over Time** — daily earnings with time filters (7D, 30D, 90D, All)
+- **Routing Fees Over Time** — daily earnings (7D, 30D, 90D, All)
 - **Fee Projections** — estimated daily, weekly, monthly, yearly earnings
-- **Top Routing Pairs** — routes ranked by fees earned with event count and volume, each row also shows which channel's outbound fee policy is actually charging on that route (base msat / PPM). The outbound leg always sets the fee for a route, not the inbound one — this column answers "which of my channels is charging here" at a glance.
-- **Routed Volume** — daily BTC volume chart
-- **Fee Recommendations (Pro)** — actionable PPM suggestions per channel
+- **Top Routing Pairs** — routes ranked by fees earned, with event count and volume. Each row shows which channel's outbound fee policy is charging (base msat / PPM). The outgoing channel always sets the fee for a route, not the incoming one.
+- **Routed Volume** — daily volume chart
+- **Rebalance ROI Tracker (Pro)** — see [Rebalancing](#rebalance-roi-tracker)
+- **Fee Recommendations (Pro)** — see [Fee Recommendations](#fee-recommendations-pro)
 
 ---
 
 ## Mining
 
-Monitor your Bitcoin mining fleet — miner names, hashrate, power consumption, IP addresses, pool connection status.
+Monitor your mining fleet — miner names, hashrate, power use, IP addresses, pool connection status.
 
 ---
 
@@ -162,38 +201,83 @@ Service health: Bitcoin Core, LND, Lightning Terminal, RTL, LNbits, Mining Pool,
 
 ## Node Journal
 
-Personal timestamped notes and logs for tracking channel opens, fee changes, and routing observations.
+A timestamped log of your node: your own notes plus everything LCC's automations do.
 
-- **Add entry** — title, body, tag (milestone/issue/note/win), block number auto-captured
-- **Click any entry** — opens full text in a modal for easy reading
-- **Tags** — color-coded: milestone (purple), win (green), issue (red), note (gray)
-- **Delete** — trash icon on each entry card
-- Entries are immutable by design — the journal is a permanent log, not an editable document
+**Organized by day**
+- Entries are grouped by day — **Today** is open, older days are folded. Click a day to open it.
+- Each day header shows a short summary (rebalances and fees paid, fee changes, Loops, notes, alerts).
+- The last 7 days are shown. Click **Show older days** to load 7 more.
+
+**Filter chips:** All · Loop · Fees · Rebalance · Alerts · Notes (each with a count)
+
+**Robot entries are bundled:** 3 or more automatic entries in a row (💰 Auto Fee adjusted, 🔀 Auto-rebalance, 📊 ROI checks) collapse into one line you can expand.
+
+**Your own entries**
+- **Add entry** — title, body, tag (milestone / win / issue / note); block height is captured automatically
+- **Click any entry** to read it in full
+- **Delete** — trash icon on each entry
+- Entries can't be edited — the journal is a permanent log
 
 ---
 
 ## Node P&L (Treasury Page)
 
-The P&L card at the top of the Treasury page shows your node profitability at a glance.
+The P&L card at the top of the Treasury page shows your node's profit at a glance.
 
-- **Routing Fees** — total sats earned forwarding payments
+- **Routing Fees** — sats earned forwarding payments
 - **Rebalance Fees** — sats spent on circular rebalancing
 - **Open Fees (est.)** — estimated channel opening costs from LND commit fees
 - **Close Fees** — confirmed cooperative close fees
 - **Net P&L** — routing fees minus all costs (green = profitable, red = still recovering)
-- **Time periods** — 30 Cal-Days (rolling 30 days), 1 Year, All Time
+- **Time periods** — 30 days, 1 Year, All Time
 
-> ⚠️ Opening/closing fees are approximated from LND data. Verify exact fees via mempool.space using the channel funding txid.
+> ⚠️ Opening/closing fees are estimated from LND data. Check exact fees on mempool.space using the funding txid.
 
 ---
+
 ## Alerts
 
-Custom notification system for channel status changes and routing activity thresholds.
+- **Disk warnings** — at 80% (warning) and 90% (critical) before the node crashes
+- **Bitcoin disk** — separate alert for the blockchain drive
+- **Browser notifications** — enable in Settings to get critical alerts while LCC is in a background tab
+- Checks run every 60 seconds
 
-- **Disk warnings** — system disk alerts at 80% (warning) and 90% (critical) before node crashes
-- **Bitcoin disk** — separate alert for blockchain data drive
-- **Browser notifications** — enable in Settings to get push notifications for critical alerts even when LCC is in background tab
-- Checks run every 60 seconds automatically
+---
+
+## Settings
+
+- **Password** — change the LCC login password
+- **Energy Calculator** — electricity rate (cents/kWh), server wattage (W) and BTC price, used for energy cost in the P&L card
+- **Alert notifications** — browser push notifications for critical alerts
+- **Auto-Rebalance Schedule (Pro)** — Off/Manual, every 6/12/24/48 hours
+- **Rebalance Amount** — 10k, 30k, 50k or 100k sats per operation (also the most Rebalance All moves per channel)
+
+**Environment settings (.env)**
+- `LCC_ONCHAIN_RESERVE` — sats LCC always leaves in your on-chain wallet. Loop In refuses any swap that would go below it. Default: 1,000,000.
+
+---
+
+## Integrations
+
+Visual map of all LCC integrations. Connected features have green borders. Shows Connected, Coming Soon, Planned and Pro features.
+
+---
+
+## NWC — Nostr Wallet Connect (Pro)
+
+Connect any NWC-compatible wallet (Zeus, Alby, Damus) directly to your node.
+
+1. Go to the NWC page and create a new connection
+2. Scan the QR or paste the connection string into your wallet app
+3. The wallet talks directly to your node — no custodian
+
+Supports: get_info, get_balance, make_invoice, lookup_invoice, list_transactions
+
+---
+
+## Treasury (Pro)
+
+One balance view across your node and connected wallets: Total Balance, LNbits wallet, Add Wallet for more NWC wallets, Live Payment Feed.
 
 ---
 
@@ -205,601 +289,520 @@ See **UMBREL.md** in the repo for step-by-step instructions, or paste this into 
 > *"I want to sideload Lightning Control Center (LCC) on my Umbrel node. Please guide me step by step."*
 
 ---
-## Settings
 
-- **Password** — change LCC login password
-- **Energy Calculator** — enter electricity rate (cents/kWh), server wattage (W), and current BTC price (USD) to calculate energy cost in the P&L card
-- **Alert notifications** — enable browser push notifications for critical alerts
-- **Auto-Rebalance Schedule (Pro)** — Off/Manual, Every 6/12/24/48 hours
-- **Rebalance Amount** — 10k, 30k, 50k, or 100k sats per operation
+## Inbound Health
+
+A Dashboard card that answers one question: **how easy is it for others to send payments through you?**
+
+To route, payments must first come **in** to your node. That needs **room to receive**: the remote balance on your channels (sats on your peer's side). Lightning Labs' "Hard to Reach" label means your node is in the bottom 15% for inbound efficiency — this card shows why and what to do.
+
+**What the card shows**
+- **Room to receive** — total remote balance, and its % of your capacity
+- **Largest share** — the peer holding the most of that room, and its %
+- **Senders (7d) nearly full** — channels that sent you traffic in the last 7 days but now have under 10% room left
+- **Channel bars** — busiest senders first. Bar = room that peer has to send to you. ppm = what that peer charges to send to you. ⚠️ = a recent sender that is nearly full.
+- **💡 Hints** — what to do next
+
+**Status badge**
+
+| Badge | When |
+|-------|------|
+| 🔴 Hard to reach | Half or more of your recent senders are nearly full, **or** one peer holds 60%+ of your room |
+| 🟡 Tight | Any recent sender is nearly full, **or** one peer holds 40%+ of your room |
+| 🟢 Easy to reach | Room is spread well across your senders |
+
+**How to fix it**
+- **Busy senders nearly full:** give them a low fee (Drain & Trap) so traffic leaves through them and frees room again.
+- **One peer holds most of the room:** add inbound from more peers — channels other nodes open to you, LN+ swaps, or bought inbound. Don't remove the big peer; add others.
 
 ---
 
-## Integrations
+## Channels With the Same Peer (Peer Groups)
 
-Visual map of all LCC integrations. Connected features have green borders. Shows Connected, Coming Soon, Planned, and Pro Features.
+When you have 2 or more channels with the same peer, LND treats them as **one pipe**. A payment going to that peer can use whichever channel has room (non-strict forwarding). So it makes sense to manage them together.
 
----
+**On the Channels page** they appear under one 🔗 peer card, with the member channels indented below it:
+- **Combined** capacity, local balance and fill %
+- **Fees:** "on all ✓" when every channel has the same fee, or ⚠️ **mixed** when they differ. Mixed fees on one peer make routing unpredictable.
+- **⚡ Set fee for all** — one base fee and PPM on every channel with that peer
+- **💰 Auto Fee for all** — one Auto Fee band on every channel with that peer. The fee then follows the **combined** balance, so all channels always show the same price.
 
-## NWC — Nostr Wallet Connect (Pro)
+**On the Strategy page** a 🔗 row shows the combined capacity, local %, fees and 7-day traffic, with the member channels indented under it.
 
-Connect any NWC-compatible wallet (Zeus, Alby, Damus) directly to your node.
-
-1. Go to NWC page and create a new connection
-2. Scan QR or paste connection string into your wallet app
-3. Wallet connects directly to your node — no custodian
-
-Supports: get_info, get_balance, make_invoice, lookup_invoice, list_transactions
-
----
-
-## Treasury (Pro)
-
-Unified balance view across your node and connected wallets. Total Balance, LNbits wallet, Add Wallet for additional NWC wallets, Live Payment Feed.
+**Tips**
+- Judge a peer as a whole, not by its single channels. One full and one empty channel to the same peer is normal.
+- A Loop In through a peer refills the group — you choose the peer, not the channel.
+- Closing one channel of a group only shrinks the pipe. For peers that opened channels to you (bought inbound), see the [Liquidity Playbook](#liquidity-playbook-refill-rebalance-or-recycle) before closing.
 
 ---
 
 ## Drain and Trap Strategy (Pro)
 
-Automated per-channel fee strategy — the feature that sets LCC apart.
+Automated per-channel fee strategy.
 
 **The Cycle:**
-1. **Drain Phase** — channel runs at low PPM (e.g., 50) to attract volume
-2. Channel drains naturally as payments flow through
-3. When local balance hits the Floor % (e.g., 2-3%), the worker detects it
-4. **Trap Phase** — fees spike to high PPM (e.g., 1200) for premium payments
-5. When balance recovers, fees drop back to drain mode
-6. Cycle repeats automatically every 5 minutes
+1. **Drain Phase** — channel runs at low PPM (e.g. 50) to attract volume
+2. The channel drains as payments flow through
+3. When local balance hits the Floor % (e.g. 2-3%), the worker notices
+4. **Trap Phase** — fee jumps to high PPM (e.g. 1200) for premium payments
+5. When the balance recovers, the fee drops back to drain mode
+6. Checked every 5 minutes
 
-**Setup:** Channels page, click Strategy, select Drain and Trap, set Drain PPM, Trap PPM, and Floor %
+**Setup:** Channels page → ⚡ Strategy → Drain and Trap → set Drain PPM, Trap PPM and Floor %
 
 **Best practices:**
-- Use on outbound channels that drain naturally
-- Do NOT use on inbound channels you paid for — set those to manual with higher PPM
-- Strategy events broadcast to the Live Stream
-
----
-
-## Live HTLC Stream (Pro)
-
-Real-time routing event monitor — companion app on port 8001.
-
-- Live WebSocket feed of forwarding events
-- Obsidian theme (pure black background)
-- Shows timestamp, amount, routing path, outcome, fee earned
-- Strategy events highlighted in orange
-- Events persist across reloads with Clear button
-- Access via sidebar or Command Palette
-
----
-
-## Fee Recommendations (Pro)
-
-Data-driven PPM suggestions in Analytics page.
-
-- Analyzes top routing pairs by events per day
-- Shows current PPM per channel
-- High demand: Raise PPM on [channel] (currently X PPM)
-- Low activity at low PPM: already low, check liquidity balance
-- Low activity at high PPM: Lower PPM on [channel]
-- Healthy channels hidden — only actionable advice shown
+- Use on channels that are full and should drain — including busy senders that are nearly full on the [Inbound Health](#inbound-health) card
+- Do NOT use on inbound channels you paid for — give those a fixed, higher PPM or a tight Auto Fee band
+- Don't run Drain & Trap and Auto Fee (or any outside fee robot) on the same channel — they will fight
+- Strategy events show up in the Live Stream
 
 ---
 
 ## Auto Fee by Liquidity (Pro)
 
-Per-channel automation that adjusts a channel's live fee policy based on its current local balance, so you don't have to babysit fees manually.
+Adjusts a channel's fee automatically based on its local balance.
 
-- Set a min/max base fee and min/max PPM per channel, plus a check interval in hours
-- **High local balance** (channel full of your sats, not draining) — fee drifts toward the **minimum**, to attract more routing through it
-- **Low local balance** (channel already heavily drained) — fee drifts toward the **maximum**, to slow the drain and earn more per sat that does go out
-- Runs as its own background job, independent of Auto Rebalance — safe to run both on the same channel at once
-- Only calls `updatechanpolicy` when the calculated fee actually changed — won't spam the network graph with no-op updates
-- Reads and preserves the channel's real `time_lock_delta` automatically — never guesses or resets it
-- Toggle per channel from the Channels page (💰 Auto Fee button); enter -1 at the min base fee prompt to disable
-- All changes are logged to the Node Journal
+- Set min/max base fee, min/max PPM and a check interval in hours
+- **High local balance** (full of your sats) → fee moves toward the **minimum** to attract routing
+- **Low local balance** (drained) → fee moves toward the **maximum** to slow the drain and earn more per sat
+- Only updates the fee when the calculated value changes, and keeps the channel's real `time_lock_delta`
+- Runs on its own, separate from Auto Rebalance
+- Enable from the 💰 Auto Fee button; enter -1 at the first prompt to disable
+- Every change is logged to the Node Journal
 
----
+**Grouped Auto Fee:** on a 🔗 peer card, **💰 Auto Fee for all** sets the same band on every channel with that peer and uses their **combined** balance. See [Peer Groups](#channels-with-the-same-peer-peer-groups).
 
-## Themes
-
-4 built-in themes — Midnight (dark blue), Obsidian (pure black), Amber (warm gold), Forest (deep green). Switch from sidebar footer, persists via localStorage.
+**Tight bands for refilled exits:** Auto Fee follows balance, not demand. On a channel you refill with Loop In and that sells fast, use a narrow band near the price you know sells (for example 925–1250 ppm instead of 100–1250), so it never gives your refill away cheap.
 
 ---
 
-## Command Palette (Personal+)
+## Fee Recommendations (Pro)
 
-Press Ctrl+Space from any page. Type to search pages and commands. Quick actions: Copy Pubkey, Open SatsList, Launch Live Stream.
+PPM suggestions on the Analytics page.
+
+- Analyzes top routing pairs by events per day
+- **High demand:** Raise PPM on [channel]
+- **Low activity at low PPM:** already low — check liquidity balance
+- **Low activity at high PPM:** Lower PPM on [channel]
+- Healthy channels are hidden — only actionable advice is shown
 
 ---
-Yes! Way simpler. Here's the tutorial text — copy and paste it into MANUAL.md on GitHub, right before the "## Channel Management Tips" section:
+
+## Channel Strategy (Pro)
+
+A bird's-eye view of every channel, color-coded with a recommended action. Open **Strategy** in the sidebar — it opens in its own window and refreshes every 60 seconds.
+
+### Color Code
+
+| Color | Meaning | Typical action |
+|-------|---------|----------------|
+| 🔵 Blue | Peer opened, not full — inbound lifeline | Keep as-is |
+| 🟢 Green | Full (90%+ local) but your fee is still above 50 ppm | Lower the fee so traffic can leave |
+| 🟠 Orange | Monitor: balanced, nearly empty, high peer fee, or being watched for recycle | Watch, adjust fees, refill if it sells |
+| 🔴 Red | Recycle candidate, or high peer fee with no traffic | Cooperative close / Loop Out |
+
+### Columns
+
+- **Channel** — peer alias + who opened it
+- **Capacity**, **Local %**
+- **Your Fee / Peer Fee** — PPM
+- **Routed 7d (out / in)** — sats that left / arrived through this channel in the last 7 days
+- **Assessment** and **Action / Target Fee**
+- **🔗 rows** — combined view for channels with the same peer
+
+### Recycle logic
+
+A channel becomes a **recycle candidate** when it is **stuck**:
+1. 95%+ local, **and**
+2. your fee is already low (50 ppm or less), **and**
+3. nothing routed out in the last 7 days.
+
+LCC then watches it. During the watch it is orange ("day X of 7"). If it is still stuck after **7 days**, it turns red with the numbers:
+- **Close cost** — about 200 vbytes × the current mempool fee rate. The node that **opened** the channel pays it, so if the peer opened it, the peer pays.
+- **Loop Out cost** — about 0.35% of the local balance, for comparison.
+
+A cooperative close returns your sats on-chain for just the mining fee — usually far cheaper than a Loop Out. Use the sats for a Loop In into a busy exit, or a channel to a peer that sends you traffic.
+
+> ⚠️ Closing is permanent and loses that peer. Check the channel isn't a sender you still need. LCC never closes channels by itself.
+
+---
+
+## Rebalancing (Pro)
+
+Rebalancing is a circular payment from your node back to your node: sats leave through a full channel and come back in through an empty one. You pay routing fees to the nodes in between.
+
+**The golden rule:** a rebalance only pays if the fee you pay is less than what the refilled channel will earn when those sats leave again. LCC now enforces this everywhere.
+
+### The fee cap (all rebalances)
+
+LCC never pays more than **half of what the receiving channel earns**:
+
+> **fee cap = amount × receiving channel's ppm × 0.5 ÷ 1,000,000**
+
+Example: refilling 100,000 sats into a channel that charges 1,000 ppm. It will earn 100 sats when those sats sell, so LCC pays at most 50 sats.
+
+- A channel at **0 ppm** earns nothing — LCC skips it ("too little to pay for a rebalance").
+- If no route is cheaper than the cap, **nothing is paid**. You'll see "no route under the fee cap".
+
+### ⚖️ Rebalance All Channels
+
+1. Sources: channels **above 80%** local. Exits: channels **below 20%** local.
+2. Exits are tried best-earning first; sources fullest first.
+3. Amount per move: the smaller of (source down to 50%), (exit up to 50%) and the Settings rebalance amount. Moves under 1,000 sats are skipped.
+4. One successful move per exit, and at most **10 tries** per press.
+
+The result is honest, for example:
+- `✅ 2 moved (100,000 sats, −38 sats fees) · 3 found no route under the fee cap`
+- `ℹ️ 0 moved · 8 found no route under the fee cap · 1 skipped`
+
+Hover the message for each attempt's details. The page reloads only if something moved.
+
+### 🎯 Targeted Rebalance
+
+You choose exactly where sats come from and where they go.
+
+1. Click **🎯 Targeted Rebalance**
+2. Pick the **source** (a full channel) and **destination** (an empty one). The table shows each channel's local % and **your fee** on it.
+3. Enter the amount. **Max fee** fills in automatically (half of what the destination earns). You can change it.
+4. Read the verdict box:
+   - ✅ **Profitable** — max fee is half or less of what the destination earns
+   - ⚠️ **Thin margin** — you keep only a little after the fee
+   - ❌ **Will lose money** — max fee is above what the destination earns, or it charges 0 ppm. LCC suggests a max fee and points to Loop In.
+5. Execute. Losing rebalances ask "This will likely lose money. Proceed anyway?"
+
+On success LCC shows the fee in sats **and ppm** next to what the destination earns.
+
+**"No profitable route right now"** means nothing reached that channel under your max fee. Nothing was paid. Don't just raise the cap — if the destination is a busy hub, a [Loop In](#loop-in-and-loop-out-pro) is usually much cheaper.
+
+### 🔁 Per-Channel Auto Rebalance
+
+Automatic rebalancing for one channel, with its own amount, schedule and fee limit.
+
+**Enable:** 🔁 Auto Rebalance on a channel card → amount (enter 0 to disable) → interval hours or scheduled hours → max fee.
+
+**How it works**
+- Checked every hour, in **interval** mode (every X hours) or **scheduled** mode (at set hours, e.g. 8 and 21)
+- Runs only if the channel is more than 10 points above its target (default target 50%, so above 60% local)
+- Sends sats to a channel that is below 20% local
+- Fee limit = the **smaller** of your max fee and the profit-based cap above
+- 3 failures in a row switch it off automatically, with a journal warning
+
+**Card badge:** OFF · 🔄 6h · 10k · max 400s · ⏰ 8,21:00 · 20k · max 400s · ❌ 2/3 (failures so far)
+
+**Tips**
+- Small amounts (10k) find cheap routes more often — but the cap scales with the amount, so a 10k move into a 1,000 ppm channel can pay at most 5 sats.
+- Only automate channels whose exits earn well. Into big sinks (e.g. LNBiG), circular rebalancing rarely finds a profitable route — use Loop In.
+- Watch the journal for a day before enabling more channels.
+
+### Rebalance ROI Tracker
+
+On the Analytics page under Top Routing Pairs. For each channel it compares:
+- **Rebalance Cost** — sats spent on rebalances
+- **Routing Earned** — routing fees earned through that channel
+
+**Net ROI** = earned − cost. Filters: 24h, 7d, 30d, All.
+
+- High earned + low cost = your best channels
+- Cost but no routing = stop rebalancing them
+- Consider closing channels that stay negative after 21 days
+
+### When NOT to rebalance
+- The destination charges 0 ppm or very little
+- The destination is a liquidity sink that costs more to reach than it earns
+- The channel never routes anyway
+- Just to make the balance bar look even
+
+---
+
+## Loop In and Loop Out (Pro)
+
+Loop swaps move sats between your channels and your on-chain wallet without closing anything. LCC uses Lightning Labs' Loop (built into litd, found automatically). The ⬇️ / 🔄 buttons only appear when Loop is available.
+
+| | ⬇️ Loop In | 🔄 Loop Out |
+|---|---|---|
+| Direction | On-chain wallet → channel | Channel → on-chain wallet |
+| Use it to | Refill a drained channel that sells well | Empty a full channel that won't drain |
+| Needs | On-chain sats | Local balance in the channel |
+| Typical cost (seen on a live node) | About 340–370 sats per 1M | About 0.35–0.40% (3,500–4,000 sats per 1M) |
+
+Loop In is usually **much cheaper** than both Loop Out and rebalancing into a busy hub.
+
+### ⬇️ Loop In
+1. Click **⬇️ Loop In** on a drained channel that earns well
+2. Enter the amount and click **Get Fee Quote** — LCC shows the total cost in sats and ppm, your on-chain balance and what's left after
+3. Read the verdict: ✅ **Worth it** (cost is half or less of what the channel charges), ⚠️ **Thin margin** (only worth it if it sells quickly), or a warning that it costs more than the channel earns
+4. Confirm. The sats arrive in the channel **through that peer**.
+
+- You pick the **peer**, not the exact channel. With several channels to one peer, the sats can land in any of them.
+- **On-chain reserve:** LCC refuses a Loop In that would leave less than `LCC_ONCHAIN_RESERVE` (default 1,000,000 sats) on-chain, so you always keep sats for closes and fee bumps.
+- The sats you swap in become Lightning balance — they are not lost. You earn them back (plus profit) as they route out.
+- After a refill, price the channel by **sell speed**: if it empties within hours, raise the fee next time; if it sits, lower it.
+
+### 🔄 Loop Out
+1. Click **🔄 Loop Out** on a full channel
+2. Enter the amount and confirm target, click **Get Fee Quote**
+3. Check the **Real cost** (Loop's quote + the routing estimate, in sats and ppm), set the **max routing fee**, then confirm
+
+**Why there are two fees:** Loop's quote covers the swap and on-chain fee, but **not** the Lightning routing fee to reach the Loop server. LCC estimates that routing fee from this channel and lets you cap it, so the real cost never surprises you.
+
+**Before you Loop Out a stuck channel**, check the [Channel Strategy](#recycle-logic) page — a cooperative close is often far cheaper.
+
+### Requirements
+- Loop available (built into litd; LCC finds the `loop` binary automatically)
+- The Loop server sets a minimum swap size — LCC shows an error below it
+- Swap server: Lightning Labs
+
+### Loop Monitor
+Click **🔄 Loop Monitor** on the Channels page (or the link after starting a swap). It shows every swap with channel names, times and status badges: INITIATED, IN PROGRESS, SUCCESS, FAILED. Refreshes every 30 seconds. Pending swaps show their quoted fee; finished swaps show the real cost.
+
+### Auto-Journal
+Every swap started from LCC is logged to the Node Journal: channel, amount, swap ID and block height.
+
+---
+
+## Live HTLC Stream (Pro)
+
+Real-time routing monitor — companion app on port 8001.
+
+- Live feed of forwarding events: time, amount, path, result, fee earned
+- Strategy events highlighted in orange
+- Events persist across reloads, with a Clear button
+- Open from the sidebar or Command Palette
+
+---
+
+## Auto-Reconnect (Background Worker)
+
+LCC checks every 30 minutes whether any channel peer has disconnected, looks up its address and reconnects. No setup needed.
+
+---
+
+## Tax Accounting Export (Pro)
+
+Click **📥 Tax CSV** on the Treasury P&L card. The CSV includes:
+- **routing_income** — sats earned forwarding
+- **payment_sent** — Lightning payments with fees
+- **channel_open** — on-chain fees for opening channels
+- **channel_close** — funds returned from closed channels
+- **energy_cost** — from the Settings energy calculator
+
+Each row: date, type, amount (sats), fee (sats), description, transaction ID. A summary popup shows routing income, fees, energy and net P&L.
 
 ---
 
 ## How Lightning Routing Works (Tutorial)
 
-Understanding how payments route through your node is the most important concept for a node operator.
+Understanding how payments move through your node is the most important concept for a node operator.
 
 ### Your Node is a Hallway
 
-Think of your node as a hallway with doors on each side. Each door is a channel to another node. A payment enters through one channel and leaves through another. You collect a fee for letting it pass through.
+Think of your node as a hallway with doors. Each door is a channel to another node. A payment comes in one door and leaves through another. You collect a fee for letting it through.
 
 ### Channel Labels vs Routing Direction
 
-These are two DIFFERENT things that confuse most new node runners:
+These are two DIFFERENT things:
 
 **Channel label (You opened / Peer opened):**
-- This tells you WHO created the channel - it never changes
+- Tells you WHO created the channel — it never changes
 - "You opened" = you funded it with your sats
 - "Peer opened" = they funded it with their sats
-- Traffic flows BOTH directions regardless of who opened it
+- Traffic flows BOTH ways no matter who opened it
 
 **Routing direction (Unwetter → LNBiG):**
-- This tells you which way a specific payment traveled
-- The first name is where the payment came FROM
-- The second name is where the payment went TO
-- This changes with every payment
+- Tells you which way one payment traveled
+- First name = where it came FROM; second = where it went TO
+- Changes with every payment
 
-**Example:** "Routed Unwetter → LNBiG Hub-3" means:
-1. A payment arrived at your node FROM Unwetter
-2. Your node forwarded it OUT through LNBiG Hub-3
-3. You earned a fee for the forwarding
+**Example:** "Routed Unwetter → LNBiG Hub-3" means a payment came in from Unwetter, left through LNBiG Hub-3, and you earned a fee.
 
 ### How Liquidity Moves
 
-Every time a payment routes through your node, liquidity shifts. The incoming channel GAINS local balance (sats move to your side). The outgoing channel LOSES local balance (sats leave your side).
+Every routed payment shifts liquidity. The incoming channel GAINS local balance. The outgoing channel LOSES local balance.
 
 ### Why Channels Get Stuck
 
-A channel gets stuck when all the liquidity is on one side (98% local). Payments can only flow OUT through this channel. There is almost no room for payments to flow IN. If ALL your channels are stuck like this, payments cannot route through your node.
+A channel is stuck when almost all of it is on one side. At 98% local, payments can only go OUT through it — there's no room for payments to come IN. If all your channels are like this, nothing can route through you.
 
 ### What Rebalancing Does
 
-Rebalancing moves sats from a full channel to an empty one using a circular payment through the Lightning Network. After rebalancing, BOTH channels can route payments in both directions.
-
-### When to Rebalance
-
-Rebalance WHEN:
-- A profitable routing channel is stuck above 90% local
-- The rebalance fee is less than what you will earn from routing
-- Traffic was flowing before the channel got stuck
-
-Do NOT rebalance when:
-- Fees are at 0 PPM — you earn nothing back
-- The channel never routes anyway — wasted money
-- You are rebalancing just to make the bar look even
+Rebalancing sends sats from a full channel around the network back into an empty one. Both channels can then route again — but you pay fees to do it. See [Rebalancing](#rebalancing-pro).
 
 ### The Fee and Liquidity Relationship
 
-Your fees control which direction liquidity flows:
-- LOW fees (50 PPM) = attracts lots of traffic, channel drains fast
-- HIGH fees (500 PPM) = less traffic, channel drains slowly
-- VERY HIGH fees (1200 PPM) = almost no traffic, channel preserves balance
+Your fees steer liquidity:
+- LOW fees (50 PPM) = lots of traffic, the channel drains fast
+- HIGH fees (500 PPM) = less traffic, drains slowly
+- VERY HIGH fees (1200 PPM) = almost no traffic, the balance stays
 
-This is exactly what Drain and Trap automates:
-1. Drain at 50 PPM — channel empties through routing
-2. Trap at 1200 PPM — channel stops draining, slowly refills
-3. Repeat automatically
+Drain and Trap automates this: drain at a low fee, then trap at a high fee when nearly empty.
 
 ---
 
-Paste that right above "## Channel Management Tips" in your MANUAL.md on GitHub! Then `git pull` on the ProDesk to sync. 🟠
+## Liquidity Playbook: Refill, Rebalance or Recycle?
+
+Simple rules learned from running a real routing node.
+
+### 1. Drained channel that sells well → refill it
+- **First choice: Loop In** (about 350 sats per 1M). Cheap, and you choose the peer.
+- **Rebalance only if** the [fee cap](#the-fee-cap-all-rebalances) finds a route. Into busy hubs it usually won't.
+- Then price by demand: raise the fee if it sells out fast, lower it if it sits.
+
+### 2. Full channel that won't drain → let it drain, then recycle
+1. Lower its fee (Drain & Trap or a low fixed fee).
+2. Wait — the Strategy page watches it for 7 days.
+3. Still stuck at a low fee with nothing routed out? **Cooperative close** it and reuse the sats. That's usually far cheaper than a Loop Out.
+
+### 3. Drained channel you opened, peer not worth refilling → close and reopen elsewhere
+Closing a near-empty channel you opened costs only the mining fee. Open a fresh channel where the traffic is.
+
+### 4. Bought inbound (the peer opened it) → keep it
+- Closing returns only **your** small side; the peer takes back theirs, and you lose inbound you paid for (and maybe what's left of a paid term).
+- Don't close and re-buy to "refresh" it. If you want to sell into that peer, open **your own** channel to it. LND treats both as one pipe ([Peer Groups](#channels-with-the-same-peer-peer-groups)).
+- Too much of your inbound from one peer? Add inbound from others; don't remove it.
+
+### 5. Never
+- Force-close a channel unless the peer is gone for good
+- Run two fee robots on the same channel
+- Spend your last on-chain sats — keep a reserve for closes and fee bumps
+
+### Cost cheat sheet
+
+| Action | Typical cost | Good for |
+|--------|-------------|----------|
+| Loop In | ~350 sats per 1M | Refilling a busy, well-paid exit |
+| Cooperative close | ~200 vbytes × fee rate, paid by the channel opener | Recycling stuck channels |
+| Rebalance | Up to half of what the exit earns (LCC cap) | Small corrections when a cheap route exists |
+| Loop Out | ~0.35–0.40% | Emptying a channel you want to keep open |
+
+Costs vary with the mempool and the network — always check the quote.
+
+---
 
 ## Channel Management Tips
 
 ### Inbound vs Outbound
-- Outbound (you opened) — your sats drain as payments route through
-- Inbound (they opened) — you have receiving capacity
+- Outbound (you opened) — your sats; they drain as payments route out
+- Inbound (they opened) — gives you room to receive
 
 ### Choosing Peers
-- Connect to well-connected hubs (LNBiG, ACINQ, block-iad-1)
-- Check peer fee policies — high peer fees mean less traffic FROM them
-- Diversify across multiple peers
+- Connect to well-connected nodes (LNBiG, ACINQ, block-iad-1)
+- Check peer fees — high peer fees mean less traffic coming FROM them
+- Diversify across peers — check the [Inbound Health](#inbound-health) card
 - Check uptime on Amboss or 1ML
 
 ### Channel Sizing
 - Minimum useful: 500,000 sats
 - Sweet spot: 1-5M sats
-- Maximum: 16,777,215 sats (protocol limit)
+- Maximum: 16,777,215 sats (unless both nodes support large channels)
+
+### More channels = more work
+Every channel needs fees and liquidity care. A few well-chosen, well-sized channels often earn more than many small ones.
 
 ---
 
 ## Fee Optimization Guide
 
 ### Understanding Fees
-- **Base Fee (msat)** — flat fee per payment. 0 recommended
-- **Fee PPM** — proportional fee per million sats. 100 PPM = 100 sats per 1M routed
+- **Base Fee (msat)** — flat fee per payment. **0 recommended** — many wallets (Phoenix, Zeus and others) avoid routes with a base fee
+- **Fee PPM** — fee per million sats. 100 PPM = 100 sats per 1M routed
 
 ### Strategy by Channel Type
-- Inbound channels: 200-500 PPM to preserve paid liquidity
-- Outbound channels: 50-100 PPM or Drain and Trap
-- High demand routes: raise PPM gradually
+- **Bought inbound / refilled exits to busy hubs:** high, demand-based fee (often 800-1,250 ppm), fixed or a tight Auto Fee band
+- **Full outbound channels:** low fee to drain, or Drain and Trap
+- **Channels with the same peer:** one fee for all ([Peer Groups](#channels-with-the-same-peer-peer-groups))
+- **High demand routes:** raise PPM gradually
 
 ### General Rules
-- 0 base fee + variable PPM is modern standard
-- Do not change fees more than once per week
-- Use Peer Policy viewer to compare your fees vs peer fees
-
----
-
-## Rebalancing Guide
-
-### When to Rebalance
-- A profitable channel is drained below 5% local
-- Rebalancing fee is less than expected routing earnings
-
-
-### Reviving a Drained Outbound Channel
-
-When an outbound channel you opened drains to near 0% local, you have three options:
-
-| Option | Cost | Best for |
-|--------|------|----------|
-| Close + Reopen | ~500 sats | Dead outbound channels with good peers |
-| Loop In | ~1,000 sats | When you want to keep the channel history |
-| Rebalance | 2,000-10,000 sats | Small skew corrections only |
-| Wait | 0 sats | If the channel is still getting inbound traffic |
-
-**Close + Reopen is almost always the cheapest option.** Use it when:
-- Your outbound channel is at 1-5% local
-- The peer is a quality hub worth keeping (LNBiG, ACINQ, block-iad-1)
-- Mempool fees are low (check mempool.space first)
-
-**After reopening — set fees immediately:**
-1. Set PPM to 400-500 (not the default low fee)
-2. Enable Drain and Trap — Drain 400 PPM, Trap 1200 PPM, Floor 40%
-3. This earns decent fees while full and stops draining at 40% local automatically
-
-**Why this beats rebalancing:**
-- A 5M sat rebalance costs 2,000-10,000 sats in routing fees
-- Closing + reopening a 5M channel costs ~500 sats total
-- You get a fresh full channel instead of a partially refilled one
-- No routing fee hunting, no failed attempts, no wasted sats
-
-### When NOT to Rebalance
-- Channel fees are at 0 PPM
-- Rebalancing fee exceeds expected earnings
-- Auto-rebalancer running at high frequency
-
-### Cost Control
-- Typical fees: 50-200 sats per 50k operation
-- Check wallet for actual fees: rebalance (circular) (-X sats fee)
-- Set to Off/Manual in Settings to prevent runaway costs
-
----
-
-## Channel Strategy Page (Pro)
-
-Auto-assessed channel health and recommended actions. Access from the sidebar under Tools.
-
-Each channel is color-coded based on local balance, your fees, and peer fees:
-- Blue (Keep as-is) — peer opened channels, inbound lifeline
-- Green (Drain aggressively) — peer fee under 100 PPM, local above 80 percent
-- Orange (Monitor) — peer fee 100-300 PPM or balanced
-- Red (Close candidate) — peer fee above 500 PPM, no routing activity
-
-Summary cards show total channels in each category. The table shows channel name, capacity, local percent, your fee, peer fee, assessment, and recommended action.
-
----
-
-## Targeted Rebalance (Pro)
-
-Pick exactly which channels to rebalance between — source AND destination.
-
-1. Click the green "Targeted Rebalance" button on the Channels page
-2. Type the number next to the SOURCE channel (sats leave from here)
-3. Type the number next to the DESTINATION channel (sats arrive here)
-4. Enter amount in sats and maximum fee
-5. Confirm and execute
-
-The rebalance shows in wallet transactions with named pairs: "Rebalance: block-iad-1 to LNBiG [Hub-3]" so you always know which channels were rebalanced.
-
-Tips:
-- Source should be a channel with high local balance (90 percent or more)
-- Destination should be a channel with low local balance
-- Set max fee based on peer fees along the route
-- Start with small amounts (10-50k sats) to test
-
-
-## Rebalance ROI Tracker (Pro)
-
-Track the profitability of every channel — routing fees earned vs rebalance costs paid.
-
-### How It Works
-
-The ROI tracker compares two numbers per channel:
-- Rebalance Cost — total sats spent on auto-rebalances for that channel
-- Routing Earned — total routing fees earned through that channel
-
-The difference is your Net ROI. Positive = profitable channel. Negative = losing money.
-
-### Time Filters
-
-Use the filter buttons to view ROI over different periods:
-- 24h — today's performance
-- 7d — weekly trend
-- 30d — monthly picture
-- All — lifetime ROI since node started
-
-### What to Look For
-
-- Channels with high routing earned and low rebalance cost = your best performers
-- Channels with rebalance cost but zero routing = stop rebalancing those
-- Channels with zero rebalance cost and positive routing = free money, leave them alone
-
-### How to Use This Data
-
-- Disable auto-rebalance on channels with negative ROI
-- Increase rebalance frequency on profitable channels
-- Consider closing channels that consistently show negative ROI after 21 days
-
-The ROI tracker is found on the Analytics page under the Top Routing Pairs section.
+- 0 base fee + variable PPM is the modern standard
+- Change fees in steps and give each change time to work (a day for busy channels, longer for quiet ones)
+- Use Peer Policy to compare your fees with your peer's
+- Price by how fast the channel sells, not just by how full it is
 
 ---
 
 ## Routing Pattern Analysis
 
-Find your node's peak routing hours to optimize when auto-rebalancing runs.
+Find your node's busiest hours to time your rebalances and refills.
 
-### How to Analyze Your Routing Patterns
+1. Export your routing CSV from the Routing page (All time)
+2. Ask Claude or any AI: *"Analyze this routing CSV and show me hourly and daily patterns — when does my node route the most?"*
 
-Export your routing history CSV from the Routing page (All time), then ask Claude or any AI assistant:
+**Look for:** peak hours with the most fees, dead hours, weekday vs weekend patterns.
 
-"Analyze this routing CSV and show me hourly and daily patterns - when does my node route the most?"
+**Use it:** schedule per-channel auto rebalance (or do Loop Ins) about 1 hour before your peaks. Example: peaks at 9-11 AM and 10-11 PM → run at 8 AM and 9 PM.
 
-### What to Look For
-
-- Peak hours with highest fees - these are your money hours
-- Dead hours with low or zero activity
-- Daily patterns - weekdays vs weekends
-
-### How to Use This Data
-
-Set your per-channel auto-rebalance to run 1 hour BEFORE your peak hours. This ensures channels have liquidity when traffic spikes.
-
-Example: If your node peaks at 9-11 AM and 10-11 PM, set auto-rebalance to run at 8 AM and 9 PM.
-
-Tip: You need at least 2 weeks of routing data for reliable patterns. Re-analyze monthly as your channel mix changes.
-
----
-## Per-Channel Auto Rebalance (Pro)
-
-Set automatic rebalancing on individual channels — each with its own amount, interval, and fee cap.
-
-### How to Enable
-
-1. Click the **🔁 Auto Rebalance** button on any channel card
-2. Enter rebalance amount in sats (default: 10,000 — enter 0 to disable)
-3. Set interval in hours (default: 12)
-4. Set maximum fee per rebalance (default: 400 sats)
-
-### How it Works
-
-- Runs in the background every hour
-- Checks each enabled channel's local balance
-- If local balance is above 60 percent, triggers a rebalance
-- Sends sats from the full channel to the emptiest channel on your node
-- Logs results: success, fee paid, or failure reason
-- Respects your max fee cap — never overpays
-
-### Recommended Settings
-
-- **ACINQ / block-iad-1 (5M channels):** 10k sats, every 12 hours, 400 max fee
-- **Medium channels (1M):** 10k sats, every 24 hours, 200 max fee
-- **Small channels (500k):** skip — not worth the fees
-
-### Channel Card Status Badge
-
-Each channel card displays the current auto-rebalance configuration at a glance:
-
-- **OFF** — no auto-rebalance configured
-- **🔄 6h · 10k · max 400s** — interval mode, runs every 6 hours, 10k sats, 400 sat fee cap
-- **⏰ 8,21:00 · 20k · max 400s** — scheduled mode, runs at 8 AM and 9 PM, 20k sats, 400 sat fee cap
-- **❌ 2/3** — shows consecutive failure count, auto-disables at 3
-
-The badge updates in real-time when you change settings. No need to check terminal or data files — everything visible on the channel card.
-
-### Tips
-
-- Start with 10k sats — small amounts find cheap routes
-- Monitor for 24 hours before enabling more channels
-- Check results: Settings page or journal logs
-- Enter 0 as amount to disable on any channel
-- The fee cap protects you — if no cheap route exists, it skips and tries next cycle
+You need at least 2 weeks of data. Re-check monthly as your channels change.
 
 ---
 
-## Auto-Reconnect (Background Worker)
+## Themes
 
-LCC automatically reconnects dropped channel peers every 30 minutes. No configuration needed — runs as a background worker alongside Drain & Trap and the auto-rebalancer.
-
-How it works:
-- Compares connected peers vs channel peers every 30 minutes
-- If a channel peer is disconnected, looks up their address and reconnects
-- Logs reconnections to console
-- Keeps your channels active without manual intervention
+4 built-in themes — Midnight (dark blue), Obsidian (pure black), Amber (warm gold), Forest (deep green). Switch from the sidebar footer; your choice is remembered.
 
 ---
 
-## Tax Accounting Export (Pro)
+## Command Palette (Personal+)
 
-Download a tax-ready CSV of all node activity from the Treasury page.
-
-Click the green **📥 Tax CSV** button on the P&L card to download. The CSV includes:
-- **routing_income** — sats earned from forwarding payments
-- **payment_sent** — Lightning payments with fees
-- **channel_open** — on-chain fees for opening channels
-- **channel_close** — funds returned from closed channels
-- **energy_cost** — estimated electricity cost (from Settings energy calculator)
-
-Each row includes: date, type, amount (sats), fee (sats), description, and transaction ID.
-
-After download, a summary popup shows total routing income, fees paid, energy costs, and net P&L.
+Press Ctrl+Space on any page. Type to search pages and commands. Quick actions: Copy Pubkey, Open SatsList, Launch Live Stream.
 
 ---
-
-## Channel Strategy (Pro)
-
-The Channel Strategy page gives you a bird's-eye view of every channel's health — automatically scored by combining your local balance, your fee rate, and your peer's fee rate into a color-coded action plan.
-
-**Opening the page:** Click **Strategy** in the sidebar — it opens as a clean floating window so you can keep using the rest of LCC alongside it.
-
-**Auto-refreshes every 60 seconds** — no manual refresh needed.
-
----
-
-### Summary Cards
-
-| Card | What it means |
-|------|--------------|
-| Total Channels | All active channels |
-| Keep (Inbound) | Peer-opened channels providing inbound liquidity — don't touch |
-| Drain | Your channels that are too full — push sats out |
-| Monitor | Watch these — borderline fee situation |
-| Close Candidates | Dead weight — peer fee too high, consider exiting |
-
----
-
-### Color Code
-
-| Color | Assessment | Action |
-|-------|-----------|--------|
-| 🔵 Blue | Inbound lifeline | Keep as-is — this is free inbound liquidity |
-| 🟢 Green | Low peer fee | Drain aggressively at 10-25 ppm |
-| 🟠 Orange | Moderate / Monitor | Adjust fees, watch routing flow |
-| 🔴 Red | Close candidate | CLOSE or Loop Out — peer fee too high to be useful |
-
----
-
-### Columns Explained
-
-- **Channel** — peer alias + who opened the channel (You opened / Peer opened)
-- **Capacity** — total channel size in sats
-- **Local %** — how much of the channel balance is on your side
-- **Your Fee** — your current fee rate in PPM (milli-msat per sat routed)
-- **Peer Fee** — your peer's fee rate in PPM
-- **Assessment** — LCC's diagnosis of the channel health
-- **Action / Target Fee** — recommended next step
-
----
-
-### What is Loop Out?
-
-When LCC recommends **CLOSE / Loop Out** it means the peer fee is too high (>500 PPM) and the channel isn't earning. Loop Out is an alternative to closing:
-
-- Sends your sats **out via Lightning** to a swap service (Boltz, Lightning Loop)
-- Swap service sends the equivalent **back to your on-chain wallet**
-- Channel stays open with fresh inbound space
-- Fee: ~0.5% + on-chain mining fee
-
-**Easiest option:** [boltz.exchange](https://boltz.exchange) — no account, no KYC.
-
-> 💡 Try rebalancing first — it's cheaper. Use Loop Out only when all channels are too full and there's nowhere to rebalance into.
-
----
-
-
-## Loop Out (Pro)
-
-Loop Out moves sats from a full Lightning channel back to your on-chain wallet without closing the channel. The channel stays open and gains fresh inbound space.
-
-**How to use it:**
-1. Go to the Channels page
-2. Find a channel with high local balance (80%+ local)
-3. Click Loop Out on the channel card
-4. Enter the amount of sats to move out
-5. Click Get Fee Quote - LCC shows exact fees before you commit
-6. Click Confirm Loop Out - swap initiates immediately
-7. Click Run loop monitor to track progress in a popup window
-
-### Fee Quote Breakdown
-
-| Field | Meaning |
-|-------|--------|
-| Send off-chain | Sats leaving your Lightning channel |
-| Receive on-chain | Sats arriving in your Bitcoin wallet |
-| Total fee | Service fee + on-chain mining fee |
-
-Typical cost: 0.1-0.5% of the swap amount. A 500k sat swap costs roughly 500-2,500 sats total.
-
-### When to Loop Out
-
-- Channel is above 80% local balance and not draining naturally
-- You want to redeploy liquidity into a new or larger channel
-- All channels are full and rebalancing has nowhere to go
-
-Tip: Try rebalancing first - it is cheaper. Use Loop Out when all channels are too full.
-
-### The Liquidity Cycle
-
-Open channel, route payments, earn fees, channel drains, Loop Out, sats back on-chain, open new channel, repeat. This is how professional routing nodes stay efficient.
-
-### Requirements
-
-- Lightning Loop must be installed at ~/go/bin/loop
-- Loop is built into litd - already available if you run litd
-- Minimum swap amount: ~50,000 sats
-- Swap server: swap.lightning.today (Lightning Labs)
-
-### Loop Monitor
-
-After initiating a swap click Run loop monitor in the success dialog. A popup shows all swap history with status badges: INITIATED, IN PROGRESS, SUCCESS, FAILED. Auto-refreshes every 30 seconds.
-
-The Loop Monitor can also be opened anytime from the **Channels page** — click the **🔄 Loop Monitor** button next to Targeted Rebalance and Rebalance All Channels.
-
-### Auto-Journal
-
-Every Loop Out initiated from LCC is automatically logged to the Node Journal with:
-- Channel the swap was routed through
-- Amount in sats
-- Swap ID (first 16 characters)
-- Block height at time of swap
-
-This gives you a permanent record of all Loop Out activity without manual note-taking.
 
 ## Troubleshooting
 
-**LCC shows no data:** Check lncli getinfo, restart LCC, check logs
+**LCC shows no data:** check `lncli getinfo`, restart LCC, check logs
 
-**Channels inactive:** Peer might be offline, try disconnect/reconnect
+**Channels inactive:** the peer may be offline — try disconnect/reconnect
 
-**Wallet shows 0 or NaN:** LND might be down, check lncli walletbalance
+**Wallet shows 0 or NaN:** LND may be down — check `lncli walletbalance`
 
-**Disk space issues:** Check df -h, truncate large syslogs, set up logrotate
+**Disk space issues:** check `df -h`, truncate large syslogs, set up logrotate
 
 **Treasury NaN:** LNbits invoice key missing from data.json
+
+**Rebalance says "no route under the fee cap" / "No profitable route right now":** no route was cheap enough to make money. Nothing was paid. Try a smaller amount, a different source, or Loop In.
+
+**Rebalance All says "skipped":** the exit charges too little (e.g. 0 ppm) to pay for a rebalance, or the 10-try limit was reached.
+
+**Many old failed payments slowing things down:** failed rebalance attempts pile up in LND. Clear them with `lncli deletepayments --all` (failed payments only, unless you add `--include_non_failed`).
+
+**Loop buttons missing:** Loop isn't available on this node (needs litd or loopd).
+
+**Loop In refused because of the reserve:** the swap would leave less than `LCC_ONCHAIN_RESERVE` on-chain. Use a smaller amount or add on-chain funds.
+
+**Peer group shows "mixed" fees:** click ⚡ Set fee for all on the 🔗 peer card.
 
 ---
 
 ## Remote Access Options
 
 ### Option 1 — LAN Only (Home Network)
-Access LCC at `http://your-server-ip:8765` — works only when you're on the same network.
+`http://your-server-ip:8765` — only on the same network.
 
 ### Option 2 — Tailscale (Recommended — Private)
-Encrypted access from anywhere with no third party seeing your traffic.
+Encrypted access from anywhere, no third party sees your traffic.
 
-1. Install Tailscale on your node: `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
-2. Install Tailscale on your phone/laptop (App Store or tailscale.com)
-3. Log in with the same account on both devices
-4. Access LCC at `http://[tailscale-ip]:8765` from anywhere
+1. On your node: `curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`
+2. Install Tailscale on your phone/laptop
+3. Log in with the same account on both
+4. Open `http://[tailscale-ip]:8765`
 
-Free for personal use. End-to-end encrypted. No ports exposed.
+Free for personal use. End-to-end encrypted. No open ports.
 
 ### Option 3 — Cloudflare Tunnel (Easy but Less Private)
-Cloudflare sits between you and your node — convenient but they can see your traffic. Follow the Cloudflare Tunnel setup guide to expose LCC at a custom domain.
+Cloudflare sits between you and your node — convenient, but they can see your traffic.
 
 ### Option 4 — Tor (Maximum Privacy)
-Coming soon — access LCC via .onion address for maximum privacy.
+Coming soon.
 
 ---
 
 ## Security Notes
 
-- Keep LCC LAN-only or behind Cloudflare Tunnel
-- Store RPC credentials in .env file, never in source code
-- Change default passwords after installation
+- Keep LCC LAN-only, on Tailscale, or behind a tunnel — never expose port 8765 directly
+- Store RPC credentials in the .env file, never in source code
+- Change the default password after installation
 - Use Nostr login (NIP-07) for browser extension security
+- Never share your seed, macaroons (other than read-only) or wallet passwords with anyone — including AI assistants
 
 ---
 
@@ -807,11 +810,11 @@ Coming soon — access LCC via .onion address for maximum privacy.
 
 | Tier | Price | Highlights |
 |------|-------|------------|
-| Community | FREE | Full dashboard, 4 themes |
-| Personal | 20,000 sats one-time | Command Palette, CSV, Health Score |
-| Pro | 9,000 sats/month | NWC, Drain and Trap, Live Stream, Fee Recs |
+| Community | FREE | Full dashboard, all pages, 4 themes |
+| Personal | 20,000 sats one-time | Command Palette, CSV export, Health Score, per-channel fees, channel opening |
+| Pro | 9,000 sats/month or 90,000 sats/year | Automation: Drain and Trap, Auto Fee, Auto Rebalance, Loop, NWC, Live Stream, Fee Recs |
 
-Get a license at **satslist.shop** — pay with Bitcoin Lightning
+Get a license at **satslist.shop** — pay with Bitcoin Lightning.
 
 ---
 
