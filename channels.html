@@ -966,9 +966,10 @@ function rebalanceChannel(pubkey, alias){
   fetch('/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
-      const success = d.results ? d.results.filter(r=>r.status==='success').length : 0;
-      const totalFee = d.results ? d.results.reduce((a,r)=>a+(r.fee||0),0) : 0;
-      alert('✅ Rebalanced ' + alias + '\n' + success + ' operations completed\nTotal fee: ' + totalFee + ' sats');
+      const s = d.summary || {};
+      if(d.status === 'balanced'){ alert('✅ ' + alias + ': nothing to rebalance'); }
+      else if(s.moved){ alert('✅ ' + alias + ': ' + s.moved + ' moved (' + Number(s.sats_moved).toLocaleString() + ' sats, fees ' + s.fees + ' sats)' + (s.no_route ? '\n' + s.no_route + ' found no route under the fee cap' : '')); }
+      else { alert('ℹ️ ' + alias + ': nothing moved.\n' + (s.no_route || 0) + ' found no route under the fee cap' + (s.skipped ? ', ' + s.skipped + ' skipped' : '') + '.\nNo fees were paid.'); }
       setTimeout(()=>loadChannels(), 1000);
     })
     .catch(()=>alert('❌ Rebalance failed'));
@@ -1101,24 +1102,26 @@ function openTargetedRebalance() {
   html += '<h3 style="margin:0 0 10px;color:var(--orange);">Targeted Rebalance</h3>';
   html += '<p style="color:var(--muted);margin:0 0 8px;">Select SOURCE (sats leave from) and DESTINATION (sats arrive to):</p>';
   html += '<table style="width:100%;border-collapse:collapse;">';
-  html += '<tr style="color:var(--muted);font-size:11px;text-align:left;"><th style="padding:4px;">Src</th><th style="padding:4px;">Dst</th><th style="padding:4px;">Channel</th><th style="padding:4px;">Local</th></tr>';
+  html += '<tr style="color:var(--muted);font-size:11px;text-align:left;"><th style="padding:4px;">Src</th><th style="padding:4px;">Dst</th><th style="padding:4px;">Channel</th><th style="padding:4px;">Local</th><th style="padding:4px;">Your fee</th></tr>';
   cachedChannels.forEach(function(c,i){
     var pct = Math.round(c.local_balance/c.capacity*100);
     var color = pct > 80 ? 'var(--orange)' : pct < 20 ? 'var(--green)' : 'var(--text)';
     html += '<tr style="border-top:1px solid var(--border);">';
-    html += '<td style="padding:4px;"><input type="radio" name="tr-src" value="'+i+'"></td>';
-    html += '<td style="padding:4px;"><input type="radio" name="tr-dst" value="'+i+'"></td>';
-    html += '<td style="padding:4px;">'+c.peer_alias+'</td>';
+    html += '<td style="padding:4px;"><input type="radio" name="tr-src" value="'+i+'" onchange="updateTrVerdict()"></td>';
+    html += '<td style="padding:4px;"><input type="radio" name="tr-dst" value="'+i+'" onchange="updateTrVerdict(true)"></td>';
+    html += '<td style="padding:4px;">'+_trEsc(c.peer_alias)+'</td>';
     html += '<td style="padding:4px;color:'+color+'">'+pct+'%</td>';
+    html += '<td style="padding:4px;color:var(--muted);">'+(c.fee_ppm||0)+' ppm</td>';
     html += '</tr>';
   });
   html += '</table>';
   html += '<div style="margin-top:12px;">';
   html += '<label style="font-size:11px;color:var(--muted);">Amount (sats):</label> ';
-  html += '<input type="number" id="tr-amount" value="50000" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:100px;font-family:var(--font);">';
+  html += '<input type="number" id="tr-amount" value="50000" oninput="updateTrVerdict(true)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:100px;font-family:var(--font);">';
   html += '  <label style="font-size:11px;color:var(--muted);margin-left:12px;">Max fee:</label> ';
-  html += '<input type="number" id="tr-maxfee" value="400" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:80px;font-family:var(--font);">';
+  html += '<input type="number" id="tr-maxfee" value="" placeholder="auto" oninput="updateTrVerdict()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:80px;font-family:var(--font);">';
   html += '</div>';
+  html += '<div id="tr-verdict" style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;line-height:1.5;color:var(--muted);">Pick a destination to see whether this rebalance can pay for itself.</div>';
   html += '<div style="margin-top:12px;display:flex;gap:8px;">';
   html += '<button onclick="executeTargetedRebalance()" style="background:var(--orange);color:#000;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:700;font-family:var(--font);">Execute</button>';
   html += '<button onclick="document.getElementById(\'tr-modal\').remove()" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);padding:8px 20px;border-radius:8px;cursor:pointer;font-family:var(--font);">Cancel</button>';
@@ -1135,6 +1138,44 @@ function openTargetedRebalance() {
   document.body.appendChild(modal);
 }
 
+function _trEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+var _trMaxEdited = false;
+function _trPick(){
+  var s = document.querySelector('input[name="tr-src"]:checked');
+  var d = document.querySelector('input[name="tr-dst"]:checked');
+  return {src: s ? cachedChannels[parseInt(s.value)] : null, dst: d ? cachedChannels[parseInt(d.value)] : null};
+}
+function _trSuggested(amount, dstPpm){ return Math.max(1, Math.floor(amount * dstPpm * 0.5 / 1e6)); }
+
+function _trAssess(amount, maxFee, dst){
+  var dstPpm = Number(dst.fee_ppm) || 0;
+  var capPpm = amount > 0 ? Math.round(maxFee / amount * 1e6) : 0;
+  var earn = Math.round(amount * dstPpm / 1e6);
+  var worst = earn - maxFee;
+  if(dstPpm <= 0) return {level:'bad', text:'❌ ' + dst.peer_alias + ' charges 0 ppm, so sats moved there earn nothing. A rebalance into it can only lose money.'};
+  if(capPpm <= dstPpm * 0.5) return {level:'good', text:'✅ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm. ' + dst.peer_alias + ' earns ' + dstPpm.toLocaleString() + ' ppm, so even at the max you keep about ' + worst + ' sats once it sells.'};
+  if(capPpm < dstPpm) return {level:'thin', text:'⚠️ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm vs ' + dstPpm.toLocaleString() + ' ppm earned. Thin margin: only about ' + worst + ' sats left at the max.'};
+  return {level:'bad', text:'❌ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm, but ' + dst.peer_alias + ' only earns ' + dstPpm.toLocaleString() + ' ppm. At the max you would lose about ' + (-worst) + ' sats. Suggested max: ' + _trSuggested(amount, dstPpm) + ' sats. Into busy sinks like LNBiG, a Loop In is usually far cheaper.'};
+}
+
+function updateTrVerdict(resetMax){
+  var box = document.getElementById('tr-verdict');
+  var maxEl = document.getElementById('tr-maxfee');
+  if(!box || !maxEl) return;
+  var pick = _trPick();
+  var amount = parseInt(document.getElementById('tr-amount').value) || 0;
+  if(!pick.dst){ box.textContent = 'Pick a destination to see whether this rebalance can pay for itself.'; return; }
+  if(document.activeElement === maxEl) _trMaxEdited = true;
+  if(resetMax && !_trMaxEdited) maxEl.value = '';
+  if(!maxEl.value && amount > 0) maxEl.value = _trSuggested(amount, Number(pick.dst.fee_ppm) || 0);
+  var maxFee = parseInt(maxEl.value) || 0;
+  var a = _trAssess(amount, maxFee, pick.dst);
+  var col = {good:'var(--green)', thin:'#eab308', bad:'#ef4444'}[a.level];
+  box.style.borderColor = col; box.style.color = 'var(--text)';
+  box.textContent = a.text;
+}
+
 function executeTargetedRebalance() {
   var srcRadio = document.querySelector('input[name="tr-src"]:checked');
   var dstRadio = document.querySelector('input[name="tr-dst"]:checked');
@@ -1144,9 +1185,11 @@ function executeTargetedRebalance() {
   if(srcIdx === dstIdx){ alert('Source and destination must be different'); return; }
   var amount = parseInt(document.getElementById('tr-amount').value);
   var maxFee = parseInt(document.getElementById('tr-maxfee').value);
+  if(!maxFee || maxFee < 1){ maxFee = _trSuggested(amount, Number(cachedChannels[dstIdx].fee_ppm) || 0); }
   var src = cachedChannels[srcIdx];
   var dst = cachedChannels[dstIdx];
-  if(!confirm('FROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\nProceed?')) return;
+  var _a = _trAssess(amount, maxFee, dst);
+  if(!confirm('FROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\n' + _a.text + (_a.level === 'bad' ? '\n\nThis will likely lose money. Proceed anyway?' : '\n\nProceed?'))) return;
   document.getElementById('tr-modal').remove();
   fetch('/api/rebalance-targeted', {
     method: 'POST',
@@ -1154,7 +1197,8 @@ function executeTargetedRebalance() {
     body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: amount, max_fee: maxFee})
   }).then(function(r){return r.json()}).then(function(d){
     if(d.status === 'success'){
-      alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats');
+      var _ppm = amount ? Math.round((d.fee || 0) / amount * 1e6) : 0;
+      alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats (' + _ppm.toLocaleString() + ' ppm; ' + d.to + ' earns ' + (Number(dst.fee_ppm) || 0).toLocaleString() + ' ppm)');
       setTimeout(function(){location.reload()}, 2000);
     } else {
       alert('Failed: ' + (d.detail || 'Rebalance failed'));
