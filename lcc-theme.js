@@ -237,3 +237,28 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => hint.remove(), 8000);
   }
 });
+
+/* LCC version label: one source, the VERSION file, served at /api/version */
+(function(){
+  var v = null, asked = false;
+  function paint(){
+    if(!v) return;
+    document.querySelectorAll('[data-lcc-version]').forEach(function(el){
+      var t = (el.getAttribute('data-lcc-version') === 'short' ? 'v' : 'LCC v') + v;
+      if(el.textContent !== t) el.textContent = t;
+    });
+  }
+  function load(){
+    if(asked) return;
+    asked = true;
+    fetch('/api/version').then(function(r){ return r.ok ? r.json() : {}; }).then(function(d){
+      if(d && d.version){ v = d.version; paint(); }
+    }).catch(function(){});
+  }
+  function start(){
+    load();
+    new MutationObserver(paint).observe(document.body, {childList: true, subtree: true});
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();

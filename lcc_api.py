@@ -36,7 +36,17 @@ from slowapi.errors import RateLimitExceeded
 
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="Lightning Control Center API", version="0.1.0")
+def _read_lcc_version():
+    """The release number lives in one place: the VERSION file next to this script."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")) as _vf:
+            return _vf.read().strip() or "dev"
+    except Exception:
+        return "dev"
+
+
+LCC_VERSION = _read_lcc_version()
+app = FastAPI(title="Lightning Control Center API", version=LCC_VERSION)
 app.state.limiter = limiter
 
 from slowapi.middleware import SlowAPIMiddleware
@@ -2200,6 +2210,11 @@ def get_pnl(period: str = "30d"):
         "total_costs": total_costs,
         "net_pnl": net_pnl
     }
+
+@app.get("/api/version")
+def get_version():
+    return {"version": LCC_VERSION}
+
 
 @app.get("/api/tier")
 def get_tier():
