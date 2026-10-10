@@ -30,8 +30,7 @@ nwc_connections.json
 nohup.out
 journal.json
 nwc_connections.json
-*.bak
-*.bak[0-9]
+*.bak*
 *.retry
 *.v[0-9]
 *.backup_*
