@@ -2,6 +2,18 @@
 
 All notable changes to LCC — Lightning Control Center.
 
+## Unreleased (v0.2.3)
+
+### Added
+- **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
+
+### Changed
+- **Targeted Rebalance runs in the background** — LCC answers at once and the page checks every 3 seconds, with a ⏳ box showing the two channels and a timer. Survives a page reload; starting the same pair twice follows the running one. No more "Can't reach LND … Read timed out" on long searches.
+- **Longer route search** — 5 minutes instead of 90 seconds.
+- **Multi-part payments** — payments and rebalances can split into up to 16 parts over different routes (same as lncli).
+- **Clearer results** — "still in progress" for a slow route, "No route found within 5 minutes. Nothing was paid." for a real timeout.
+- **Manual** — Auto Fee: how the fee is calculated, what it does not do (it follows balance, not routing activity) and how to fine-tune it.
+
 ## v0.2.2 — 2026-10-09
 
 ### Added

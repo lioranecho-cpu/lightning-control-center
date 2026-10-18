@@ -280,6 +280,7 @@ fetch('/static/sidebar.html')
     <!-- Tabs -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
       <button onclick="openTargetedRebalance()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">&#127919; Targeted Rebalance</button>
+      <button onclick="setRebalanceCap()" id="rebal-cap-btn" title="The most a rebalance may cost, as a share of what the receiving channel earns" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">&#127898;&#65039; Rebalance cap: 50%</button>
       <button onclick="rebalanceNow()" id="rebalance-btn" style="background:rgba(247,147,26,.12);border:1px solid var(--orange-dim);color:var(--orange);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;margin-right:8px;">⚖️ Rebalance All Channels</button>
       <button data-loop="1" onclick="window.open('/static/loop-monitor.html','lcc-loop-monitor','width=700,height=500,resizable=yes')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#3b82f6;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">🔄 Loop Monitor</button>
       <span id="rebalance-status" style="margin-left:12px;font-size:11px;color:var(--muted);align-self:center;"></span>
@@ -1220,7 +1221,35 @@ function _trPick(){
   var d = document.querySelector('input[name="tr-dst"]:checked');
   return {src: s ? cachedChannels[parseInt(s.value)] : null, dst: d ? cachedChannels[parseInt(d.value)] : null};
 }
-function _trSuggested(amount, dstPpm){ return Math.max(1, Math.floor(amount * dstPpm * 0.5 / 1e6)); }
+var _trSharePct = 50;
+function _rebalCapLabel(){
+  var b = document.getElementById('rebal-cap-btn');
+  if(b) b.textContent = '🎚️ Rebalance cap: ' + _trSharePct + '%' + (_trSharePct === 100 ? ' (break-even)' : _trSharePct > 100 ? ' (small loss)' : '');
+}
+function loadRebalanceCap(){
+  fetch('/api/settings/rebalance-cap').then(function(r){return r.json()}).then(function(d){
+    if(d && d.pct){ _trSharePct = Number(d.pct); _rebalCapLabel(); }
+  }).catch(function(){});
+}
+function setRebalanceCap(){
+  var v = prompt('Rebalance cap: the most a rebalance may cost, as a % of what the receiving channel earns.\n\n'
+    + '50 = keep at least half as profit (default)\n'
+    + '100 = break-even\n'
+    + 'above 100 = accept a small loss (max 150)\n\n'
+    + 'Used by Targeted Rebalance (suggested max fee), Rebalance All and per-channel Auto Rebalance.\n'
+    + 'Enter a number from 10 to 150:', String(_trSharePct));
+  if(v === null) return;
+  var pct = parseInt(v, 10);
+  if(!(pct >= 10 && pct <= 150)){ alert('Please enter a whole number from 10 to 150.'); return; }
+  if(pct > 100 && !confirm(pct + '% means every rebalance may cost up to ' + (pct - 100) + '% more than the channel earns back. Save anyway?')) return;
+  fetch('/api/settings/rebalance-cap', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pct: pct})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d.status !== 'saved'){ alert('Not saved: ' + (d.detail || 'unknown error')); return; }
+      _trSharePct = d.pct; _rebalCapLabel();
+    }).catch(function(){ alert('Could not reach LCC. Nothing was saved.'); });
+}
+document.addEventListener('DOMContentLoaded', loadRebalanceCap);
+function _trSuggested(amount, dstPpm){ return Math.max(1, Math.floor(amount * dstPpm * _trSharePct / 100 / 1e6)); }
 
 function _trAssess(amount, maxFee, dst){
   var dstPpm = Number(dst.fee_ppm) || 0;
@@ -1230,7 +1259,9 @@ function _trAssess(amount, maxFee, dst){
   if(dstPpm <= 0) return {level:'bad', text:'❌ ' + dst.peer_alias + ' charges 0 ppm, so sats moved there earn nothing. A rebalance into it can only lose money.'};
   if(capPpm <= dstPpm * 0.5) return {level:'good', text:'✅ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm. ' + dst.peer_alias + ' earns ' + dstPpm.toLocaleString() + ' ppm, so even at the max you keep about ' + worst + ' sats once it sells.'};
   if(capPpm < dstPpm) return {level:'thin', text:'⚠️ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm vs ' + dstPpm.toLocaleString() + ' ppm earned. Thin margin: only about ' + worst + ' sats left at the max.'};
-  return {level:'bad', text:'❌ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm, but ' + dst.peer_alias + ' only earns ' + dstPpm.toLocaleString() + ' ppm. At the max you would lose about ' + (-worst) + ' sats. Suggested max: ' + _trSuggested(amount, dstPpm) + ' sats. Into busy sinks like LNBiG, a Loop In is usually far cheaper.'};
+  if(worst >= 0) return {level:'thin', text:'⚖️ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm, the same as the ' + dstPpm.toLocaleString() + ' ppm ' + dst.peer_alias + ' earns. Break-even at the max.'};
+  if(capPpm <= dstPpm * _trSharePct / 100) return {level:'thin', text:'⚠️ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm vs ' + dstPpm.toLocaleString() + ' ppm earned. At the max you lose about ' + (-worst) + ' sats, within your ' + _trSharePct + '% rebalance cap.'};
+  return {level:'bad', text:'❌ Max fee ' + maxFee + ' sats = ' + capPpm.toLocaleString() + ' ppm, but ' + dst.peer_alias + ' only earns ' + dstPpm.toLocaleString() + ' ppm. At the max you would lose about ' + (-worst) + ' sats. Suggested max: ' + _trSuggested(amount, dstPpm) + ' sats (your ' + _trSharePct + '% rebalance cap). A Loop In may be cheaper: compare its quote.'};
 }
 
 function updateTrVerdict(resetMax){

@@ -374,6 +374,32 @@ Adjusts a channel's fee automatically based on its local balance.
 
 **Tight bands for refilled exits:** Auto Fee follows balance, not demand. On a channel you refill with Loop In and that sells fast, use a narrow band near the price you know sells (for example 925–1250 ppm instead of 100–1250), so it never gives your refill away cheap.
 
+### How the fee is calculated
+
+`fee = max − (max − min) × your share of the balance`
+
+Example: band 225–945 ppm, 16.7% of the balance on your side:
+945 − (945 − 225) × 0.167 = **825 ppm**
+
+| Your side of the balance | Fee in a 225–945 band |
+|---|---|
+| 100% (full) | 225 ppm |
+| 50% | 585 ppm |
+| 16.7% | 825 ppm |
+| 0% (drained) | 945 ppm |
+
+### What Auto Fee does NOT do
+
+- **It does not react to routing activity.** Days with no forwards do not lower the fee. Only the balance moves it.
+- **A drained channel stays near the top of its band, and that is correct.** With little on your side there is little to sell, so a lower fee would not bring much traffic. It would mostly sell your last sats cheaply.
+- **No routing on a drained channel is normal.** It needs sats coming **in** through it, and that depends on the fees of your **other** channels, the ones payments leave through.
+
+### Fine-tuning
+
+- **Change the band, not the fee.** Auto Fee resets a channel's fee on its next check (every few hours), so a fee you set by hand on an Auto Fee channel will not last.
+- To make a channel cheaper, lower its **max** (or both ends) from the 💰 Auto Fee button.
+- To set a fixed fee for good, turn Auto Fee off for that channel first (enter -1 at the first prompt), then set the fee.
+
 ---
 
 ## Fee Recommendations (Pro)
@@ -435,11 +461,24 @@ Rebalancing is a circular payment from your node back to your node: sats leave t
 
 ### The fee cap (all rebalances)
 
-LCC never pays more than **half of what the receiving channel earns**:
+By default LCC never pays more than **half of what the receiving channel earns**:
 
-> **fee cap = amount × receiving channel's ppm × 0.5 ÷ 1,000,000**
+> **fee cap = amount × receiving channel's ppm × rebalance cap % ÷ 1,000,000**
 
-Example: refilling 100,000 sats into a channel that charges 1,000 ppm. It will earn 100 sats when those sats sell, so LCC pays at most 50 sats.
+Example: refilling 100,000 sats into a channel that charges 1,000 ppm. It will earn 100 sats when those sats sell, so at the default 50% LCC pays at most 50 sats.
+
+**🎚️ Rebalance cap** (button on the Channels page) changes that share for all rebalances:
+
+| Setting | Means | On 100,000 sats into a 1,000 ppm channel |
+|---|---|---|
+| 50% (default) | Keep at least half as profit | pays at most 50 sats |
+| 100% | Break-even | pays at most 100 sats |
+| 120% | Accept a small loss | pays at most 120 sats |
+
+- Range 10–150%. Above 100% LCC asks you to confirm.
+- Used by Targeted Rebalance (the suggested max fee), Rebalance All and per-channel Auto Rebalance. Auto Rebalance also never goes above the max fee you set for that channel.
+- **Tip:** a higher cap plus per-channel Auto Rebalance keeps trying in the background, so it can catch a cheap route when one appears, with no manual retries.
+- Remember that with Auto Fee on, a refilled channel's fee drops, so it earns a bit less than today's ppm. 100% today can be a small loss later.
 
 - A channel at **0 ppm** earns nothing — LCC skips it ("too little to pay for a rebalance").
 - If no route is cheaper than the cap, **nothing is paid**. You'll see "no route under the fee cap".
@@ -470,7 +509,13 @@ You choose exactly where sats come from and where they go.
    - ❌ **Will lose money** — max fee is above what the destination earns, or it charges 0 ppm. LCC suggests a max fee and points to Loop In.
 5. Execute. Losing rebalances ask "This will likely lose money. Proceed anyway?"
 
+While it runs, a **⏳ box** in the bottom-right corner shows the two channels and a timer. LND keeps searching for a route for up to **5 minutes**, and can split the amount into up to **16 parts** over different routes. You can reload or leave the page: the box comes back and keeps tracking the same rebalance. Starting the same pair again while one runs just follows the running one.
+
 On success LCC shows the fee in sats **and ppm** next to what the destination earns.
+
+**"No route found within 5 minutes. Nothing was paid."** means LND tried for the full 5 minutes. Try a smaller amount or a different source channel.
+
+**"Still in progress"** means a node along the route is slow to answer. It resolves on its own. Check Wallet in a few minutes before trying again.
 
 **"No profitable route right now"** means nothing reached that channel under your max fee. Nothing was paid. Don't just raise the cap — if the destination is a busy hub, a [Loop In](#loop-in-and-loop-out-pro) is usually much cheaper.
 

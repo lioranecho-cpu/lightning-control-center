@@ -1862,7 +1862,7 @@ def _rebalance_targeted_run(body):
         else:
             reason = result.get("failure_reason", "UNKNOWN")
             friendly = {
-                "FAILURE_REASON_NO_ROUTE": f"No profitable route right now: nothing reaches this channel for {max_fee} sats or less ({round(max_fee * 1_000_000 / max(amount, 1)):,} ppm). Nothing was paid. Raising the max fee above what this channel earns would lose money; for busy sinks like LNBiG a Loop In is usually far cheaper.",
+                "FAILURE_REASON_NO_ROUTE": f"No profitable route right now: nothing reaches this channel for {max_fee} sats or less ({round(max_fee * 1_000_000 / max(amount, 1)):,} ppm). Nothing was paid. Routes change during the day, so it may work later. Raising the max fee above what this channel earns would lose money; a Loop In may be cheaper, so compare its quote first.",
                 "FAILURE_REASON_TIMEOUT": "No route found within 5 minutes. Nothing was paid. Try a smaller amount or different channels.",
                 "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel. Try a smaller amount",
                 "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired — try again",
@@ -2023,7 +2023,38 @@ def update_fees(base_fee_msat: int = 1000, fee_rate_ppm: int = 100, time_lock_de
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-_REBAL_COST_SHARE = 0.5   # pay at most half of what the receiving channel earns per sat
+_REBAL_COST_SHARE = 0.5   # default: pay at most half of what the receiving channel earns per sat
+_REBAL_SHARE_MIN, _REBAL_SHARE_MAX = 10, 150  # percent
+
+
+def _rebal_cost_share():
+    """Share of what the receiving channel earns that a rebalance may cost (0.5 = 50%).
+    Set on the Channels page; 100% = break-even, above 100% = a small loss you accept."""
+    try:
+        pct = int(json.load(open(_DATA_JSON_PATH)).get("rebalance_cost_share_pct", 50))
+    except Exception:
+        pct = 50
+    return max(_REBAL_SHARE_MIN, min(_REBAL_SHARE_MAX, pct)) / 100
+
+
+@app.get("/api/settings/rebalance-cap")
+def get_rebalance_cap():
+    return {"pct": int(round(_rebal_cost_share() * 100)), "min": _REBAL_SHARE_MIN, "max": _REBAL_SHARE_MAX}
+
+
+@app.post("/api/settings/rebalance-cap")
+def set_rebalance_cap(body: dict = Body(...)):
+    try:
+        pct = int(body.get("pct"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="pct must be a whole number")
+    if not _REBAL_SHARE_MIN <= pct <= _REBAL_SHARE_MAX:
+        raise HTTPException(status_code=400, detail=f"pct must be between {_REBAL_SHARE_MIN} and {_REBAL_SHARE_MAX}")
+    data = json.load(open(_DATA_JSON_PATH))
+    data["rebalance_cost_share_pct"] = pct
+    with open(_DATA_JSON_PATH, "w") as f:
+        json.dump(data, f, indent=2)
+    return {"status": "saved", "pct": pct}
 _REBAL_MAX_ATTEMPTS = 10  # per "Rebalance All" press
 
 
@@ -2085,7 +2116,7 @@ def rebalance_channels(target_pubkey: str = None):
                              max_amount)
                 if amount < 1000:
                     continue
-                fee_cap = int(amount * dst_ppm * _REBAL_COST_SHARE / 1_000_000)
+                fee_cap = int(amount * dst_ppm * _rebal_cost_share() / 1_000_000)
                 if fee_cap < 1:
                     results.append({"from": "any", "to": dst_alias, "amount": amount, "status": "skipped",
                                     "reason": f"{dst_alias} charges {dst_ppm} ppm, too little to pay for a rebalance"})
@@ -2483,7 +2514,7 @@ def auto_rebalance_job():
                         
                         dst = underfull[0]
                         _dst_ppm, _ = _rebal_my_fee(dst, run_lncli("getinfo").get("identity_pubkey", ""))
-                        _fee_cap = max(1, min(int(max_fee), int(amount * _dst_ppm * _REBAL_COST_SHARE / 1_000_000)))
+                        _fee_cap = max(1, min(int(max_fee), int(amount * _dst_ppm * _rebal_cost_share() / 1_000_000)))
                         invoice = run_lncli("addinvoice", f"--amt={amount}", f"--memo=Auto-Rebalance: {alias}")
                         payment_request = invoice.get("payment_request")
                         
