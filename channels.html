@@ -1265,20 +1265,75 @@ function executeTargetedRebalance() {
   var _a = _trAssess(amount, maxFee, dst);
   if(!confirm('FROM: ' + src.peer_alias + '\nTO: ' + dst.peer_alias + '\nAmount: ' + amount.toLocaleString() + ' sats\nMax fee: ' + maxFee + ' sats\n\n' + _a.text + (_a.level === 'bad' ? '\n\nThis will likely lose money. Proceed anyway?' : '\n\nProceed?'))) return;
   document.getElementById('tr-modal').remove();
+  var job = {src: src.peer_alias, dst: dst.peer_alias, dstPpm: Number(dst.fee_ppm) || 0, amount: amount};
   fetch('/api/rebalance-targeted', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({out_pubkey: src.remote_pubkey, in_pubkey: dst.remote_pubkey, amount: amount, max_fee: maxFee})
   }).then(function(r){return r.json()}).then(function(d){
-    if(d.status === 'success'){
-      var _ppm = amount ? Math.round((d.fee || 0) / amount * 1e6) : 0;
-      alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats (' + _ppm.toLocaleString() + ' ppm; ' + d.to + ' earns ' + (Number(dst.fee_ppm) || 0).toLocaleString() + ' ppm)');
-      setTimeout(function(){location.reload()}, 2000);
-    } else {
-      alert('Failed: ' + (d.detail || 'Rebalance failed'));
-    }
-  }).catch(function(){alert('Rebalance failed')});
+    if(d.status !== 'started' || !d.job_id){ alert('Failed: ' + (d.detail || 'Rebalance could not start')); return; }
+    job.id = d.job_id; job.t0 = Date.now();
+    try{ localStorage.setItem('lcc_tr_job', JSON.stringify(job)); }catch(e){}
+    _trTrack(job);
+  }).catch(function(){ alert('Could not reach LCC to start the rebalance. Nothing was sent.'); });
 }
+
+function _trTrack(job){
+  var box = document.getElementById('tr-wait');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'tr-wait';
+    box.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:10000;background:#161b27;border:1px solid var(--orange-dim);color:var(--text);padding:12px 16px;border-radius:10px;font-size:12px;max-width:360px;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.4);';
+    document.body.appendChild(box);
+  }
+  box.textContent = '⏳ Rebalancing ' + job.src + ' → ' + job.dst + '…';
+  var errors = 0;
+  function tick(){
+    fetch('/api/rebalance-targeted/' + encodeURIComponent(job.id)).then(function(r){return r.json()}).then(function(d){
+      errors = 0;
+      if(d.status === 'running'){
+        var s = d.elapsed || 0;
+        box.textContent = '⏳ Rebalancing ' + job.src + ' → ' + job.dst + ' · ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' · LND keeps searching for up to ' + Math.round((d.timeout || 300) / 60) + ' min';
+        setTimeout(tick, 3000);
+        return;
+      }
+      box.remove();
+      try{ localStorage.removeItem('lcc_tr_job'); }catch(e){}
+      _trShowResult(job, d);
+    }).catch(function(){
+      if(++errors > 20){
+        box.remove();
+        alert('Lost contact with LCC. The rebalance may still be running: check Wallet in a few minutes before trying again.');
+        return;
+      }
+      setTimeout(tick, 5000);
+    });
+  }
+  tick();
+}
+
+function _trShowResult(job, d){
+  if(d.status === 'success'){
+    var _ppm = job.amount ? Math.round((d.fee || 0) / job.amount * 1e6) : 0;
+    alert('Done! ' + d.detail + '\nFrom: ' + d.from + '\nTo: ' + d.to + '\nFee: ' + d.fee + ' sats (' + _ppm.toLocaleString() + ' ppm; ' + d.to + ' earns ' + job.dstPpm.toLocaleString() + ' ppm)');
+    setTimeout(function(){location.reload()}, 2000);
+  } else if(d.status === 'pending'){
+    alert('⏳ ' + d.detail);
+  } else if(d.status === 'unknown'){
+    alert('ℹ️ ' + d.detail);
+  } else {
+    alert('Failed: ' + (d.detail || 'Rebalance failed'));
+  }
+}
+
+// After a page reload, pick up a rebalance that is still running
+(function(){
+  try{
+    var j = JSON.parse(localStorage.getItem('lcc_tr_job') || 'null');
+    if(j && j.id && Date.now() - (j.t0 || 0) < 15 * 60 * 1000){ setTimeout(function(){ _trTrack(j); }, 800); }
+    else { localStorage.removeItem('lcc_tr_job'); }
+  }catch(e){}
+})();
 </script>
 
 <!-- Loop Modal (Out + In) -->

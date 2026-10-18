@@ -175,8 +175,10 @@ def _lnd_rest_stream_terminal(method, path, params=None, body=None, timeout=90):
                     return last
             return last
     except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="Payment timed out")
+        raise HTTPException(status_code=504, detail="IN_FLIGHT: The payment is still in progress. A node along the route is slow to answer, so LND is waiting for it to settle or fail. It resolves on its own; check Wallet in a few minutes before trying again. Nothing extra is paid while it waits.")
     except requests.exceptions.ConnectionError as e:
+        if "timed out" in str(e).lower():
+            raise HTTPException(status_code=504, detail="IN_FLIGHT: The payment is still in progress. A node along the route is slow to answer, so LND is waiting for it to settle or fail. It resolves on its own; check Wallet in a few minutes before trying again. Nothing extra is paid while it waits.")
         raise HTTPException(status_code=500, detail=f"Can't reach LND at {LND_REST_HOST} ({e})")
 
 
@@ -346,6 +348,8 @@ def run_lncli(*args):
                 "payment_request": flags.get("pay_req"),
                 "allow_self_payment": "allow_self_payment" in flags,
                 "timeout_seconds": timeout_seconds,
+                # Same as lncli: let LND split a payment into up to 16 parts over different routes.
+                "max_parts": int(flags.get("max_parts", 16)),
             }
             if flags.get("amt"):
                 body["amt"] = str(flags["amt"])
@@ -356,7 +360,7 @@ def run_lncli(*args):
             if flags.get("last_hop"):
                 body["last_hop_pubkey"] = base64.b64encode(bytes.fromhex(flags["last_hop"])).decode()
             payment = _lnd_rest_stream_terminal(
-                "POST", "/v2/router/send", body=body, timeout=timeout_seconds + 15
+                "POST", "/v2/router/send", body=body, timeout=timeout_seconds + 60
             )
             if payment.get("status") == "SUCCEEDED":
                 fee_msat = int(payment.get("fee_msat", 0) or 0)
@@ -1765,8 +1769,62 @@ def inbound_health():
     }
 
 
+_TARGETED_TIMEOUT_S = 300  # LND keeps trying routes for up to 5 minutes
+_REBAL_JOBS = {}
+_REBAL_JOBS_LOCK = threading.Lock()
+
+
+def _rebal_job_run(job_id, body):
+    try:
+        result = _rebalance_targeted_run(body)
+    except Exception as e:
+        result = {"status": "error", "detail": str(e)[:300]}
+    with _REBAL_JOBS_LOCK:
+        job = _REBAL_JOBS.get(job_id)
+        if job is not None:
+            job["result"] = result
+            job["finished"] = time.time()
+
+
 @app.post("/api/rebalance-targeted")
 def rebalance_targeted(body: dict = Body(...)):
+    """Starts the rebalance in the background and answers at once with a job id.
+    The page then asks /api/rebalance-targeted/{job_id} every few seconds, so no
+    browser or proxy has to hold a connection open for minutes."""
+    if MOCK:
+        return {"status": "mock"}
+    out_pubkey = body.get("out_pubkey", "")
+    in_pubkey = body.get("in_pubkey", "")
+    if not out_pubkey or not in_pubkey:
+        raise HTTPException(status_code=400, detail="Both out_pubkey and in_pubkey required")
+    import uuid as _uuid
+    now = time.time()
+    with _REBAL_JOBS_LOCK:
+        for jid, j in list(_REBAL_JOBS.items()):
+            if j.get("finished") and now - j["finished"] > 3600:
+                _REBAL_JOBS.pop(jid, None)
+        for jid, j in _REBAL_JOBS.items():
+            if not j.get("finished") and j["pair"] == (out_pubkey, in_pubkey):
+                return {"status": "started", "job_id": jid, "already_running": True}
+        job_id = _uuid.uuid4().hex[:16]
+        _REBAL_JOBS[job_id] = {"pair": (out_pubkey, in_pubkey), "started": now}
+    threading.Thread(target=_rebal_job_run, args=(job_id, dict(body)), daemon=True).start()
+    return {"status": "started", "job_id": job_id}
+
+
+@app.get("/api/rebalance-targeted/{job_id}")
+def rebalance_targeted_status(job_id: str):
+    with _REBAL_JOBS_LOCK:
+        job = dict(_REBAL_JOBS.get(job_id) or {})
+    if not job:
+        return {"status": "unknown",
+                "detail": "LCC is no longer tracking this rebalance (it may have restarted). Check Wallet for the result before trying again."}
+    if not job.get("finished"):
+        return {"status": "running", "elapsed": int(time.time() - job["started"]), "timeout": _TARGETED_TIMEOUT_S}
+    return job["result"]
+
+
+def _rebalance_targeted_run(body):
     if MOCK:
         return {"status": "mock"}
     out_pubkey = body.get("out_pubkey", "")
@@ -1792,7 +1850,7 @@ def rebalance_targeted(body: dict = Body(...)):
             "--allow_self_payment",
             "--force",
             "--fee_limit=" + str(max_fee),
-            "--timeout=90s",
+            f"--timeout={_TARGETED_TIMEOUT_S}s",
             "--json"
         ]
         result = run_lncli(*pay_args)
@@ -1805,7 +1863,7 @@ def rebalance_targeted(body: dict = Body(...)):
             reason = result.get("failure_reason", "UNKNOWN")
             friendly = {
                 "FAILURE_REASON_NO_ROUTE": f"No profitable route right now: nothing reaches this channel for {max_fee} sats or less ({round(max_fee * 1_000_000 / max(amount, 1)):,} ppm). Nothing was paid. Raising the max fee above what this channel earns would lose money; for busy sinks like LNBiG a Loop In is usually far cheaper.",
-                "FAILURE_REASON_TIMEOUT": "Payment timed out. Peer may be offline — try again later or try different channels",
+                "FAILURE_REASON_TIMEOUT": "No route found within 5 minutes. Nothing was paid. Try a smaller amount or different channels.",
                 "FAILURE_REASON_INSUFFICIENT_BALANCE": "Not enough sats in the outbound channel. Try a smaller amount",
                 "FAILURE_REASON_INCORRECT_PAYMENT_DETAILS": "Invoice expired — try again",
                 "FAILURE_REASON_ERROR": "Payment error — check channel status",
@@ -1815,6 +1873,8 @@ def rebalance_targeted(body: dict = Body(...)):
             return {"status": "failed", "detail": friendly, "raw_reason": reason}
     except HTTPException as he:
         err = he.detail if hasattr(he, 'detail') else str(he)
+        if str(err).startswith("IN_FLIGHT"):
+            return {"status": "pending", "detail": str(err)[len("IN_FLIGHT: "):]}
         if "FAILED" in err:
             friendly = "Rebalance failed. Try: increase max fee, reduce amount, or pick different channels"
         elif "insufficient" in err.lower():
