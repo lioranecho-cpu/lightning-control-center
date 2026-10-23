@@ -5,9 +5,14 @@ All notable changes to LCC — Lightning Control Center.
 ## Unreleased (v0.2.3)
 
 ### Added
+- **Channel fee when opening** — set the ppm from the start (base fee 0), so new channels no longer start at LND's default 1 ppm. It matches your other channels with that peer, and the new channel joins their Auto Fee group.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 
 ### Changed
+- **Open Channel shows the real result** — LCC read the wrong field of LND's answer, so a channel that opened fine was reported as failed. Fixed.
+- **No accidental double opens** — one open per peer at a time, and a warning if a channel to that peer is already waiting for confirmation.
+- **Open Channel fee rate is used** — the sat/vB you enter is now sent to LND (it was ignored before). Leave it empty and LND picks the rate.
+- **Strategy page** — "lower your fee" only appears when your fee is above the suggested range; full channels at a low fee show "price isn't the problem" and join the 7-day recycle watch.
 - **Targeted Rebalance runs in the background** — LCC answers at once and the page checks every 3 seconds, with a ⏳ box showing the two channels and a timer. Survives a page reload; starting the same pair twice follows the running one. No more "Can't reach LND … Read timed out" on long searches.
 - **Longer route search** — 5 minutes instead of 90 seconds.
 - **Multi-part payments** — payments and rebalances can split into up to 16 parts over different routes (same as lncli).

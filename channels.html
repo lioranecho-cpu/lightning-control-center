@@ -1076,7 +1076,7 @@ function closeChannelConfirm(chanPoint, alias){
     <p style="font-size:12px;color:#888;margin-bottom:20px;">Connect and open a Lightning channel to a peer</p>
     <div style="margin-bottom:14px;">
       <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Peer Address (pubkey@host:port)</label>
-      <input id="oc-peer" type="text" placeholder="03abc...@node.example.com:9735" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:monospace;font-size:12px;outline:none;"/>
+      <input id="oc-peer" type="text" placeholder="03abc...@node.example.com:9735" oninput="ocPeerChanged()" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:monospace;font-size:12px;outline:none;"/>
     </div>
     <div style="margin-bottom:14px;">
       <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Local Amount (sats)</label>
@@ -1084,9 +1084,14 @@ function closeChannelConfirm(chanPoint, alias){
     </div>
     <div style="margin-bottom:14px;">
       <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Fee Rate (sat/vB)</label>
-      <input id="oc-feerate" type="number" value="1" min="1" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;" oninput="updateFeeEstimate()"/>
-      <div id="oc-fee-estimate" style="font-size:11px;color:var(--orange);margin-top:6px;">Estimated fee: ~168 sats</div>
+      <input id="oc-feerate" type="number" value="" placeholder="auto (LND picks)" min="1" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;" oninput="updateFeeEstimate()"/>
+      <div id="oc-fee-estimate" style="font-size:11px;color:var(--orange);margin-top:6px;">Empty: LND picks a rate for confirmation in a few blocks. Check mempool.space and enter a rate to pay less.</div>
       <div style="font-size:10px;color:#555;margin-top:3px;">On-chain tx fee only — excludes channel reserve and commit fees</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Your channel fee (ppm)</label>
+      <input id="oc-ppm" type="number" value="500" min="0" max="10000" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;"/>
+      <div id="oc-ppm-hint" style="font-size:10px;color:#555;margin-top:3px;">Set from the start (base fee 0). Leave empty to use LND's default, which is often 1 ppm.</div>
     </div>
     <div style="margin-bottom:20px;display:flex;align-items:center;gap:8px;">
       <input id="oc-private" type="checkbox" style="width:16px;height:16px;cursor:pointer;"/>
@@ -1099,10 +1104,11 @@ function closeChannelConfirm(chanPoint, alias){
 
 <script>
 function updateFeeEstimate(){
-  const feeRate = parseFloat(document.getElementById('oc-feerate').value) || 1;
+  const feeRate = parseFloat(document.getElementById('oc-feerate').value);
+  const el = document.getElementById('oc-fee-estimate');
+  if(!(feeRate > 0)){ el.textContent = 'Empty: LND picks a rate for confirmation in a few blocks. Check mempool.space and enter a rate to pay less.'; return; }
   // Average channel open tx is ~168 vBytes
-  const estimatedSats = Math.round(168 * feeRate);
-  document.getElementById('oc-fee-estimate').textContent = 'Estimated fee: ~' + estimatedSats.toLocaleString() + ' sats';
+  el.textContent = 'Estimated fee: ~' + Math.round(168 * feeRate).toLocaleString() + ' sats at ' + feeRate + ' sat/vB. Too low a rate can leave the open waiting for hours.';
 }
 
 function openChannelModal(){
@@ -1115,20 +1121,39 @@ function openChannelModal(){
   document.getElementById('oc-peer').value = '';
   document.getElementById('oc-amount').value = '1000000';
   document.getElementById('oc-private').checked = false;
+  document.getElementById('oc-ppm').value = '500';
+  document.getElementById('oc-ppm-hint').textContent = "Set from the start (base fee 0). Leave empty to use LND's default, which is often 1 ppm.";
+  var b = document.getElementById('oc-submit-btn');
+  b.disabled = false; b.textContent = 'Open Channel'; b.dataset.busy = '';
   document.getElementById('open-channel-modal').style.display = 'flex';
+}
+
+function ocPeerChanged(){
+  var pk = (document.getElementById('oc-peer').value.split('@')[0] || '').trim().toLowerCase();
+  var hint = document.getElementById('oc-ppm-hint');
+  var same = (typeof cachedChannels !== 'undefined' ? cachedChannels : []).filter(function(c){ return (c.remote_pubkey || '').toLowerCase() === pk; });
+  if(pk.length === 66 && same.length){
+    var fee = Number(same[0].fee_ppm) || 0;
+    document.getElementById('oc-ppm').value = String(fee);
+    hint.textContent = 'Matches your ' + same.length + ' other channel' + (same.length > 1 ? 's' : '') + ' with ' + (same[0].peer_alias || 'this peer') + ' (' + fee.toLocaleString() + ' ppm). If they use Auto Fee, the new channel joins it.';
+  } else {
+    hint.textContent = "Set from the start (base fee 0). Leave empty to use LND's default, which is often 1 ppm.";
+  }
 }
 
 function closeOpenChannelModal(){
   document.getElementById('open-channel-modal').style.display = 'none';
 }
 
-function submitOpenChannel(){
+function submitOpenChannel(allowPending){
   const peer = document.getElementById('oc-peer').value.trim();
   const amount = document.getElementById('oc-amount').value;
   const isPrivate = document.getElementById('oc-private').checked;
-  const feeRate = document.getElementById('oc-feerate').value || 1;
+  const feeRate = parseInt(document.getElementById('oc-feerate').value, 10) || 0;
+  const ppmRaw = document.getElementById('oc-ppm').value.trim();
   const status = document.getElementById('oc-status');
   const btn = document.getElementById('oc-submit-btn');
+  if(btn.dataset.busy) return;
 
   if(!peer || !peer.includes('@')){
     status.style.color = '#ef4444';
@@ -1140,31 +1165,60 @@ function submitOpenChannel(){
     status.textContent = '❌ Minimum channel size is 20,000 sats';
     return;
   }
+  const ppm = ppmRaw === '' ? -1 : parseInt(ppmRaw, 10);
+  if(ppmRaw !== '' && !(ppm >= 0 && ppm <= 10000)){
+    status.style.color = '#ef4444';
+    status.textContent = '❌ Channel fee must be 0–10,000 ppm, or empty';
+    return;
+  }
 
+  function idle(){ btn.dataset.busy = ''; btn.disabled = false; btn.textContent = 'Open Channel'; }
+  btn.dataset.busy = '1';
   btn.disabled = true;
   btn.textContent = '⏳ Opening channel...';
   status.style.color = 'var(--muted)';
-  status.textContent = 'Connecting to peer and opening channel...';
+  status.textContent = 'Connecting to peer and opening channel... this can take up to a minute.';
 
-  fetch('/api/openchannel?peer_address=' + encodeURIComponent(peer) + '&local_amt=' + amount + '&private=' + isPrivate + '&sat_per_vbyte=' + feeRate, {method:'POST'})
+  fetch('/api/openchannel?peer_address=' + encodeURIComponent(peer) + '&local_amt=' + amount + '&private=' + isPrivate
+        + (feeRate ? '&sat_per_vbyte=' + feeRate : '') + '&fee_ppm=' + ppm + (allowPending ? '&allow_pending=true' : ''), {method:'POST'})
     .then(r=>r.json())
     .then(d=>{
-      btn.disabled = false;
-      btn.textContent = 'Open Channel';
-      if(d.funding_txid){
-        status.style.color = 'var(--green)';
-        status.textContent = '✅ Channel opening! Txid: ' + d.funding_txid.slice(0,16) + '...';
-        setTimeout(()=>{ closeOpenChannelModal(); location.reload(); }, 3000);
-      } else {
-        status.style.color = '#ef4444';
-        status.textContent = '❌ ' + (d.detail || 'Failed to open channel');
+      if(d.status === 'pending_exists'){
+        idle();
+        status.style.color = 'var(--orange)';
+        status.textContent = '⚠️ ' + d.detail;
+        if(confirm(d.detail + '\n\nOpen another channel to the same peer anyway?')) submitOpenChannel(true);
+        return;
       }
+      if(d.status === 'busy'){
+        status.style.color = 'var(--orange)';
+        status.textContent = '⏳ ' + d.detail;
+        setTimeout(idle, 15000);
+        return;
+      }
+      if(d.status === 'pending' && d.funding_txid){
+        status.style.color = 'var(--green)';
+        status.textContent = '✅ Channel opening! Txid: ' + d.funding_txid.slice(0,16) + '…'
+          + (d.fee_ppm != null ? ' · fee ' + Number(d.fee_ppm).toLocaleString() + ' ppm' : '')
+          + (d.auto_fee_group ? ' · joined this peer\'s Auto Fee' : '');
+        btn.textContent = '✅ Opened';
+        setTimeout(()=>{ closeOpenChannelModal(); location.reload(); }, 5000);
+        return;
+      }
+      if(d.status === 'pending'){
+        status.style.color = 'var(--orange)';
+        status.textContent = '⚠️ LND accepted the request but sent no txid. Check pending channels before trying again.';
+        setTimeout(idle, 15000);
+        return;
+      }
+      idle();
+      status.style.color = '#ef4444';
+      status.textContent = '❌ ' + (d.detail || d.error || 'Failed to open channel') + ' — check pending channels before trying again.';
     })
     .catch(()=>{
-      btn.disabled = false;
-      btn.textContent = 'Open Channel';
       status.style.color = '#ef4444';
-      status.textContent = '❌ Connection error — check your node is online';
+      status.textContent = '❌ No answer from LCC. The channel may still be opening: check pending channels before trying again.';
+      setTimeout(idle, 15000);
     });
 }
 

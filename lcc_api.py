@@ -379,11 +379,24 @@ def run_lncli(*args):
                 "local_funding_amount": str(flags.get("local_amt", "0")),
                 "private": "private" in flags,
             }
-            first = _lnd_rest_stream_first("POST", "/v1/channels", body=body, timeout=60)
-            chan_pending = first.get("chan_pending", {}) or {}
-            txid_b64 = chan_pending.get("txid")
-            txid = base64.b64decode(txid_b64)[::-1].hex() if txid_b64 else ""
-            return {"funding_txid": txid}
+            if flags.get("sat_per_vbyte"):
+                body["sat_per_vbyte"] = str(int(flags["sat_per_vbyte"]))
+            # Routing fee for the new channel from the start, instead of LND's default
+            if "fee_rate_ppm" in flags:
+                body["fee_rate"] = str(int(flags["fee_rate_ppm"]))
+                body["use_fee_rate"] = True
+            if "base_fee_msat" in flags:
+                body["base_fee"] = str(int(flags["base_fee_msat"]))
+                body["use_base_fee"] = True
+            # POST /v1/channels = OpenChannelSync: one answer with the channel point
+            r = _lnd_rest("POST", "/v1/channels", body=body, timeout=90)
+            txid = r.get("funding_txid_str") or ""
+            if not txid and r.get("funding_txid_bytes"):
+                txid = base64.b64decode(r["funding_txid_bytes"])[::-1].hex()
+            if not txid:
+                _cp = (r.get("chan_pending") or {}).get("txid")
+                txid = base64.b64decode(_cp)[::-1].hex() if _cp else ""
+            return {"funding_txid": txid, "output_index": int(r.get("output_index", 0) or 0)}
 
         if cmd == "closechannel":
             txid = flags.get("funding_txid")
@@ -1434,26 +1447,90 @@ def change_password(body: dict = Body(...)):
         json.dump(data, f, indent=2)
     return _session_cookie_response()
 
+_OPENING_PEERS = set()
+_OPENING_LOCK = threading.Lock()
+
+
+def _join_peer_auto_fee(pubkey, chan_point):
+    """If another channel with this peer has Auto Fee on, give the new channel the
+    same band and group them, so all of them follow the combined balance."""
+    try:
+        data = json.load(open(_DATA_JSON_PATH))
+        af = data.get("channel_auto_fee", {})
+        peer_cps = [c.get("channel_point", "") for c in run_lncli("listchannels").get("channels", [])
+                    if c.get("remote_pubkey") == pubkey]
+        src = next((af[cp] for cp in peer_cps if cp in af and af[cp].get("enabled")), None)
+        if not src:
+            return False
+        for cp in peer_cps:
+            if cp in af and af[cp].get("enabled"):
+                af[cp]["peer_group"] = True
+        new = dict(src)
+        new.update({"peer_group": True, "last_run": 0, "last_base": None, "last_ppm": None})
+        af[chan_point] = new
+        data["channel_auto_fee"] = af
+        with open(_DATA_JSON_PATH, "w") as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"[openchannel] could not join Auto Fee group: {e}")
+        return False
+
+
 @app.post("/api/openchannel")
 @limiter.limit("3/minute")
-def open_channel(request: Request, peer_address: str, local_amt: int, private: bool = False):
+def open_channel(request: Request, peer_address: str, local_amt: int, private: bool = False,
+                 sat_per_vbyte: int = 0, fee_ppm: int = -1, allow_pending: bool = False):
     if MOCK:
         return {"status": "mock"}
+    pubkey = peer_address.split("@")[0].strip().lower()
+    if len(pubkey) != 66 or any(c not in "0123456789abcdef" for c in pubkey):
+        raise HTTPException(status_code=400, detail="Invalid node pubkey: use pubkey@host:port")
+    if not 0 <= sat_per_vbyte <= 1000:
+        raise HTTPException(status_code=400, detail="Fee rate must be 1-1000 sat/vB")
+    if fee_ppm > 10000:
+        raise HTTPException(status_code=400, detail="Channel fee must be 0-10,000 ppm")
+
+    # One open per peer at a time: a double click cannot open two channels
+    with _OPENING_LOCK:
+        if pubkey in _OPENING_PEERS:
+            return {"status": "busy", "detail": "A channel to this peer is already being opened. Wait for it to finish."}
+        _OPENING_PEERS.add(pubkey)
     try:
-        # Extract pubkey from address
-        pubkey = peer_address.split("@")[0]
-        # Connect to peer first (ignore if already connected)
+        if not allow_pending:
+            try:
+                pend = run_lncli("pendingchannels").get("pending_open_channels", [])
+            except Exception:
+                pend = []
+            n = sum(1 for p in pend if (p.get("channel") or {}).get("remote_node_pub", "").lower() == pubkey)
+            if n:
+                return {"status": "pending_exists", "count": n,
+                        "detail": f"You already have {n} channel{'s' if n > 1 else ''} to this peer waiting for confirmation."}
+        # Connect to peer first (already connected is fine)
         try:
             run_lncli("connect", peer_address)
         except Exception as e:
-            print(f"[strategy] getchaninfo failed: {e}")  # Already connected is fine
+            print(f"[openchannel] connect: {e}")
         args = ["openchannel", f"--node_key={pubkey}", f"--local_amt={local_amt}"]
         if private:
             args.append("--private")
+        if sat_per_vbyte:
+            args.append(f"--sat_per_vbyte={sat_per_vbyte}")
+        if fee_ppm >= 0:
+            args += [f"--fee_rate_ppm={fee_ppm}", "--base_fee_msat=0"]
         result = run_lncli(*args)
-        return {"status": "pending", "funding_txid": result.get("funding_txid", "")}
+        txid = result.get("funding_txid", "")
+        chan_point = f"{txid}:{result.get('output_index', 0)}" if txid else ""
+        joined = _join_peer_auto_fee(pubkey, chan_point) if chan_point else False
+        return {"status": "pending", "funding_txid": txid, "chan_point": chan_point,
+                "fee_ppm": fee_ppm if fee_ppm >= 0 else None, "auto_fee_group": joined}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        with _OPENING_LOCK:
+            _OPENING_PEERS.discard(pubkey)
 
 @app.post("/api/closechannel")
 @limiter.limit("3/minute")
