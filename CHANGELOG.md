@@ -10,6 +10,8 @@ All notable changes to LCC — Lightning Control Center.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 
 ### Changed
+- **Pending tab shows closing channels** — cooperative and force closes now appear next to opening channels, with the peer's name, the sats coming back and a link to the closing transaction. The Pending count includes them.
+- **Total Capacity fixed** — a leftover +2,000,000 sats was added to the Channels page total.
 - **Open Channel shows the real result** — LCC read the wrong field of LND's answer, so a channel that opened fine was reported as failed. Fixed.
 - **No accidental double opens** — one open per peer at a time, and a warning if a channel to that peer is already waiting for confirmation.
 - **Open Channel fee rate is used** — the sat/vB you enter is now sent to LND (it was ignored before). Leave it empty and LND picks the rate.

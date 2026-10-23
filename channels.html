@@ -381,7 +381,7 @@ fetch(API).then(r=>r.json()).then(d=>{
   const totalLocal = channels.reduce((s,c)=>s+c.local_balance,0);
   const totalRemote = channels.reduce((s,c)=>s+c.remote_balance,0);
 
-  document.getElementById('total-cap').textContent = fmt(totalCap + 2000000);
+  document.getElementById('total-cap').textContent = fmt(totalCap);
   document.getElementById('active-count').textContent = d.channels.num_active;
   // Load pending channels
   fetch('/api/pendingchannels').then(r=>r.json()).then(p => {
@@ -462,20 +462,28 @@ fetch(API).then(r=>r.json()).then(d=>{
   if(pendingList.length === 0){
     pendingEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">No pending channels</div>';
   }
+  const _esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   pendingList.forEach(ch => {
-    const alias = ch.peer_alias || ch.peer_alias || 'Unknown';
+    const alias = _esc(ch.peer_alias || 'Unknown');
+    const closing = ch.status === 'closing' || ch.status === 'force_closing';
+    const tx = closing ? (ch.closing_txid || '') : (ch.channel_point || '').split(':')[0];
+    const badge = ch.status === 'force_closing' ? 'force closing' : closing ? 'closing' : 'opening';
+    const note = ch.status === 'force_closing'
+      ? 'Force close: funds return after the timelock' + (ch.blocks_til_maturity ? ' (' + fmt(ch.blocks_til_maturity) + ' blocks left)' : '')
+      : closing ? 'Cooperative close: your side returns to your wallet after it confirms'
+      : 'Waiting for confirmation' + (ch.confirmations_left ? ' (' + ch.confirmations_left + ' to go)' : '');
     pendingEl.innerHTML += '<div class="channel-card pending">' +
       '<div class="ch-top"><div class="ch-peer">' +
       '<div class="ch-avatar pending-av">' + alias[0].toUpperCase() + '</div>' +
       '<div><div class="ch-alias">' + alias + '</div>' +
       '<div class="ch-pubkey">Capacity: ' + fmt(ch.capacity) + ' sats</div></div></div>' +
-      '<div class="ch-right"><span class="badge pending">pending</span></div></div>' +
+      '<div class="ch-right"><span class="badge pending">' + badge + '</span></div></div>' +
       '<div class="balance-bar-wrap"><div class="balance-bar-labels">' +
-      '<span>Local: ' + fmt(ch.local_balance) + ' sats</span>' +
-      '<span>Waiting for confirmation</span></div>' +
-      '<div class="balance-bar"><div class="balance-bar-fill" style="width:50%;background:var(--orange-dim)"></div></div></div>' +
-      '<div class="pending-info">&#9203; Pending on-chain confirmation' +
-      (ch.channel_point ? ' &nbsp;|&nbsp; <a href="https://mempool.space/tx/' + ch.channel_point.split(':')[0] + '" target="_blank" style="color:var(--orange);font-family:monospace;font-size:10px;">' + ch.channel_point.split(':')[0].slice(0,16) + '... ↗</a>' : '') +
+      '<span>' + (closing ? 'Coming back' : 'Local') + ': ' + fmt(ch.local_balance) + ' sats</span>' +
+      '<span>' + (closing ? 'Closing' : 'Opening') + '</span></div>' +
+      '<div class="balance-bar"><div class="balance-bar-fill" style="width:50%;background:' + (closing ? '#ef444466' : 'var(--orange-dim)') + '"></div></div></div>' +
+      '<div class="pending-info">&#9203; ' + note +
+      (/^[0-9a-f]{64}$/.test(tx) ? ' &nbsp;|&nbsp; <a href="https://mempool.space/tx/' + tx + '" target="_blank" rel="noopener" style="color:var(--orange);font-family:monospace;font-size:10px;">' + tx.slice(0,16) + '... ↗</a>' : '') +
       '</div></div>';
   });
 });

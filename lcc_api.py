@@ -605,20 +605,44 @@ def get_channels():
             "initiator": ch.get("initiator", False),
             "status": "active" if ch.get("active") else "inactive",
         })
+    alias_by_pub = {c["remote_pubkey"]: c["peer_alias"] for c in channel_list}
+
+    def _pending_alias(pub):
+        if pub in alias_by_pub:
+            return alias_by_pub[pub]
+        try:
+            a = _lnd_rest("GET", f"/v1/graph/node/{pub}", timeout=5).get("node", {}).get("alias", "")
+        except Exception:
+            a = ""
+        alias_by_pub[pub] = a or (pub[:16] + "...")
+        return alias_by_pub[pub]
+
+    pending_list = []
+    for kind, key in (("pending_open", "pending_open_channels"),
+                      ("closing", "waiting_close_channels"),
+                      ("force_closing", "pending_force_closing_channels")):
+        for p in pending.get(key, []):
+            c = p.get("channel", {}) or {}
+            pub = c.get("remote_node_pub", "")
+            item = {
+                "peer_alias": _pending_alias(pub) if pub else "Unknown",
+                "capacity": int(c.get("capacity", 0)),
+                "local_balance": int(c.get("local_balance", 0)),
+                "channel_point": c.get("channel_point", ""),
+                "status": kind,
+            }
+            if kind != "pending_open":
+                item["closing_txid"] = p.get("closing_txid", "") or ""
+            if kind == "pending_open":
+                item["confirmations_left"] = int(p.get("confirmations_until_active", 0) or 0)
+            if kind == "force_closing":
+                item["blocks_til_maturity"] = int(p.get("blocks_til_maturity", 0) or 0)
+            pending_list.append(item)
     return {
         "num_active": len([c for c in channel_list if c["status"] == "active"]),
         "num_inactive": len([c for c in channel_list if c["status"] == "inactive"]),
-        "num_pending": len(pending.get("pending_open_channels", [])),
-        "pending": [
-            {
-                "peer_alias": p.get("channel", {}).get("remote_node_pub", "Unknown")[:16] + "...",
-                "capacity": int(p.get("channel", {}).get("capacity", 0)),
-                "local_balance": int(p.get("channel", {}).get("local_balance", 0)),
-                "channel_point": p.get("channel", {}).get("channel_point", ""),
-                "status": "pending_open"
-            }
-            for p in pending.get("pending_open_channels", [])
-        ],
+        "num_pending": len(pending_list),
+        "pending": pending_list,
         "total_capacity": sum(c["capacity"] for c in channel_list),
         "list": sorted(channel_list, key=lambda c: c["capacity"], reverse=True),
     }
