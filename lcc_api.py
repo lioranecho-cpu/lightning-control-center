@@ -1587,7 +1587,14 @@ def get_strategy():
         sats_in = in_7d.get(scid, 0)
 
         # How long has this channel been full at a low fee with nothing going out?
-        stuck = local_pct >= _STRAT_FULL_PCT and my_fee <= _STRAT_LOW_FEE and sats_out == 0
+        # Fee range that usually lets a full channel drain, based on the peer's own fee
+        if peer_fee < 100:
+            _drain_lo, _drain_hi = peer_fee + 10, peer_fee + 25
+        else:
+            _drain_lo, _drain_hi = max(25, peer_fee // 4), max(50, peer_fee // 2)
+        # Already at or below the cheapest suggestion: lowering further is not the answer
+        fee_low = my_fee <= max(_STRAT_LOW_FEE, _drain_lo)
+        stuck = local_pct >= _STRAT_FULL_PCT and fee_low and sats_out == 0
         if stuck:
             if cp not in watch:
                 watch[cp] = now
@@ -1619,11 +1626,19 @@ def get_strategy():
             assessment = f"Full at a low fee, nothing routed out in 7 days. Watching: day {int(stuck_days) + 1} of {_STRAT_WATCH_DAYS}."
             action = "Wait, then recycle if still stuck"
             color = "orange"
-        elif local_pct >= 90 and my_fee > _STRAT_LOW_FEE:
-            assessment = "Full, fee still high: lower it first so traffic can leave"
-            action = (f"Drain {peer_fee + 10}-{peer_fee + 25} ppm" if peer_fee < 100
-                      else f"{max(25, peer_fee // 4)}-{max(50, peer_fee // 2)} ppm")
+        elif local_pct >= 90 and my_fee > _drain_hi:
+            assessment = f"Full, fee still high ({my_fee} ppm): lower it so traffic can leave"
+            action = f"Lower to {_drain_lo}-{_drain_hi} ppm"
             color = "green"
+        elif local_pct >= 90 and not fee_low:
+            assessment = f"Full, fee already in the drain range ({my_fee} ppm): give it time"
+            action = "Keep fee, wait for traffic"
+            color = "blue"
+        elif local_pct >= 90:
+            assessment = (f"Full, fee already low ({my_fee} ppm): price isn't the problem"
+                          + (", sats are leaving" if sats_out else ""))
+            action = "Keep fee" + ("" if sats_out else ", recycle if nothing leaves in 7 days")
+            color = "blue"
         elif not initiator and local_pct < 90:
             assessment = "Inbound lifeline (peer opened)"
             action = "Keep as-is"
