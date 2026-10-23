@@ -5,6 +5,7 @@ All notable changes to LCC — Lightning Control Center.
 ## Unreleased (v0.2.3)
 
 ### Added
+- **Current on-chain fees in Open and Close Channel** — No priority / Low / Medium / High from mempool.space (or Bitcoin Core), one click to use, or type your own, with a short note on speed vs. cost. Close Channel is now a window that shows what comes back to your wallet, who pays the closing fee, and the fee in sats.
 - **Channel fee when opening** — set the ppm from the start (base fee 0), so new channels no longer start at LND's default 1 ppm. It matches your other channels with that peer, and the new channel joins their Auto Fee group.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 

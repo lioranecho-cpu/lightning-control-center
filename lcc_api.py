@@ -402,6 +402,8 @@ def run_lncli(*args):
             txid = flags.get("funding_txid")
             idx = flags.get("output_index", "0")
             params = {"force": "force" in flags}
+            if flags.get("sat_per_vbyte") and "force" not in flags:
+                params["sat_per_vbyte"] = str(int(flags["sat_per_vbyte"]))
             first = _lnd_rest_stream_first("DELETE", f"/v1/channels/{txid}/{idx}", params=params, timeout=60)
             close_pending = first.get("close_pending", {}) or {}
             txid_b64 = close_pending.get("txid")
@@ -1534,18 +1536,57 @@ def open_channel(request: Request, peer_address: str, local_amt: int, private: b
 
 @app.post("/api/closechannel")
 @limiter.limit("3/minute")
-def close_channel(request: Request, chan_point: str, force: bool = False):
+def close_channel(request: Request, chan_point: str, force: bool = False, sat_per_vbyte: int = 0):
     if MOCK:
         return {"status": "mock"}
+    if not 0 <= sat_per_vbyte <= 1000:
+        raise HTTPException(status_code=400, detail="Fee rate must be 1-1000 sat/vB")
     try:
         txid, output = chan_point.split(":")
         args = ["closechannel", f"--funding_txid={txid}", f"--output_index={output}"]
         if force:
             args.append("--force")
+        elif sat_per_vbyte:
+            args.append(f"--sat_per_vbyte={sat_per_vbyte}")
         result = run_lncli(*args)
-        return {"status": "closing", "txid": result.get("closing_txid", "pending")}
+        return {"status": "closing", "txid": result.get("closing_txid", "pending"),
+                "sat_per_vbyte": sat_per_vbyte or None}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+_FEE_RATES_CACHE = {"t": 0, "v": None}
+
+
+@app.get("/api/fee-rates")
+def get_fee_rates():
+    """On-chain fee rates for the Open/Close Channel windows (sat/vB):
+    mempool.space first, then Bitcoin Core's estimate. Cached for 60 seconds."""
+    if _FEE_RATES_CACHE["v"] and time.time() - _FEE_RATES_CACHE["t"] < 60:
+        return _FEE_RATES_CACHE["v"]
+    out = None
+    try:
+        r = requests.get("https://mempool.space/api/v1/fees/recommended", timeout=5).json()
+        out = {"source": "mempool.space",
+               "no_priority": int(r.get("economyFee") or r.get("minimumFee") or 1),
+               "low": int(r.get("hourFee") or 1),
+               "medium": int(r.get("halfHourFee") or 1),
+               "high": int(r.get("fastestFee") or 1)}
+    except Exception:
+        try:
+            def _est(blocks):
+                e = run_bitcoin_cli("estimatesmartfee", str(blocks)) or {}
+                return max(1, round(float(e.get("feerate", 0)) * 100_000_000 / 1000))
+            out = {"source": "Bitcoin Core", "no_priority": _est(144), "low": _est(6),
+                   "medium": _est(3), "high": _est(1)}
+        except Exception:
+            out = None
+    if not out:
+        return {"source": None}
+    _FEE_RATES_CACHE.update(t=time.time(), v=out)
+    return out
 
 @app.get("/api/chaninfo")
 def get_chaninfo(scid: str = ""):

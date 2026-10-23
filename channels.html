@@ -1055,17 +1055,79 @@ function closeChannelConfirm(chanPoint, alias){
     alert('Channel closing is a Pro feature. Upgrade at satslist.shop');
     return;
   }
-  if(!confirm('⚠️ Close channel with ' + alias + '?\n\nThis will broadcast a closing transaction on-chain. Funds will be returned to your wallet after confirmation.')) return;
-  if(!confirm('⚠️ FINAL CONFIRMATION\n\nClose ' + alias + ' channel?\n\nThis cannot be undone.')) return;
-  fetch('/api/closechannel?chan_point='+encodeURIComponent(chanPoint), {method:'POST'})
-    .then(r=>r.json())
-    .then(d=>{
+  var c = (typeof cachedChannels !== 'undefined' ? cachedChannels : []).find(function(x){ return x.channel_point === chanPoint; }) || {};
+  var m = document.getElementById('close-channel-modal');
+  if(!m){
+    m = document.createElement('div');
+    m.id = 'close-channel-modal';
+    m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;';
+    m.innerHTML = '<div style="background:#161b27;border:1px solid #252d3d;border-radius:16px;padding:28px;max-width:480px;width:90%;position:relative;">'
+      + '<button onclick="document.getElementById(\'close-channel-modal\').style.display=\'none\'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>'
+      + '<h3 id="cc-title" style="font-size:16px;font-weight:700;color:#f0f0f0;margin-bottom:4px;"></h3>'
+      + '<p style="font-size:12px;color:#888;margin-bottom:16px;">Cooperative close: your side of the channel comes back to your on-chain wallet after it confirms.</p>'
+      + '<div id="cc-info" style="font-size:12px;color:#ccc;line-height:1.6;margin-bottom:14px;"></div>'
+      + '<label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Fee Rate (sat/vB)</label>'
+      + '<input id="cc-feerate" type="number" min="1" placeholder="auto (LND picks)" oninput="ccFeeEstimate()" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;"/>'
+      + '<div id="cc-fee-est" style="font-size:11px;color:var(--orange);margin-top:6px;"></div>'
+      + '<div id="cc-fee-chips" style="margin-top:8px;font-size:11px;"></div>'
+      + '<div id="cc-status" style="font-size:12px;margin:14px 0 10px;text-align:center;min-height:18px;"></div>'
+      + '<button id="cc-submit" onclick="submitCloseChannel()" style="width:100%;background:#ef4444;color:#fff;border:none;border-radius:8px;padding:10px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Close Channel (cooperative)</button>'
+      + '</div>';
+    document.body.appendChild(m);
+  }
+  m.dataset.chanPoint = chanPoint;
+  m.dataset.alias = alias;
+  m.dataset.initiator = c.initiator ? '1' : '';
+  document.getElementById('cc-title').textContent = '⚠️ Close channel with ' + alias;
+  var info = '';
+  if(c.capacity) info += 'Size: <b>' + Number(c.capacity).toLocaleString() + '</b> sats<br>';
+  if(c.local_balance != null) info += 'Back to your wallet: about <b>' + Number(c.local_balance).toLocaleString() + '</b> sats (your side, minus fees)<br>';
+  info += c.initiator ? 'You opened it, so <b>you pay</b> the closing fee.' : 'The peer opened it, so <b>they pay</b> the closing fee. Your rate is a proposal.';
+  document.getElementById('cc-info').innerHTML = info;
+  document.getElementById('cc-feerate').value = '';
+  document.getElementById('cc-status').textContent = '';
+  var btn = document.getElementById('cc-submit');
+  btn.disabled = false; btn.textContent = 'Close Channel (cooperative)'; btn.dataset.busy = '';
+  ccFeeEstimate();
+  m.style.display = 'flex';
+  lccFeePicker('cc-feerate', 'cc-fee-chips', ccFeeEstimate);
+}
+
+function ccFeeEstimate(){
+  var r = parseFloat(document.getElementById('cc-feerate').value);
+  var el = document.getElementById('cc-fee-est');
+  // A cooperative close is roughly 200 vBytes
+  el.textContent = r > 0 ? 'Closing fee: about ' + Math.round(200 * r).toLocaleString() + ' sats at ' + r + ' sat/vB.' : 'Empty: LND picks a rate for confirmation in a few blocks.';
+}
+
+function submitCloseChannel(){
+  var m = document.getElementById('close-channel-modal');
+  var btn = document.getElementById('cc-submit');
+  var status = document.getElementById('cc-status');
+  if(btn.dataset.busy) return;
+  var rate = parseInt(document.getElementById('cc-feerate').value, 10) || 0;
+  if(!confirm('FINAL CONFIRMATION\n\nClose the channel with ' + m.dataset.alias + (rate ? ' at ' + rate + ' sat/vB' : '') + '?\n\nThis cannot be undone.')) return;
+  btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = '⏳ Closing...';
+  status.style.color = 'var(--muted)'; status.textContent = 'Asking the peer to close... this can take up to a minute.';
+  fetch('/api/closechannel?chan_point=' + encodeURIComponent(m.dataset.chanPoint) + (rate ? '&sat_per_vbyte=' + rate : ''), {method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(d){
       if(d.status === 'closing'){
-        alert('✅ Channel closing initiated for ' + alias + '\n\nClosing txid: ' + d.txid + '\n\nFunds will return to your wallet after confirmation.');
-        location.reload();
+        status.style.color = 'var(--green)';
+        status.textContent = '✅ Closing. Txid: ' + String(d.txid || 'pending').slice(0,16) + '…' + (d.sat_per_vbyte ? ' at ' + d.sat_per_vbyte + ' sat/vB' : '');
+        btn.textContent = '✅ Closing';
+        setTimeout(function(){ m.style.display = 'none'; location.reload(); }, 5000);
+        return;
       }
+      btn.dataset.busy = ''; btn.disabled = false; btn.textContent = 'Close Channel (cooperative)';
+      status.style.color = '#ef4444';
+      status.textContent = '❌ ' + (d.detail || d.error || 'Close failed') + ' — check pending channels before trying again.';
     })
-    .catch(()=>alert('❌ Close channel failed — try again or use terminal'));
+    .catch(function(){
+      status.style.color = '#ef4444';
+      status.textContent = '❌ No answer from LCC. The close may still be happening: check pending channels before trying again.';
+      setTimeout(function(){ btn.dataset.busy = ''; btn.disabled = false; btn.textContent = 'Close Channel (cooperative)'; }, 15000);
+    });
 }
 </script>
 
@@ -1086,6 +1148,7 @@ function closeChannelConfirm(chanPoint, alias){
       <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px;">Fee Rate (sat/vB)</label>
       <input id="oc-feerate" type="number" value="" placeholder="auto (LND picks)" min="1" style="width:100%;background:#0f1117;border:1px solid #252d3d;border-radius:8px;padding:10px 12px;color:#f0f0f0;font-family:var(--font);font-size:13px;outline:none;" oninput="updateFeeEstimate()"/>
       <div id="oc-fee-estimate" style="font-size:11px;color:var(--orange);margin-top:6px;">Empty: LND picks a rate for confirmation in a few blocks. Check mempool.space and enter a rate to pay less.</div>
+      <div id="oc-fee-chips" style="margin-top:8px;font-size:11px;"></div>
       <div style="font-size:10px;color:#555;margin-top:3px;">On-chain tx fee only — excludes channel reserve and commit fees</div>
     </div>
     <div style="margin-bottom:14px;">
@@ -1103,6 +1166,36 @@ function closeChannelConfirm(chanPoint, alias){
 </div>
 
 <script>
+
+// ---- On-chain fee picker (Open / Close Channel) ----
+function lccFeePicker(inputId, boxId, onPick){
+  var box = document.getElementById(boxId);
+  if(!box) return;
+  box.innerHTML = '<span style="color:#666;">Loading current fees…</span>';
+  fetch('/api/fee-rates').then(function(r){return r.json()}).then(function(f){
+    if(!f || !f.source){ box.innerHTML = '<span style="color:#666;">Current fees unavailable. Check mempool.space, or leave empty and LND picks.</span>'; return; }
+    var opts = [
+      ['No priority', f.no_priority, 'may take a day or more'],
+      ['Low', f.low, 'about an hour'],
+      ['Medium', f.medium, 'about 30 min'],
+      ['High', f.high, 'next block or two']
+    ];
+    var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
+    opts.forEach(function(o){
+      html += '<button type="button" data-rate="' + o[1] + '" title="' + o[2] + '" style="background:#0f1117;border:1px solid #252d3d;color:#ddd;border-radius:8px;padding:5px 9px;font-size:11px;cursor:pointer;font-family:var(--font);">'
+            + o[0] + ' <b style="color:var(--orange);">' + o[1] + '</b></button>';
+    });
+    html += '</div><div style="font-size:10.5px;color:#888;line-height:1.5;">sat/vB now, from ' + f.source + '. Click one or type your own. '
+          + '<b>Lower = cheaper but slower.</b> Too low can wait hours or days, and the sats stay locked until it confirms. Low is a good default when you are not in a hurry.</div>';
+    box.innerHTML = html;
+    box.querySelectorAll('button[data-rate]').forEach(function(b){
+      b.onclick = function(){ document.getElementById(inputId).value = b.dataset.rate; if(onPick) onPick(); };
+    });
+    var inp = document.getElementById(inputId);
+    if(inp && !inp.value){ inp.value = f.low; if(onPick) onPick(); }
+  }).catch(function(){ box.innerHTML = '<span style="color:#666;">Current fees unavailable. Check mempool.space, or leave empty and LND picks.</span>'; });
+}
+
 function updateFeeEstimate(){
   const feeRate = parseFloat(document.getElementById('oc-feerate').value);
   const el = document.getElementById('oc-fee-estimate');
@@ -1125,7 +1218,10 @@ function openChannelModal(){
   document.getElementById('oc-ppm-hint').textContent = "Set from the start (base fee 0). Leave empty to use LND's default, which is often 1 ppm.";
   var b = document.getElementById('oc-submit-btn');
   b.disabled = false; b.textContent = 'Open Channel'; b.dataset.busy = '';
+  document.getElementById('oc-feerate').value = '';
+  updateFeeEstimate();
   document.getElementById('open-channel-modal').style.display = 'flex';
+  lccFeePicker('oc-feerate', 'oc-fee-chips', updateFeeEstimate);
 }
 
 function ocPeerChanged(){
