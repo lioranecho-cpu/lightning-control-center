@@ -2225,13 +2225,25 @@ def _rebal_my_fee(ch, my_pubkey):
         return 0, None
 
 
+def _rebal_group_pct(channels):
+    """Share of the balance on our side, per channel. Channels with the same peer act as
+    one pipe (LND forwards over any of them), so they share their combined ratio."""
+    tot = {}
+    for c in channels:
+        t = tot.setdefault(c.get("remote_pubkey", ""), [0, 0])
+        t[0] += int(c.get("local_balance", 0) or 0)
+        t[1] += int(c.get("capacity", 0) or 0)
+    return lambda c: (tot[c.get("remote_pubkey", "")][0] / tot[c.get("remote_pubkey", "")][1]
+                      if tot.get(c.get("remote_pubkey", ""), [0, 0])[1] > 0 else 0)
+
+
 @app.post("/api/rebalance")
 def rebalance_channels(target_pubkey: str = None):
     if MOCK:
         return {"status": "mock", "message": "Rebalance simulated"}
     try:
         channels = run_lncli("listchannels")["channels"]
-        pct = lambda c: int(c["local_balance"]) / int(c["capacity"]) if int(c["capacity"]) > 0 else 0
+        pct = _rebal_group_pct(channels)
         overfull = [c for c in channels if int(c["capacity"]) > 0 and pct(c) > 0.80]
         underfull = [c for c in channels if int(c["capacity"]) > 0 and pct(c) < 0.20]
 
@@ -2267,6 +2279,8 @@ def rebalance_channels(target_pubkey: str = None):
             for src in overfull:
                 if moved:
                     break
+                if src.get("remote_pubkey") == dst.get("remote_pubkey"):
+                    continue  # same peer: LND already uses both channels, a fee here buys nothing
                 src_alias = src.get("peer_alias", src["remote_pubkey"][:16])
                 amount = min(int(src["local_balance"]) - int(int(src["capacity"]) * 0.50),
                              int(int(dst["capacity"]) * 0.50) - int(dst["local_balance"]),
@@ -2756,15 +2770,21 @@ def auto_rebalance_job():
                             json.dump(data, f, indent=2)
             
             # Also run global rebalance if configured
+            data = json.load(open(_DATA_JSON_PATH))
             hours = int(data.get("auto_rebalance_hours", 0))
-            if hours > 0 and not MOCK:
+            last_all = int(data.get("auto_rebalance_last_run", 0) or 0)
+            if hours > 0 and not MOCK and time.time() - last_all >= hours * 3600:
                 channels = run_lncli("listchannels")["channels"]
-                overfull = [c for c in channels if int(c["capacity"]) > 0 and
-                            int(c["local_balance"]) / int(c["capacity"]) > 0.80]
-                underfull = [c for c in channels if int(c["capacity"]) > 0 and
-                             int(c["local_balance"]) / int(c["capacity"]) < 0.20]
+                _gp = _rebal_group_pct(channels)
+                overfull = [c for c in channels if int(c["capacity"]) > 0 and _gp(c) > 0.80]
+                underfull = [c for c in channels if int(c["capacity"]) > 0 and _gp(c) < 0.20]
                 if overfull and underfull:
                     rebalance_channels()
+                # Count the check as a run, so the next one waits the full interval
+                data = json.load(open(_DATA_JSON_PATH))
+                data["auto_rebalance_last_run"] = int(time.time())
+                with open(_DATA_JSON_PATH, "w") as f:
+                    json.dump(data, f, indent=2)
         except Exception as e:
             print(f"[AUTO-REBAL] Error: {e}")
         
