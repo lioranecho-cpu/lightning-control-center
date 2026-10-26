@@ -2376,23 +2376,50 @@ def get_journal():
     except:
         return {"entries": []}
 
+_JOURNAL_LOCK = threading.Lock()
+
+
+def _journal_read(journal_path):
+    try:
+        with open(journal_path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def _journal_write(journal_path, entries):
+    """Write to a temp file, then swap it in: a crash mid-write can't corrupt the journal."""
+    tmp = journal_path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(entries, f, indent=2)
+    os.replace(tmp, journal_path)
+
+
+@app.delete("/api/journal/{entry_id}")
+def delete_journal_entry(entry_id: str):
+    journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
+    with _JOURNAL_LOCK:
+        entries = _journal_read(journal_path)
+        kept = [e for e in entries if str(e.get("id")) != str(entry_id)]
+        if len(kept) == len(entries):
+            return {"status": "not_found"}
+        _journal_write(journal_path, kept)
+    return {"status": "deleted", "count": len(kept)}
+
+
 @app.post("/api/journal")
-def save_journal(request: Request):
-    import asyncio, os, time
+async def save_journal(request: Request):
+    import os, time
     journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
     try:
-        body = asyncio.run(request.json())
-        # Load existing entries
-        try:
-            with open(journal_path, "r") as f:
-                existing = json.load(f)
-        except:
-            existing = []
-        # If sending full entries array — bulk save
+        body = await request.json()
+        # If sending full entries array — bulk save (only used to restore an empty journal)
         if "entries" in body:
             entries = body["entries"]
-            with open(journal_path, "w") as f:
-                json.dump(entries, f, indent=2)
+            with _JOURNAL_LOCK:
+                if _journal_read(journal_path):
+                    return {"status": "skipped", "detail": "Journal already has entries; use single saves and deletes"}
+                _journal_write(journal_path, entries)
             return {"status": "saved", "count": len(entries)}
         # If sending single entry — append to existing
         elif "title" in body:
@@ -2404,9 +2431,10 @@ def save_journal(request: Request):
                 "block": body.get("block", 0),
                 "date": body.get("date", int(time.time() * 1000))
             }
-            existing.insert(0, new_entry)
-            with open(journal_path, "w") as f:
-                json.dump(existing, f, indent=2)
+            with _JOURNAL_LOCK:
+                existing = _journal_read(journal_path)
+                existing.insert(0, new_entry)
+                _journal_write(journal_path, existing)
             return {"status": "saved", "count": len(existing), "entry": new_entry}
         else:
             return {"status": "error", "detail": "No entries or title provided"}
@@ -2607,21 +2635,17 @@ def _log_journal(title, body, tag="auto-rebalance"):
     """Write an entry to the node journal"""
     import time as _t
     journal_path = os.path.join(LCC_DATA_DIR, "journal.json")
-    try:
-        with open(journal_path, "r") as f:
-            entries = json.load(f)
-    except:
-        entries = []
-    entries.insert(0, {
-        "id": int(_t.time() * 1000),
-        "title": title,
-        "body": body,
-        "tag": tag,
-        "block": 0,
-        "date": int(_t.time() * 1000)
-    })
-    with open(journal_path, "w") as f:
-        json.dump(entries, f, indent=2)
+    with _JOURNAL_LOCK:
+        entries = _journal_read(journal_path)
+        entries.insert(0, {
+            "id": int(_t.time() * 1000),
+            "title": title,
+            "body": body,
+            "tag": tag,
+            "block": 0,
+            "date": int(_t.time() * 1000)
+        })
+        _journal_write(journal_path, entries)
 
 def auto_rebalance_job():
     import time as _time

@@ -389,9 +389,13 @@ function getEntries() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
   catch { return []; }
 }
-function saveEntries(entries) {
+function _setCache(entries) {
   _journalCache = entries;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e) {}
+}
+function saveEntries(entries) {
+  // Only used to restore a journal that is empty on the node
+  _setCache(entries);
   fetch('/api/journal', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -445,10 +449,18 @@ function saveEntry() {
 
   const entries = getEntries();
   entries.unshift(entry);
-  saveEntries(entries);
+  _setCache(entries);
   clearForm();
   renderEntries();
-  showFeedback('Entry saved!', 'var(--green)');
+  fetch('/api/journal', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title: entry.title, body: entry.body, tag: entry.tag, date: entry.date, block: entry.block})
+  }).then(r => r.json()).then(d => {
+    if(d.status !== 'saved') throw new Error(d.detail || 'not saved');
+    showFeedback('Entry saved!', 'var(--green)');
+    loadEntriesFromAPI();
+  }).catch(() => showFeedback('Not saved on the node, try again', 'var(--red)'));
 }
 
 function clearForm() {
@@ -460,9 +472,12 @@ function clearForm() {
 }
 
 function deleteEntry(id) {
-  const entries = getEntries().filter(e => String(e.id) !== String(id));
-  saveEntries(entries);
+  _setCache(getEntries().filter(e => String(e.id) !== String(id)));
   renderEntries();
+  fetch('/api/journal/' + encodeURIComponent(id), {method: 'DELETE'})
+    .then(r => r.json())
+    .then(d => { if(d.status !== 'deleted' && d.status !== 'not_found') throw new Error(); })
+    .catch(() => { showFeedback('Delete failed on the node, reloading', 'var(--red)'); loadEntriesFromAPI(); });
 }
 
 function showFeedback(msg, color) {
