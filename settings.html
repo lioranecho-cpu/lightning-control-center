@@ -238,8 +238,13 @@ fetch('/static/sidebar.html')
     </div>
     <button class="btn btn-orange" onclick="activateLicense()">Activate License</button>
     <div id="license-feedback" style="margin-top:10px;font-size:12px;"></div>
-    <div style="margin-top:12px;font-size:11px;color:var(--muted);">
-      Get a license at <a href="https://satslist.shop" target="_blank" style="color:var(--orange);">satslist.shop</a> — pay with Bitcoin Lightning ⚡
+    <div style="margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.7;">
+      <b style="color:var(--text);">Get a license</b> (Personal 20,000 sats one-time · Pro 9,000 sats/month or 90,000 sats/year)
+      <ol style="margin:6px 0 0 18px;padding:0;">
+        <li>Open the <a href="https://shop.sparkielabs.com/#lcc-personal" target="_blank" rel="noopener" style="color:var(--orange);">Sparkie Labs Shop</a> and pick Personal or Pro</li>
+        <li>Pay with any Lightning wallet, and <b>type your email in the payment comment</b></li>
+        <li>Your license key arrives by email, usually within 24 hours: paste it above and click <b>Activate License</b></li>
+      </ol>
     </div>
   </div>
 </div>
@@ -481,7 +486,7 @@ fetch('/static/sidebar.html')
             <div style="margin-top:16px;font-size:12px;color:var(--muted);line-height:1.8;">
               <div>&#127968; Built by <a href="https://sparkielabs.com" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none;">Sparkie Labs</a></div>
               <div>&#9889; Powered by LND + FastAPI</div>
-              <div>&#128279; <a href="https://satslist.shop" target="_blank" style="color:var(--orange);text-decoration:none;">Get Pro version on SatsList</a></div>
+              <div>&#128279; <a href="https://shop.sparkielabs.com/#lcc-pro" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none;">Get Personal or Pro in the Sparkie Labs Shop</a></div>
             </div>
 
             <div class="danger-zone" style="margin-top:16px;">
@@ -564,7 +569,7 @@ fetch('/api/settings/password').then(r => r.json()).then(d => {
 function saveRebalanceSchedule(){
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){
-    document.getElementById('rebalance-schedule-feedback').textContent = '⚡ Auto-rebalance is a Pro feature. Upgrade at satslist.shop';
+    document.getElementById('rebalance-schedule-feedback').textContent = '⚡ Auto-rebalance is a Pro feature. Get a license at shop.sparkielabs.com';
     return;
   }
   // Show/hide custom amount input
@@ -797,7 +802,7 @@ let cmdActive = -1;
 function openCmd(){
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){
-    alert('Command Palette is a Personal feature. Upgrade at satslist.shop');
+    alert('Command Palette is a Personal feature. Get a license at shop.sparkielabs.com');
     return;
   }
   document.getElementById('cmd-palette').classList.add('show');
@@ -854,7 +859,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 function toggleSidebar(){
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){
-    alert('Collapsing sidebar is a Personal feature. Upgrade at satslist.shop');
+    alert('Collapsing sidebar is a Personal feature. Get a license at shop.sparkielabs.com');
     return;
   }
   const sidebar = document.querySelector('.sidebar');

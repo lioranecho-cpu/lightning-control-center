@@ -10,6 +10,7 @@ All notable changes to LCC — Lightning Control Center.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 
 ### Changed
+- **Buying a license** — Settings explains the steps and links to the new Sparkie Labs Shop (shop.sparkielabs.com) instead of SatsList, which needed an account.
 - **Fixed LCC freezing** — saving the Node Journal could leave a worker waiting forever once the journal was large; deleting many entries in a row made LCC stop loading pages until restarted.
 - **Journal saves and deletes send one entry** instead of the whole journal, so they are fast and can no longer overwrite automatic entries written in the meantime. Journal writes are locked and crash-safe.
 - **Scheduled Rebalance All respects "every X hours"** — it checked and ran every hour regardless of the setting. Fixed.
