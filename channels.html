@@ -491,7 +491,7 @@ fetch(API).then(r=>r.json()).then(d=>{
 function rebalanceNow(){
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){
-    alert('Auto-rebalancing is a Pro feature. Upgrade at satslist.shop');
+    alert('Rebalance All is a Personal feature. Upgrade at sparkielabs.com/shop');
     return;
   }
   const btn = document.getElementById('rebalance-btn');
@@ -610,6 +610,7 @@ const CMD_COMMANDS = [
   {icon:'💰', label:'Update Fees', hint:'Go to Routing page to update channel fees', action:()=>location.href='/static/routing.html'},
   {icon:'🐙', label:'GitHub', hint:'View LCC source code on GitHub', action:()=>window.open('https://github.com/lioranecho-cpu/lightning-control-center','_blank')},
   {icon:'🛒', label:'SatsList', hint:'Open SatsList Bitcoin marketplace', action:()=>window.open('https://satslist.shop','_blank')},
+  {icon:'⚡', label:'Sparkie Labs', hint:'Open the Sparkie Labs portal: apps, partners, shop', action:()=>window.open('https://sparkielabs.com','_blank')},
   {icon:'⚡', label:'Donate', hint:'Support LCC via Lightning — zap@satslist.shop', action:()=>openDonateModal()},
 
   // Shortcuts reference
@@ -618,11 +619,6 @@ const CMD_COMMANDS = [
 ];
 let cmdActive = -1;
 function openCmd(){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Command Palette is a Personal feature. Upgrade at satslist.shop');
-    return;
-  }
   document.getElementById('cmd-palette').classList.add('show');
   document.getElementById('cmd-input').value = '';
   cmdActive = -1;
@@ -680,11 +676,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <script>
 function toggleSidebar(){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Collapsing sidebar is a Personal feature. Upgrade at satslist.shop');
-    return;
-  }
   const sidebar = document.querySelector('.sidebar');
   const main = document.querySelector('.main-content') || document.querySelector('main') || document.querySelector('.content');
   sidebar.classList.toggle('collapsed');
@@ -694,8 +685,7 @@ function toggleSidebar(){
 document.addEventListener('DOMContentLoaded',()=>{
   const saved = localStorage.getItem('lcc_sidebar');
   if(saved === 'collapsed'){
-    const tier = window.LCC_TIER || 'community';
-    if(tier !== 'community'){
+    {
       const sidebar = document.querySelector('.sidebar');
       const main = document.querySelector('.main-content') || document.querySelector('main') || document.querySelector('.content');
       sidebar.classList.add('collapsed');
@@ -777,11 +767,6 @@ document.addEventListener("DOMContentLoaded", function(){
 let currentChanPoint = '';
 
 function openFeeModal(chanPoint, alias, ppm, base){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Per-channel fee updates are a Personal feature. Upgrade at satslist.shop');
-    return;
-  }
   currentChanPoint = chanPoint;
   currentPeerPubkey = '';
   document.getElementById('fee-modal-peer').textContent = alias;
@@ -855,8 +840,6 @@ function _peerGroupCard(members){
 }
 
 function openPeerFeeModal(pk){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){ alert('Per-channel fee updates are a Personal feature. Upgrade at satslist.shop'); return; }
   const m = _peerMembers(pk);
   if(!m.length) return;
   currentChanPoint = '';
@@ -1040,11 +1023,6 @@ function showPeerPolicy(scid, alias) {
 }
 
 function rebalanceChannel(pubkey, alias){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Rebalancing is a Pro feature. Upgrade at satslist.shop');
-    return;
-  }
   if(!confirm('⚖️ Rebalance channel with ' + alias + '?\n\nFees will be shown in wallet transactions after completion.')) return;
   fetch('/api/rebalance?target_pubkey='+pubkey, {method:'POST'})
     .then(r=>r.json())
@@ -1058,11 +1036,6 @@ function rebalanceChannel(pubkey, alias){
     .catch(()=>alert('❌ Rebalance failed'));
 }
 function closeChannelConfirm(chanPoint, alias){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Channel closing is a Pro feature. Upgrade at satslist.shop');
-    return;
-  }
   var c = (typeof cachedChannels !== 'undefined' ? cachedChannels : []).find(function(x){ return x.channel_point === chanPoint; }) || {};
   var m = document.getElementById('close-channel-modal');
   if(!m){
@@ -1213,11 +1186,6 @@ function updateFeeEstimate(){
 }
 
 function openChannelModal(){
-  const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){
-    alert('Opening channels from LCC is a Personal feature. Upgrade at satslist.shop');
-    return;
-  }
   document.getElementById('oc-status').textContent = '';
   document.getElementById('oc-peer').value = '';
   document.getElementById('oc-amount').value = '1000000';
@@ -1328,7 +1296,7 @@ function submitOpenChannel(allowPending){
 
 function openTargetedRebalance() {
   var tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){ alert('Targeted Rebalance is a Pro feature.'); return; }
+  if(tier === 'community'){ alert('Targeted Rebalance is a Personal feature. Upgrade at sparkielabs.com/shop'); return; }
   if(!cachedChannels.length){ alert('No channels loaded'); return; }
   
   var html = '<div style="max-height:70vh;overflow-y:auto;font-family:var(--font);font-size:13px;">';
@@ -1712,7 +1680,7 @@ fetch('/api/loop/status').then(r => r.json()).then(d => {
 
 function toggleAutoRebalance(chanPoint, alias) {
   const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){ alert('Auto Rebalance is a Pro feature. Upgrade at satslist.shop'); return; }
+  if(tier !== 'pro'){ alert('Auto Rebalance is a Pro feature. Upgrade at sparkielabs.com/shop'); return; }
   var amount = prompt('\u{1F501} Auto Rebalance for ' + alias + '\n\nSet rebalance amount (sats):\n(Enter 0 to disable)', '10000');
   if(amount === null) return;
   amount = parseInt(amount);
@@ -1764,7 +1732,7 @@ function sortChannelsReload(){
 
 function toggleAutoFee(chanPoint, alias, peerPubkey) {
   const tier = window.LCC_TIER || 'community';
-  if(tier === 'community'){ alert('Auto Fee is a Pro feature. Upgrade at satslist.shop'); return; }
+  if(tier !== 'pro'){ alert('Auto Fee is a Pro feature. Upgrade at sparkielabs.com/shop'); return; }
   var minBase = prompt('💰 Auto Fee (by liquidity) for ' + alias + '\n\nMin base fee, msat (used when channel is FULL of your local sats — attracts routing):\n(Enter -1 to disable)', '0');
   if(minBase === null) return;
   minBase = parseInt(minBase);

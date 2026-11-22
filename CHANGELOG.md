@@ -5,11 +5,14 @@ All notable changes to LCC — Lightning Control Center.
 ## Unreleased (v0.2.3)
 
 ### Added
+- **Sparkie Labs link** in the sidebar and Command Palette, opening the sparkielabs.com portal (apps, partners, shop).
 - **Current on-chain fees in Open and Close Channel** — No priority / Low / Medium / High from mempool.space (or Bitcoin Core), one click to use, or type your own, with a short note on speed vs. cost. Close Channel is now a window that shows what comes back to your wallet, who pays the closing fee, and the fee in sats.
 - **Channel fee when opening** — set the ppm from the start (base fee 0), so new channels no longer start at LND's default 1 ppm. It matches your other channels with that peer, and the new channel joins their Auto Fee group.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 
 ### Changed
+- **Free tier is now usable** — opening and closing channels, channel fee changes, single-channel rebalance, Command Palette, collapsing sidebar and the Health score are free. Rebalance All, Targeted Rebalance and Tax/CSV exports are Personal. Auto Rebalance, Auto Fee and multi-wallet NWC are Pro only (Personal no longer unlocks them).
+- **Upgrade links point to sparkielabs.com/shop** instead of satslist.shop.
 - **Buying a license** — Settings explains the steps and links to the new Sparkie Labs Shop (shop.sparkielabs.com) instead of SatsList, which needed an account.
 - **Fixed LCC freezing** — saving the Node Journal could leave a worker waiting forever once the journal was large; deleting many entries in a row made LCC stop loading pages until restarted.
 - **Journal saves and deletes send one entry** instead of the whole journal, so they are fast and can no longer overwrite automatic entries written in the meantime. Journal writes are locked and crash-safe.

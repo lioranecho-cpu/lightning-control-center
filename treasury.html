@@ -292,7 +292,7 @@ function changePage(dir){
 async function addWallet(){
   const tier = window.LCC_TIER || 'community';
   if(tier !== 'pro'){
-    alert('Multi-wallet NWC support is a Pro feature. Upgrade at satslist.shop');
+    alert('Multi-wallet NWC support is a Pro feature. Upgrade at sparkielabs.com/shop');
     return;
   }
   const nwcUrl = prompt('Paste your Nostr Wallet Connect URL:\n(nostr+walletconnect://...)');
@@ -355,7 +355,7 @@ fetch('/api/tier').then(r=>r.json()).then(d=>{
 function downloadAccounting() {
   const tier = window.LCC_TIER || 'community';
   if(tier === 'community'){
-    alert('Accounting export is a Pro feature. Upgrade at satslist.shop');
+    alert('Tax / accounting export is a Personal feature. Upgrade at sparkielabs.com/shop');
     return;
   }
   fetch('/api/accounting?days=9999')
