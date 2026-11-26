@@ -2,7 +2,7 @@
 
 All notable changes to LCC — Lightning Control Center.
 
-## Unreleased (v0.2.3)
+## v0.2.3 — 2026-11-25
 
 ### Added
 - **Login lockout** — after 5 wrong passwords from the same device within 15 minutes, password sign-in is locked for 15 minutes. The login page says how long to wait.
