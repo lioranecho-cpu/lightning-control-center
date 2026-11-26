@@ -6,7 +6,7 @@
 > 💡 **Quick Help:** Paste this into any AI (Claude, ChatGPT, Grok) for interactive support:
 > *"Read https://github.com/lioranecho-cpu/lightning-control-center and help me with [your question]"*
 
-*Manual for LCC v0.2.2*
+*Manual for LCC v0.2.3*
 
 ---
 
@@ -39,11 +39,11 @@
 21. [Auto Fee by Liquidity (Pro)](#auto-fee-by-liquidity-pro)
 22. [Fee Recommendations (Pro)](#fee-recommendations-pro)
 23. [Channel Strategy (Pro)](#channel-strategy-pro)
-24. [Rebalancing (Pro)](#rebalancing-pro)
+24. [Rebalancing](#rebalancing)
 25. [Loop In and Loop Out (Pro)](#loop-in-and-loop-out-pro)
-26. [Live HTLC Stream (Pro)](#live-htlc-stream-pro)
+26. [Live HTLC Stream](#live-htlc-stream)
 27. [Auto-Reconnect](#auto-reconnect-background-worker)
-28. [Tax Accounting Export (Pro)](#tax-accounting-export-pro)
+28. [Tax Accounting Export (Personal)](#tax-accounting-export-personal)
 
 **Guides**
 
@@ -56,7 +56,7 @@
 **Other**
 
 34. [Themes](#themes)
-35. [Command Palette (Personal+)](#command-palette-personal)
+35. [Command Palette](#command-palette)
 36. [Troubleshooting](#troubleshooting)
 37. [Remote Access Options](#remote-access-options)
 38. [Security Notes](#security-notes)
@@ -83,6 +83,7 @@ After installation, open your browser and go to http://your-server-ip:8765
 ### First Login
 - The login password is stored in data.json — change it in Settings after the first login
 - Pro tier supports Nostr login via NIP-07 (Alby, nos2x) or nsec key
+- **Login lockout:** 5 wrong passwords from the same device within 15 minutes lock password sign-in for 15 minutes. The login page says how long to wait. Restarting LCC clears it.
 
 ### Automations are off by default
 Auto Rebalance, Auto Fee, Drain & Trap and fee changes never run until you switch them on for a channel. LCC never opens or closes a channel by itself.
@@ -288,6 +289,8 @@ LCC is submitted to the Umbrel App Store (pending approval). For beta access, si
 See **UMBREL.md** in the repo for step-by-step instructions, or paste this into Claude:
 > *"I want to sideload Lightning Control Center (LCC) on my Umbrel node. Please guide me step by step."*
 
+**StartOS (Start9):** LCC is in the Start9 **Community Beta** registry. In the Marketplace, add `https://community-beta-registry.start9.com`, then install Lightning Control Center. It connects to the LND on the same box by itself and shows a generated password on first start.
+
 ---
 
 ## Inbound Health
@@ -453,9 +456,11 @@ A cooperative close returns your sats on-chain for just the mining fee — usual
 
 ---
 
-## Rebalancing (Pro)
+## Rebalancing
 
 Rebalancing is a circular payment from your node back to your node: sats leave through a full channel and come back in through an empty one. You pay routing fees to the nodes in between.
+
+**Which tier:** rebalancing one channel (the **Rebalance** button on a channel) is free. ⚖️ **Rebalance All** and 🎯 **Targeted Rebalance** need Personal. 🔁 **Per-channel Auto Rebalance** and the Settings schedule need Pro.
 
 **The golden rule:** a rebalance only pays if the fee you pay is less than what the refilled channel will earn when those sats leave again. LCC now enforces this everywhere.
 
@@ -605,9 +610,11 @@ Every swap started from LCC is logged to the Node Journal: channel, amount, swap
 
 ---
 
-## Live HTLC Stream (Pro)
+## Live HTLC Stream
 
 Real-time routing monitor — companion app on port 8001.
+
+The menu item only shows when the companion app is set up (`LCC_LIVE_STREAM_URL` in `.env`). It is not in the StartOS package yet; building it into LCC itself is planned for v0.2.4.
 
 - Live feed of forwarding events: time, amount, path, result, fee earned
 - Strategy events highlighted in orange
@@ -622,7 +629,7 @@ LCC checks every 30 minutes whether any channel peer has disconnected, looks up 
 
 ---
 
-## Tax Accounting Export (Pro)
+## Tax Accounting Export (Personal)
 
 Click **📥 Tax CSV** on the Treasury P&L card. The CSV includes:
 - **routing_income** — sats earned forwarding
@@ -670,7 +677,7 @@ A channel is stuck when almost all of it is on one side. At 98% local, payments 
 
 ### What Rebalancing Does
 
-Rebalancing sends sats from a full channel around the network back into an empty one. Both channels can then route again — but you pay fees to do it. See [Rebalancing](#rebalancing-pro).
+Rebalancing sends sats from a full channel around the network back into an empty one. Both channels can then route again — but you pay fees to do it. See [Rebalancing](#rebalancing).
 
 ### The Fee and Liquidity Relationship
 
@@ -786,9 +793,9 @@ You need at least 2 weeks of data. Re-check monthly as your channels change.
 
 ---
 
-## Command Palette (Personal+)
+## Command Palette
 
-Press Ctrl+Space on any page. Type to search pages and commands. Quick actions: Copy Pubkey, Open SatsList, Launch Live Stream.
+Press Ctrl+Space on any page. Type to search pages and commands. Quick actions: Copy Pubkey, Open SatsList, Open Sparkie Labs, Launch Live Stream. Free on every tier.
 
 ---
 
@@ -855,11 +862,11 @@ Coming soon.
 
 | Tier | Price | Highlights |
 |------|-------|------------|
-| Community | FREE | Full dashboard, all pages, 4 themes |
-| Personal | 20,000 sats one-time | Command Palette, CSV export, Health Score, per-channel fees, channel opening |
-| Pro | 9,000 sats/month or 90,000 sats/year | Automation: Drain and Trap, Auto Fee, Auto Rebalance, Loop, NWC, Live Stream, Fee Recs |
+| Community | FREE | Full dashboard, all pages, 4 themes, open/close channels, fee changes, one-channel rebalance, Command Palette, collapsing sidebar, Health Score |
+| Personal | 20,000 sats one-time | Everything in Community + Rebalance All, Targeted Rebalance, CSV export, Tax Accounting Export |
+| Pro | 9,000 sats/month or 90,000 sats/year | Everything in Personal + automation: Auto Rebalance, Auto Fee, Drain and Trap, Loop, NWC, Treasury wallets, Fee Recs |
 
-Get a license at **satslist.shop** — pay with Bitcoin Lightning.
+Get a license at **[sparkielabs.com/shop](https://sparkielabs.com/shop/)** — pay with Bitcoin Lightning.
 
 ---
 

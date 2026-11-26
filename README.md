@@ -6,7 +6,7 @@
 
 A beautiful, practical easy to use self-hosted Lightning node manager. Built for Bitcoin and Lightning node runners.
 
-**Live demo:** [https://lcc.satslist.shop/dashboard](https://lioranecho-cpu.github.io/lcc-demo/index.html)
+**Live demo:** [lioranecho-cpu.github.io/lcc-demo](https://lioranecho-cpu.github.io/lcc-demo/index.html)
 
 ---
 
@@ -35,7 +35,10 @@ cd lightning-control-center
 docker compose up -d
 ```
 
-### Option 3 — Docker (mock mode for testing)
+### Option 3 — Start9 (StartOS)
+LCC is in the Start9 **Community Beta** registry. In the StartOS Marketplace, add the registry `https://community-beta-registry.start9.com`, then install Lightning Control Center. It connects to the LND on the same box by itself.
+
+### Option 4 — Docker (mock mode for testing)
 ```bash
 docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 ```
@@ -66,15 +69,18 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 - 🖥️ System monitor — LND, Bitcoin Core, RTL, LNbits status
 - 🔗 Integrations overview
 - 🎨 4 themes — Midnight, Obsidian, Amber, Forest
+- 💰 Channel fee updates — per channel, or one fee for all channels with a peer
+- 🔀 One-channel rebalance — with a profit-based fee cap
+- ⌨️ Command Palette (Ctrl+Space) and collapsing sidebar
+- ❤️ Health score
+- 🔒 Login lockout — 5 wrong passwords lock password sign-in for 15 minutes
 
 ### ⚡ Personal (20,000 sats one-time)
 - Everything in Community, plus:
-- ⌨️ Command Palette (Ctrl+Space)
-- 📁 Collapsing sidebar
-- 📊 Per-channel fee updates
-- 🔓 Channel opening UI
-- ❤️ Health score
-- 📥 CSV export
+- ⚖️ **Rebalance All** — moves sats from full channels to empty ones under the fee cap
+- 🎯 **Targeted Rebalance** — pick source AND destination channels, set amount and max fee
+- 📥 **CSV export** — wallet, routing and peer data
+- 📊 **Tax Accounting CSV** — routing income, rebalance fees, channel open/close costs, and energy expenses
 
 ### 🔥 Pro (9,000 sats/month or 90,000 sats/year)
 - Everything in Personal, plus:
@@ -86,23 +92,19 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 
 [https://github.com/lioranecho-cpu/lightning-control-center/raw/main/channel-autorebalance.mp4](https://github.com/user-attachments/assets/c1c02202-0eef-48a0-b219-6e7342839a1f
 )
-- 🔀 **Manual rebalance** — per-channel with fee estimate
 - 📡 **Live HTLC Stream** — real-time routing event monitor (companion app)
 - 🔐 **Nostr login** — NIP-07 (Alby, nos2x) or nsec
 - 💰 **Treasury + NWC wallet** — connect any NWC wallet
 - 👤 **Peer Policy viewer** — see your fees vs peer fees per channel
 - 📊 **Node P&L card** — routing fees earned vs costs (rebalancing, opens, closes) with 30 Cal-Days / 1 Year / All Time view
-- 📥 **CSV export** — wallet and routing data
 - 🔌 **Auto-reconnect** — automatically reconnects dropped peers every 30 minutes
-- 📊 **Tax Accounting CSV** — full export with routing income, rebalance fees, channel open/close costs, and energy expenses
-- 🎯 **Targeted Rebalance** — pick source AND destination channels, set amount and max fee
 - 📋 **Channel Strategy page** — auto-assessed health with color-coded actions (Keep/Drain/Monitor/Close)
 - 🔀 **Named rebalance pairs** — wallet shows "Rebalance: Unwetter to LNBiG [Hub-3]" instead of generic text
 
 ---
 
 ## 💎 Coming Soon
-- 🖥️ Hardware node connectivity — Start9, RaspiBlitz, myNode (Umbrel App Store submission pending ✅)
+- 🖥️ More node platforms — RaspiBlitz, myNode (Umbrel App Store submission pending ✅)
 - 🔌 Plugin architecture — extend LCC
 - 💰 Multi-wallet Treasury — unified balance across multiple wallets
 - 📦 One-click installer
@@ -113,11 +115,11 @@ docker run -e LCC_MOCK=true -p 8765:8765 lcc:latest
 
 | Tier | Price | Highlights |
 |------|-------|------------|
-| 🟠 Community | FREE | Full dashboard, 4 themes |
-| ⚡ Personal | 20,000 sats (~$13) | Command Palette, CSV, Health Score |
-| 🔥 Pro | 9,000 sats/month | NWC, Drain & Trap, Live Stream, Fee Recs |
+| 🟠 Community | FREE | Full dashboard, open/close channels, fee changes, one-channel rebalance, Command Palette, Health Score |
+| ⚡ Personal | 20,000 sats one-time | Rebalance All, Targeted Rebalance, CSV + Tax exports |
+| 🔥 Pro | 9,000 sats/month or 90,000 sats/year | Automation: Auto Rebalance, Auto Fee, Drain & Trap, NWC, Fee Recs |
 
-Get a license at **satslist.shop** — pay with Bitcoin Lightning ⚡
+Get a license at **[sparkielabs.com/shop](https://sparkielabs.com/shop/)** — pay with Bitcoin Lightning ⚡
 
 ---
 
