@@ -5,12 +5,14 @@ All notable changes to LCC — Lightning Control Center.
 ## Unreleased (v0.2.3)
 
 ### Added
+- **Login lockout** — after 5 wrong passwords from the same device within 15 minutes, password sign-in is locked for 15 minutes. The login page says how long to wait.
 - **Sparkie Labs link** in the sidebar and Command Palette, opening the sparkielabs.com portal (apps, partners, shop).
 - **Current on-chain fees in Open and Close Channel** — No priority / Low / Medium / High from mempool.space (or Bitcoin Core), one click to use, or type your own, with a short note on speed vs. cost. Close Channel is now a window that shows what comes back to your wallet, who pays the closing fee, and the fee in sats.
 - **Channel fee when opening** — set the ppm from the start (base fee 0), so new channels no longer start at LND's default 1 ppm. It matches your other channels with that peer, and the new channel joins their Auto Fee group.
 - **🎚️ Rebalance cap setting** — choose the most a rebalance may cost as a share of what the receiving channel earns: 50% default, 100% break-even, up to 150%. Used by Targeted Rebalance, Rebalance All and per-channel Auto Rebalance.
 
 ### Changed
+- **Updates show up right away** — pages and scripts are sent with "no-cache", so browsers load the new version after an update instead of a stale copy (no hard refresh needed).
 - **Free tier is now usable** — opening and closing channels, channel fee changes, single-channel rebalance, Command Palette, collapsing sidebar and the Health score are free. Rebalance All, Targeted Rebalance and Tax/CSV exports are Personal. Auto Rebalance, Auto Fee and multi-wallet NWC are Pro only (Personal no longer unlocks them).
 - **Upgrade links point to sparkielabs.com/shop** instead of satslist.shop.
 - **Buying a license** — Settings explains the steps and links to the new Sparkie Labs Shop (shop.sparkielabs.com) instead of SatsList, which needed an account.

@@ -52,9 +52,13 @@
         if (r.ok) {
           window.location.href = '/dashboard';
         } else {
-          errEl.style.display = 'block';
+          r.json().catch(function(){ return {}; }).then(function(d) {
+            errEl.textContent = (d && d.detail) || 'Incorrect password';
+            errEl.style.display = 'block';
+          });
         }
       }).catch(function() {
+        errEl.textContent = 'Could not reach LCC. Check your connection.';
         errEl.style.display = 'block';
       });
     });

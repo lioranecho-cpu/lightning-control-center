@@ -1272,15 +1272,77 @@ async def auth_gate(request: Request, call_next):
         return JSONResponse({"detail": "Unauthorized"}, status_code=401)
     return RedirectResponse(url="/login")
 
+@app.middleware("http")
+async def no_stale_pages(request: Request, call_next):
+    """Make browsers re-check pages and scripts, so an update shows up without a hard refresh."""
+    resp = await call_next(request)
+    path = request.url.path
+    ctype = resp.headers.get("content-type", "")
+    if (path.endswith((".html", ".js", ".css")) or path in ("/", "/dashboard", "/login")
+            or ctype.startswith("text/html")):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.get("/login")
 def login_page():
     return FileResponse("login.html")
 
+# Login lockout: too many wrong passwords from one address locks it out for a while.
+_LOGIN_MAX_FAILS = 5
+_LOGIN_WINDOW = 15 * 60
+_LOGIN_LOCK_SECS = 15 * 60
+_login_fails = {}
+_login_fails_lock = threading.Lock()
+
+
+def _login_key(request):
+    return request.client.host if request.client else "unknown"
+
+
+def _login_locked(key):
+    """Seconds left on a lockout for this address, or 0."""
+    now = _time_auth.time()
+    with _login_fails_lock:
+        rec = _login_fails.get(key)
+        if not rec:
+            return 0
+        if rec["until"] > now:
+            return int(rec["until"] - now) + 1
+        if now - rec["first"] > _LOGIN_WINDOW:
+            _login_fails.pop(key, None)
+        return 0
+
+
+def _login_failed(key):
+    now = _time_auth.time()
+    with _login_fails_lock:
+        if len(_login_fails) > 1000:
+            _login_fails.clear()
+        rec = _login_fails.get(key)
+        if not rec or now - rec["first"] > _LOGIN_WINDOW:
+            rec = {"count": 0, "first": now, "until": 0}
+        rec["count"] += 1
+        if rec["count"] >= _LOGIN_MAX_FAILS:
+            rec.update(until=now + _LOGIN_LOCK_SECS, count=0, first=now)
+        _login_fails[key] = rec
+        return rec["until"] > now
+
+
 @app.post("/api/login")
-def api_login(body: dict = Body(...)):
+def api_login(request: Request, body: dict = Body(...)):
+    key = _login_key(request)
+    wait = _login_locked(key)
+    if wait:
+        mins = (wait + 59) // 60
+        raise HTTPException(status_code=429, detail=f"Too many wrong passwords. Try again in {mins} minute{'s' if mins != 1 else ''}.")
     password = body.get("password", "")
     if not _password_ok(password):
-        raise HTTPException(status_code=401, detail="Invalid password")
+        if _login_failed(key):
+            raise HTTPException(status_code=429, detail="Too many wrong passwords. Try again in 15 minutes.")
+        raise HTTPException(status_code=401, detail="Incorrect password")
+    with _login_fails_lock:
+        _login_fails.pop(key, None)
     token = _make_session_token()
     resp = JSONResponse({"status": "ok"})
     resp.set_cookie(
